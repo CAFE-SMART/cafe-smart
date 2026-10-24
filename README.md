@@ -35,6 +35,9 @@ app/src/main/java/.../
 3. Espera a que Gradle sincronice.
 4. Ejecuta en un emulador o en un celular Android.
 
+## Configuración de Firebase
+`google-services.json` no está en el repositorio. Las credenciales están en el Google Doc del equipo (pestaña "Móvil — Credenciales y Firebase"); descárgalo de ahí y colócalo en `app/`. Como referencia de su estructura está `app/google-services.json.example` (quítale el `.example` al nombre).
+
 ## Flujo de trabajo en Git (trunk-based)
 - Un solo tronco: `main`, siempre compilable.
 - Ramas cortas (1-2 días) con prefijo `feat/` o `fix/`.
