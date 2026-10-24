@@ -58,7 +58,7 @@ fun ComponentsShowcase(modifier: Modifier = Modifier) {
         Text(text = "Componentes base", style = AppTypography.titleScreen)
 
         SegmentedProgressBar(
-            total = 4,
+            total = 3,
             current = step,
             modifier = Modifier.fillMaxWidth()
         )
@@ -66,7 +66,7 @@ fun ComponentsShowcase(modifier: Modifier = Modifier) {
         ContinueButton(
             text = "Continuar",
             enabled = true,
-            onClick = { step = (step + 1).coerceAtMost(4) }
+            onClick = { step = (step + 1).coerceAtMost(3) }
         )
 
         ContinueButton(

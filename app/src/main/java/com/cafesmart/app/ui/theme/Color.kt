@@ -46,3 +46,6 @@ val ModalScrim = Color(0x800F172A)
 
 // Sombra de la hoja inferior: TextPrimary al 12 %
 val SheetShadow = Color(0x1F0F172A)
+
+// Sombra del boton principal: Primary al 20 %
+val ButtonShadow = Color(0x331C4ED8)
