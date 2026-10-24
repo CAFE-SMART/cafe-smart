@@ -12,7 +12,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.cafesmart.app.ui.theme.BorderDefault
+import com.cafesmart.app.ui.theme.ButtonDisabled
 import com.cafesmart.app.ui.theme.CafesmartTheme
 import com.cafesmart.app.ui.theme.Primary
 import com.cafesmart.app.ui.theme.Spacing
@@ -37,7 +37,7 @@ fun SegmentedProgressBar(
         for (index in 0 until total) {
             val startX = index * (segmentWidth + spacingPx)
             drawRoundRect(
-                color = if (index < current) Primary else BorderDefault,
+                color = if (index < current) Primary else ButtonDisabled,
                 topLeft = Offset(startX, 0f),
                 size = Size(segmentWidth, size.height),
                 cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx)
