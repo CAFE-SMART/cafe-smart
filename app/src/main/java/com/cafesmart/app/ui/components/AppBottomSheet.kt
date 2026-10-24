@@ -35,7 +35,7 @@ fun AppBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        shape = AppShapes.large,
+        shape = AppShapes.medium,
         containerColor = SurfaceCard,
         scrimColor = ModalScrim,
         tonalElevation = 0.dp,
@@ -53,14 +53,14 @@ private fun AppSheetDragHandle() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(elevation = 20.dp, shape = AppShapes.large, ambientColor = SheetShadow, spotColor = SheetShadow)
-            .background(color = SurfaceCard, shape = AppShapes.large)
+            .shadow(elevation = 20.dp, shape = AppShapes.medium, ambientColor = SheetShadow, spotColor = SheetShadow)
+            .background(color = SurfaceCard, shape = AppShapes.medium)
             .padding(vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
-                .width(36.dp)
+                .width(40.dp)
                 .height(4.dp)
                 .background(color = SheetHandle, shape = RoundedCornerShape(2.dp))
         )
