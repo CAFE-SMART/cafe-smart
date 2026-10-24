@@ -43,3 +43,6 @@ val TrilladoIcon = Color(0xFF8A5A2B)
 
 // Scrim de modales: TextPrimary al 50 %
 val ModalScrim = Color(0x800F172A)
+
+// Sombra de la hoja inferior: TextPrimary al 12 %
+val SheetShadow = Color(0x1F0F172A)

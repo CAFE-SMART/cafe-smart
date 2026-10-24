@@ -2,7 +2,6 @@ package com.cafesmart.app.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
@@ -10,11 +9,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.cafesmart.app.ui.theme.AppShapes
 import com.cafesmart.app.ui.theme.AppTypography
 import com.cafesmart.app.ui.theme.ButtonDisabled
 import com.cafesmart.app.ui.theme.CafesmartTheme
 import com.cafesmart.app.ui.theme.OnPrimary
 import com.cafesmart.app.ui.theme.Primary
+import com.cafesmart.app.ui.theme.TextMuted
 
 @Composable
 fun ContinueButton(
@@ -26,18 +27,22 @@ fun ContinueButton(
     Button(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(12.dp),
+        shape = AppShapes.medium,
         colors = ButtonDefaults.buttonColors(
             containerColor = Primary,
             contentColor = OnPrimary,
             disabledContainerColor = ButtonDisabled,
-            disabledContentColor = OnPrimary
+            disabledContentColor = TextMuted
         ),
         modifier = modifier
             .fillMaxWidth()
             .height(54.dp)
     ) {
-        Text(text = text, style = AppTypography.buttonPrimary)
+        Text(
+            text = text,
+            style = AppTypography.buttonPrimary,
+            color = if (enabled) OnPrimary else TextMuted
+        )
     }
 }
 

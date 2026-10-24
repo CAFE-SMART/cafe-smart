@@ -122,8 +122,30 @@ object AppTypography {
     )
 }
 
-// Set of Material typography styles to start with
-val Typography = Typography(
+private val InterDefaults = Typography().let { material ->
+    Typography(
+        displayLarge = material.displayLarge.copy(fontFamily = Inter),
+        displayMedium = material.displayMedium.copy(fontFamily = Inter),
+        displaySmall = material.displaySmall.copy(fontFamily = Inter),
+        headlineLarge = material.headlineLarge.copy(fontFamily = Inter),
+        headlineMedium = material.headlineMedium.copy(fontFamily = Inter),
+        headlineSmall = material.headlineSmall.copy(fontFamily = Inter),
+        titleLarge = material.titleLarge.copy(fontFamily = Inter),
+        titleMedium = material.titleMedium.copy(fontFamily = Inter),
+        titleSmall = material.titleSmall.copy(fontFamily = Inter),
+        bodyLarge = material.bodyLarge.copy(fontFamily = Inter),
+        bodyMedium = material.bodyMedium.copy(fontFamily = Inter),
+        bodySmall = material.bodySmall.copy(fontFamily = Inter),
+        labelLarge = material.labelLarge.copy(fontFamily = Inter),
+        labelMedium = material.labelMedium.copy(fontFamily = Inter),
+        labelSmall = material.labelSmall.copy(fontFamily = Inter)
+    )
+}
+
+// Tipografia Material completa en Inter; los roles del design system
+// quedan mapeados encima para que los componentes que usan Typography
+// directamente (TextField, Chip, etc.) también se vean en Inter.
+val Typography = InterDefaults.copy(
     bodyLarge = AppTypography.bodyLg,
     bodyMedium = AppTypography.bodyMd,
     titleLarge = AppTypography.titleScreen,

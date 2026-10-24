@@ -10,12 +10,31 @@ import androidx.compose.ui.unit.dp
 private val LightColorScheme = lightColorScheme(
     primary = Primary,
     onPrimary = OnPrimary,
+    primaryContainer = ButtonSoft,
+    onPrimaryContainer = PrimaryDark,
+    secondary = PrimaryDark,
+    onSecondary = OnPrimary,
+    secondaryContainer = SurfaceSelected,
+    onSecondaryContainer = PrimaryDark,
+    tertiary = SuccessSolid,
+    onTertiary = OnPrimary,
+    tertiaryContainer = SuccessBg,
+    onTertiaryContainer = SuccessText,
     background = SurfaceScreen,
+    onBackground = TextPrimary,
     surface = SurfaceCard,
     onSurface = TextPrimary,
+    surfaceVariant = SurfaceSoft,
+    onSurfaceVariant = TextSecondary,
     outline = BorderField,
     outlineVariant = BorderDefault,
-    error = ErrorDot
+    error = ErrorDot,
+    onError = OnPrimary,
+    errorContainer = ErrorBg,
+    onErrorContainer = ErrorText,
+    inverseSurface = TextPrimary,
+    inverseOnSurface = SurfaceCard,
+    inversePrimary = SurfaceSelected
 )
 
 val AppShapes = Shapes(
