@@ -1,58 +1,67 @@
 package com.cafesmart.app.ui.theme
 
-import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
+import androidx.compose.ui.unit.dp
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    primary = Primary,
+    onPrimary = OnPrimary,
+    primaryContainer = ButtonSoft,
+    onPrimaryContainer = PrimaryDark,
+    secondary = PrimaryDark,
+    onSecondary = OnPrimary,
+    secondaryContainer = SurfaceSelected,
+    onSecondaryContainer = PrimaryDark,
+    tertiary = SuccessSolid,
+    onTertiary = OnPrimary,
+    tertiaryContainer = SuccessBg,
+    onTertiaryContainer = SuccessText,
+    background = SurfaceScreen,
+    onBackground = TextPrimary,
+    surface = SurfaceCard,
+    onSurface = TextPrimary,
+    surfaceVariant = SurfaceSoft,
+    onSurfaceVariant = TextSecondary,
+    outline = BorderField,
+    outlineVariant = BorderDefault,
+    error = ErrorDot,
+    onError = OnPrimary,
+    errorContainer = ErrorBg,
+    onErrorContainer = ErrorText,
+    inverseSurface = TextPrimary,
+    inverseOnSurface = SurfaceCard,
+    inversePrimary = SurfaceSelected
 )
+
+val AppShapes = Shapes(
+    small = RoundedCornerShape(6.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp)
+)
+
+object Spacing {
+    val s4 = 4.dp
+    val s6 = 6.dp
+    val s8 = 8.dp
+    val s12 = 12.dp
+    val s16 = 16.dp
+    val s20 = 20.dp // margen lateral de pantalla
+    val s28 = 28.dp
+    val s48 = 48.dp // relleno superior del encabezado
+}
 
 @Composable
 fun CafesmartTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = LightColorScheme,
         typography = Typography,
+        shapes = AppShapes,
         content = content
     )
 }
