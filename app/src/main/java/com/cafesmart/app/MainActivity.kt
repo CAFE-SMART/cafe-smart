@@ -23,6 +23,7 @@ import com.cafesmart.app.ui.components.AppBottomSheet
 import com.cafesmart.app.ui.components.BackArrow
 import com.cafesmart.app.ui.components.ContinueButton
 import com.cafesmart.app.ui.components.SegmentedProgressBar
+import com.cafesmart.app.ui.compra.RegistroCompraFlow
 import com.cafesmart.app.ui.theme.AppTypography
 import com.cafesmart.app.ui.theme.CafesmartTheme
 import com.cafesmart.app.ui.theme.Spacing
@@ -34,7 +35,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             CafesmartTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ComponentsShowcase(modifier = Modifier.padding(innerPadding))
+                    RegistroCompraFlow(
+                        onSalir = {},
+                        onFinalizar = { _, _, _ -> },
+                        modifier = Modifier.padding(innerPadding)
+                    )
                 }
             }
         }
