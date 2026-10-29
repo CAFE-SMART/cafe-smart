@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.cafesmart.app.data.ModoProductor
 import com.cafesmart.app.data.NuevoProductor
 import com.cafesmart.app.data.Productor
+import com.cafesmart.app.domain.SIN_RESULTADOS
 import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.ContinueButton
 import com.cafesmart.app.ui.components.OptionCard
@@ -57,6 +58,7 @@ fun RegistroCompraPaso1Screen(
     nombreError: String?,
     telefonoError: String?,
     continuarHabilitado: Boolean,
+    mensajePendiente: String?,
     onModoChange: (ModoProductor) -> Unit,
     onBusquedaChange: (String) -> Unit,
     onProductorClick: (Productor) -> Unit,
@@ -132,6 +134,7 @@ fun RegistroCompraPaso1Screen(
         }
 
         CompraBottomBar {
+            MensajePendiente(mensaje = mensajePendiente)
             ContinueButton(
                 text = "Continuar",
                 enabled = continuarHabilitado,
@@ -182,7 +185,7 @@ private fun BuscadorProductor(
                 text = if (busqueda.isBlank()) {
                     "Aún no tienes productores registrados. Usa \"Productor nuevo\" para crear uno."
                 } else {
-                    "No hay productores con ese nombre o documento."
+                    SIN_RESULTADOS
                 },
                 style = AppTypography.bodyMd
             )
@@ -257,6 +260,7 @@ private fun Paso1SinElegirPreview() {
             nombreError = null,
             telefonoError = null,
             continuarHabilitado = false,
+            mensajePendiente = "Por favor, selecciona una opción para continuar el proceso.",
             onModoChange = {},
             onBusquedaChange = {},
             onProductorClick = {},
@@ -283,6 +287,7 @@ private fun Paso1RegistradoPreview() {
             nombreError = null,
             telefonoError = null,
             continuarHabilitado = true,
+            mensajePendiente = null,
             onModoChange = {},
             onBusquedaChange = {},
             onProductorClick = {},
@@ -309,6 +314,7 @@ private fun Paso1NuevoPreview() {
             nombreError = null,
             telefonoError = null,
             continuarHabilitado = false,
+            mensajePendiente = "Por favor, selecciona una opción para continuar el proceso.",
             onModoChange = {},
             onBusquedaChange = {},
             onProductorClick = {},

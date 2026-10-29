@@ -55,8 +55,9 @@ fun NuevoProductorForm(
             label = "Número de documento",
             value = datos.documento,
             onValueChange = { onDatosChange(datos.copy(documento = it)) },
-            placeholder = if (esEmpresa) "Ej. 900123456-7" else "Ej. 1114059684",
-            keyboardType = if (esEmpresa) KeyboardType.Phone else KeyboardType.Number,
+            placeholder = if (esEmpresa) "Ej. 9001234567" else "Ej. 1114059684",
+            keyboardType = KeyboardType.Number,
+            helper = if (esEmpresa) "Solo números: 9 o 10." else "Solo números: de 6 a 10.",
             error = documentoError
         )
         AppTextField(

@@ -21,6 +21,7 @@ import com.cafesmart.app.ui.theme.ErrorText
 import com.cafesmart.app.ui.theme.Primary
 import com.cafesmart.app.ui.theme.Spacing
 import com.cafesmart.app.ui.theme.SurfaceCard
+import com.cafesmart.app.ui.theme.TextMuted
 
 @Composable
 fun AppTextField(
@@ -46,7 +47,8 @@ fun AppTextField(
             onValueChange = onValueChange,
             singleLine = true,
             textStyle = AppTypography.bodyLg,
-            placeholder = { Text(text = placeholder, style = AppTypography.bodyLg.copy(color = BorderField)) },
+            // TextMuted (#64748B) tiene contraste 4,8:1 sobre blanco; la guia pide minimo 4,5:1 (RNF-27)
+            placeholder = { Text(text = placeholder, style = AppTypography.bodyLg.copy(color = TextMuted)) },
             leadingIcon = if (leadingText != null) {
                 { Text(text = leadingText, style = AppTypography.valueStrongBold, modifier = Modifier.padding(start = Spacing.s4)) }
             } else {

@@ -44,6 +44,7 @@ import com.cafesmart.app.data.CafeFormulario
 import com.cafesmart.app.data.Calidad
 import com.cafesmart.app.data.Fecha
 import com.cafesmart.app.data.tiposCafe
+import com.cafesmart.app.domain.fechaDeHoy
 import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.AppTextField
 import com.cafesmart.app.ui.components.ChoiceButton
@@ -80,7 +81,9 @@ fun RegistroCompraPaso2Screen(
     totalKg: Double,
     totalEstimado: Double,
     agregarHabilitado: Boolean,
+    mensajeAgregar: String?,
     continuarHabilitado: Boolean,
+    mensajePendiente: String?,
     onCafeChange: (Int, CafeFormulario) -> Unit,
     onQuitarCafe: (Int) -> Unit,
     onAgregarCafe: () -> Unit,
@@ -122,6 +125,10 @@ fun RegistroCompraPaso2Screen(
                 }
 
                 BotonAgregarCafe(enabled = agregarHabilitado, onClick = onAgregarCafe)
+                // Explica por que no se puede agregar otro cafe todavia
+                if (mensajeAgregar != null) {
+                    Text(text = mensajeAgregar, style = AppTypography.helper)
+                }
 
                 TarjetaFecha(fecha = fecha, onCambiar = { mostrarCalendario = true })
             }
@@ -141,6 +148,7 @@ fun RegistroCompraPaso2Screen(
                     Text(text = formatoDinero(totalEstimado), style = AppTypography.titleModal.copy(color = PrimaryDark))
                 }
             }
+            MensajePendiente(mensaje = mensajePendiente)
             ContinueButton(
                 text = "Continuar",
                 enabled = continuarHabilitado,
@@ -225,12 +233,13 @@ private fun TarjetaCafe(
             )
             AppTextField(
                 label = "Precio por kg",
-                value = cafe.precio,
+                // El estado guarda solo digitos ("14000"); en pantalla se ve "14.000"
+                value = precioEnPantalla(cafe.precio),
                 onValueChange = { onCafeChange(cafe.copy(precio = it)) },
                 placeholder = "14.000",
                 keyboardType = KeyboardType.Number,
                 leadingText = "$",
-                helper = "Máx. $100.000/kg",
+                helper = "Entre $1.000 y $100.000/kg",
                 error = errorPrecio,
                 modifier = Modifier.weight(1f)
             )
@@ -381,14 +390,16 @@ private fun DialogoFecha(fecha: Fecha, onFechaChange: (Fecha) -> Unit, onCerrar:
 private fun Paso2Preview() {
     CafesmartTheme {
         RegistroCompraPaso2Screen(
-            cafes = listOf(CafeFormulario(tipoCafe = "Verde", calidad = Calidad.BUENA, peso = "25", precio = "14.000")),
+            cafes = listOf(CafeFormulario(tipoCafe = "Verde", calidad = Calidad.BUENA, peso = "25", precio = "14000")),
             erroresPeso = listOf(null),
             erroresPrecio = listOf(null),
             fecha = fechaDeHoy(),
             totalKg = 25.0,
             totalEstimado = 350000.0,
             agregarHabilitado = true,
+            mensajeAgregar = null,
             continuarHabilitado = true,
+            mensajePendiente = null,
             onCafeChange = { _, _ -> },
             onQuitarCafe = {},
             onAgregarCafe = {},

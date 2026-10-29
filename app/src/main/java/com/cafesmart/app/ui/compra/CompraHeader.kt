@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.cafesmart.app.ui.components.BackArrow
 import com.cafesmart.app.ui.components.ContinueButton
@@ -77,6 +78,19 @@ fun CompraBottomBar(
     }
 }
 
+// Texto pequeno sobre "Continuar" que dice que falta para poder seguir
+@Composable
+fun MensajePendiente(mensaje: String?) {
+    if (mensaje != null) {
+        Text(
+            text = mensaje,
+            style = AppTypography.helper,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun CompraHeaderPreview() {
@@ -84,6 +98,7 @@ private fun CompraHeaderPreview() {
         Column(modifier = Modifier.background(SurfaceScreen)) {
             CompraHeader(paso = 1, pregunta = "¿A quién le compras el café?", onBack = {})
             CompraBottomBar {
+                MensajePendiente(mensaje = "Por favor, selecciona una opción para continuar el proceso.")
                 ContinueButton(text = "Continuar", enabled = false, onClick = {})
             }
         }

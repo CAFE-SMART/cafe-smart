@@ -59,4 +59,5 @@ val productorSinRegistrar = Productor(nombre = "Sin registrar", documento = "Com
 val tiposCafe = listOf("Verde", "Seco", "Pasilla", "Trillado")
 
 const val PESO_MAX_KG = 99_999
+const val PRECIO_MIN_KG = 1_000
 const val PRECIO_MAX_KG = 100_000

@@ -1,34 +1,38 @@
 package com.cafesmart.app
 
 import com.cafesmart.app.data.CafeFormulario
-import com.cafesmart.app.data.Fecha
 import com.cafesmart.app.data.Calidad
+import com.cafesmart.app.data.Fecha
 import com.cafesmart.app.data.ModoProductor
 import com.cafesmart.app.data.NuevoProductor
 import com.cafesmart.app.data.Productor
 import com.cafesmart.app.data.TipoDocumento
-import com.cafesmart.app.ui.compra.cafesCompletos
-import com.cafesmart.app.ui.compra.crearSublote
-import com.cafesmart.app.ui.compra.errorPeso
-import com.cafesmart.app.ui.compra.errorPrecio
+import com.cafesmart.app.domain.cafesCompletos
+import com.cafesmart.app.domain.crearSublote
+import com.cafesmart.app.domain.errorPeso
+import com.cafesmart.app.domain.errorPrecio
+import com.cafesmart.app.domain.filtrarProductores
+import com.cafesmart.app.domain.hayMasProductores
+import com.cafesmart.app.domain.limpiarDocumento
+import com.cafesmart.app.domain.limpiarNombre
+import com.cafesmart.app.domain.limpiarPeso
+import com.cafesmart.app.domain.limpiarPrecio
+import com.cafesmart.app.domain.mensajeAgregarCafe
+import com.cafesmart.app.domain.mensajePendientePaso1
+import com.cafesmart.app.domain.mensajePendientePaso2
+import com.cafesmart.app.domain.productoresVisibles
+import com.cafesmart.app.domain.puedeContinuarPaso1
+import com.cafesmart.app.domain.totalEstimado
+import com.cafesmart.app.domain.totalKg
+import com.cafesmart.app.domain.validarDocumento
+import com.cafesmart.app.domain.validarNombre
+import com.cafesmart.app.domain.validarTelefono
 import com.cafesmart.app.ui.compra.fechaAMilis
-import com.cafesmart.app.ui.compra.filtrarProductores
 import com.cafesmart.app.ui.compra.formatoDinero
 import com.cafesmart.app.ui.compra.formatoFechaLarga
 import com.cafesmart.app.ui.compra.formatoKg
-import com.cafesmart.app.ui.compra.hayMasProductores
-import com.cafesmart.app.ui.compra.limpiarDocumento
-import com.cafesmart.app.ui.compra.limpiarNombre
-import com.cafesmart.app.ui.compra.limpiarPeso
 import com.cafesmart.app.ui.compra.milisAFecha
 import com.cafesmart.app.ui.compra.precioEnPantalla
-import com.cafesmart.app.ui.compra.productoresVisibles
-import com.cafesmart.app.ui.compra.puedeContinuarPaso1
-import com.cafesmart.app.ui.compra.totalEstimado
-import com.cafesmart.app.ui.compra.totalKg
-import com.cafesmart.app.ui.compra.validarDocumento
-import com.cafesmart.app.ui.compra.validarNombre
-import com.cafesmart.app.ui.compra.validarTelefono
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -45,7 +49,7 @@ class RegistroCompraLogicaTest {
         Productor(nombre = "Andy López", documento = "11140596")
     )
 
-    private val cafeCompleto = CafeFormulario(tipoCafe = "Verde", calidad = Calidad.BUENA, peso = "25", precio = "14.000")
+    private val cafeCompleto = CafeFormulario(tipoCafe = "Verde", calidad = Calidad.BUENA, peso = "25", precio = "14000")
 
     // ---------- Paso 1 ----------
 
@@ -71,41 +75,57 @@ class RegistroCompraLogicaTest {
     @Test
     fun continuarPaso1_segunLaOpcionElegida() {
         val nuevoValido = NuevoProductor(TipoDocumento.CC, "1114059684", "Pepito Pérez", "")
-        assertFalse(puedeContinuarPaso1(null, null, NuevoProductor()))
-        assertTrue(puedeContinuarPaso1(ModoProductor.SIN_REGISTRAR, null, NuevoProductor()))
-        assertFalse(puedeContinuarPaso1(ModoProductor.REGISTRADO, null, NuevoProductor()))
-        assertTrue(puedeContinuarPaso1(ModoProductor.REGISTRADO, productores[0], NuevoProductor()))
-        assertFalse(puedeContinuarPaso1(ModoProductor.NUEVO, null, NuevoProductor()))
-        assertTrue(puedeContinuarPaso1(ModoProductor.NUEVO, null, nuevoValido))
+        assertFalse(puedeContinuarPaso1(null, null, NuevoProductor(), productores))
+        assertTrue(puedeContinuarPaso1(ModoProductor.SIN_REGISTRAR, null, NuevoProductor(), productores))
+        assertFalse(puedeContinuarPaso1(ModoProductor.REGISTRADO, null, NuevoProductor(), productores))
+        assertTrue(puedeContinuarPaso1(ModoProductor.REGISTRADO, productores[0], NuevoProductor(), productores))
+        assertFalse(puedeContinuarPaso1(ModoProductor.NUEVO, null, NuevoProductor(), productores))
+        assertTrue(puedeContinuarPaso1(ModoProductor.NUEVO, null, nuevoValido, productores))
     }
 
     @Test
-    fun persona_exigeNombreYApellidoConLetras() {
+    fun mensajesPendientesPaso1_RF_COM_01_y_02() {
+        assertEquals(
+            "Por favor, selecciona una opción para continuar el proceso.",
+            mensajePendientePaso1(null, null, NuevoProductor(), productores)
+        )
+        assertEquals(
+            "Elige un productor de la lista.",
+            mensajePendientePaso1(ModoProductor.REGISTRADO, null, NuevoProductor(), productores)
+        )
+        assertNull(mensajePendientePaso1(ModoProductor.SIN_REGISTRAR, null, NuevoProductor(), productores))
+    }
+
+    @Test
+    fun nombre_soloLetrasYEspacios_RF_COM_05() {
         assertNull(validarNombre("Juan Pérez", TipoDocumento.CC))
-        assertNotNull(validarNombre("Juan", TipoDocumento.CC))
+        assertEquals("Escribe tu nombre y apellido.", validarNombre("Juan", TipoDocumento.CC))
         assertNotNull(validarNombre("Juan P", TipoDocumento.CC))
-        assertEquals("Juan Pérez", limpiarNombre("Juan2 Pérez!", TipoDocumento.CC))
+        assertEquals("Juan Pérez", limpiarNombre("Juan2 Pérez!"))
+        assertNull(validarNombre("Cafe Los Alpes", TipoDocumento.NIT))
+        assertNotNull(validarNombre("", TipoDocumento.NIT))
     }
 
     @Test
-    fun empresa_aceptaNumerosYSimbolosEnElNombre() {
-        assertNull(validarNombre("Café & Cía 2", TipoDocumento.NIT))
-        assertNotNull(validarNombre("1234", TipoDocumento.NIT))
+    fun cedula_de6a10Digitos_RF_COM_04() {
+        assertNull(validarDocumento("1234567890", TipoDocumento.CC, productores))
+        assertNotNull(validarDocumento("12345", TipoDocumento.CC, productores))
+        assertEquals("1234567890", limpiarDocumento("1.234-567 890123"))
     }
 
     @Test
-    fun cedula_entre6y10Digitos() {
-        assertNull(validarDocumento("1234567890", TipoDocumento.CC))
-        assertNotNull(validarDocumento("12345", TipoDocumento.CC))
-        assertEquals("1234567890", limpiarDocumento("1234-567890123", TipoDocumento.CC))
+    fun nit_de9a10Digitos_RF_COM_04() {
+        assertNull(validarDocumento("9001234567", TipoDocumento.NIT, productores))
+        assertNull(validarDocumento("900123457", TipoDocumento.NIT, productores))
+        assertNotNull(validarDocumento("90012345", TipoDocumento.NIT, productores))
     }
 
     @Test
-    fun nit_conDigitoDeVerificacionOpcional() {
-        assertNull(validarDocumento("900123456", TipoDocumento.NIT))
-        assertNull(validarDocumento("900123456-7", TipoDocumento.NIT))
-        assertNotNull(validarDocumento("900-123-456", TipoDocumento.NIT))
-        assertNotNull(validarDocumento("1234", TipoDocumento.NIT))
+    fun documentoRepetido_RF_COM_04() {
+        assertEquals(
+            "Este documento ya está registrado. Verifica en tu lista.",
+            validarDocumento("123456789", TipoDocumento.CC, productores)
+        )
     }
 
     @Test
@@ -123,13 +143,15 @@ class RegistroCompraLogicaTest {
         assertEquals("25.5", limpiarPeso("25,5"))
         assertEquals("25.55", limpiarPeso("25.5.5"))
         assertEquals("30", limpiarPeso("30kg"))
+        // RF-COM-09: maximo 3 decimales
+        assertEquals("25.125", limpiarPeso("25.12567"))
     }
 
     @Test
-    fun precio_seMuestraConPuntoDeMiles() {
+    fun precio_seGuardaConDigitosYSeMuestraConPuntoDeMiles() {
+        assertEquals("140005", limpiarPrecio("14.0005"))
         assertEquals("14.000", precioEnPantalla("14000"))
-        assertEquals("140.005", precioEnPantalla("14.0005"))
-        assertEquals("", precioEnPantalla("abc"))
+        assertEquals("", precioEnPantalla(""))
     }
 
     @Test
@@ -145,20 +167,40 @@ class RegistroCompraLogicaTest {
         assertNull(crearSublote(cafeCompleto.copy(calidad = null)))
         assertNull(crearSublote(cafeCompleto.copy(peso = "0")))
         assertNull(crearSublote(cafeCompleto.copy(peso = "100000")))
-        assertNull(crearSublote(cafeCompleto.copy(precio = "100.001")))
+        assertNull(crearSublote(cafeCompleto.copy(precio = "100001")))
+        // RF-COM-10: minimo $1.000
+        assertNull(crearSublote(cafeCompleto.copy(precio = "999")))
     }
 
     @Test
     fun errores_soloCuandoSePasaDelMaximo() {
         assertNull(errorPeso(cafeCompleto))
         assertNotNull(errorPeso(cafeCompleto.copy(peso = "100000")))
-        assertNull(errorPrecio(cafeCompleto.copy(precio = "100.000")))
-        assertNotNull(errorPrecio(cafeCompleto.copy(precio = "100.001")))
+        assertNull(errorPrecio(cafeCompleto.copy(precio = "100000")))
+        assertNotNull(errorPrecio(cafeCompleto.copy(precio = "100001")))
+        assertNotNull(errorPeso(cafeCompleto.copy(peso = "0")))
+        // Mientras escribe "14" no marca error; con 4 digitos ya revisa el minimo
+        assertNull(errorPrecio(cafeCompleto.copy(precio = "14")))
+        assertNull(errorPrecio(cafeCompleto.copy(precio = "1000")))
+    }
+
+    @Test
+    fun mensajesPaso2_RF_COM_07_08_11() {
+        assertEquals("Elige el tipo de café que comprarás.", mensajePendientePaso2(listOf(CafeFormulario())))
+        assertEquals(
+            "Elige la calidad del café que te interesa.",
+            mensajePendientePaso2(listOf(CafeFormulario(tipoCafe = "Verde")))
+        )
+        assertNull(mensajePendientePaso2(listOf(cafeCompleto)))
+        assertEquals(
+            "Recuerda terminar de diligenciar los datos de Café 2 antes de agregar otro.",
+            mensajeAgregarCafe(listOf(cafeCompleto, CafeFormulario()))
+        )
     }
 
     @Test
     fun totales_sumanTodasLasTarjetas() {
-        val cafes = listOf(cafeCompleto, CafeFormulario(peso = "10", precio = "1.000"))
+        val cafes = listOf(cafeCompleto, CafeFormulario(peso = "10", precio = "1000"))
         assertEquals(35.0, totalKg(cafes), 0.001)
         assertEquals(360000.0, totalEstimado(cafes), 0.001)
         assertFalse(cafesCompletos(cafes))
@@ -171,6 +213,7 @@ class RegistroCompraLogicaTest {
     fun formatos_estiloColombiano() {
         assertEquals("25 kg", formatoKg(25.0))
         assertEquals("25,5 kg", formatoKg(25.5))
+        assertEquals("25,125 kg", formatoKg(25.125))
         assertEquals("1.200 kg", formatoKg(1200.0))
         assertEquals("$ 350.000", formatoDinero(350000.0))
     }
