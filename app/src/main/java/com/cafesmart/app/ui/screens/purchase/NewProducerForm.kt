@@ -1,4 +1,4 @@
-package com.cafesmart.app.ui.compra
+package com.cafesmart.app.ui.screens.purchase
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,27 +9,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
-import com.cafesmart.app.data.NuevoProductor
-import com.cafesmart.app.data.TipoDocumento
+import com.cafesmart.app.data.purchase.TipoDocumento
 import com.cafesmart.app.ui.components.AppTextField
 import com.cafesmart.app.ui.components.ChoiceButton
 import com.cafesmart.app.ui.theme.AppTypography
 import com.cafesmart.app.ui.theme.CafesmartTheme
 import com.cafesmart.app.ui.theme.Spacing
 
-// Formulario que aparece dentro de la tarjeta "Productor nuevo".
-// No guarda nada: cada cambio sale por onDatosChange con una copia de los datos.
+// Vista (MVVM): formulario que aparece dentro de la tarjeta "Productor nuevo".
+// Solo muestra lo que recibe y avisa cada cambio; la limpieza y validacion las hace el ViewModel.
 @Composable
-fun NuevoProductorForm(
-    datos: NuevoProductor,
+fun NewProducerForm(
+    esEmpresa: Boolean,
+    documento: String,
+    nombre: String,
+    telefono: String,
     documentoError: String?,
     nombreError: String?,
     telefonoError: String?,
-    onDatosChange: (NuevoProductor) -> Unit,
+    onTipoDocumentoChange: (TipoDocumento) -> Unit,
+    onDocumentoChange: (String) -> Unit,
+    onNombreChange: (String) -> Unit,
+    onTelefonoChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val esEmpresa = datos.tipo == TipoDocumento.NIT
-
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(Spacing.s16)
@@ -40,21 +43,21 @@ fun NuevoProductorForm(
                 ChoiceButton(
                     text = "Cédula",
                     selected = !esEmpresa,
-                    onClick = { onDatosChange(datos.copy(tipo = TipoDocumento.CC)) },
+                    onClick = { onTipoDocumentoChange(TipoDocumento.CC) },
                     modifier = Modifier.weight(1f)
                 )
                 ChoiceButton(
                     text = "NIT",
                     selected = esEmpresa,
-                    onClick = { onDatosChange(datos.copy(tipo = TipoDocumento.NIT)) },
+                    onClick = { onTipoDocumentoChange(TipoDocumento.NIT) },
                     modifier = Modifier.weight(1f)
                 )
             }
         }
         AppTextField(
             label = "Número de documento",
-            value = datos.documento,
-            onValueChange = { onDatosChange(datos.copy(documento = it)) },
+            value = documento,
+            onValueChange = onDocumentoChange,
             placeholder = if (esEmpresa) "Ej. 9001234567" else "Ej. 1114059684",
             keyboardType = KeyboardType.Number,
             helper = if (esEmpresa) "Solo números: 9 o 10." else "Solo números: de 6 a 10.",
@@ -62,15 +65,15 @@ fun NuevoProductorForm(
         )
         AppTextField(
             label = if (esEmpresa) "Nombre de la empresa" else "Nombre completo",
-            value = datos.nombre,
-            onValueChange = { onDatosChange(datos.copy(nombre = it)) },
+            value = nombre,
+            onValueChange = onNombreChange,
             placeholder = if (esEmpresa) "Ej. Café Los Alpes" else "Ej. Pepito Pérez",
             error = nombreError
         )
         AppTextField(
             label = "Celular (opcional)",
-            value = datos.telefono,
-            onValueChange = { onDatosChange(datos.copy(telefono = it)) },
+            value = telefono,
+            onValueChange = onTelefonoChange,
             placeholder = "Ej. 3001234567",
             keyboardType = KeyboardType.Phone,
             error = telefonoError
@@ -80,14 +83,20 @@ fun NuevoProductorForm(
 
 @Preview(showBackground = true)
 @Composable
-private fun NuevoProductorFormPreview() {
+private fun NewProducerFormPreview() {
     CafesmartTheme {
-        NuevoProductorForm(
-            datos = NuevoProductor(),
+        NewProducerForm(
+            esEmpresa = false,
+            documento = "",
+            nombre = "",
+            telefono = "",
             documentoError = null,
             nombreError = null,
             telefonoError = null,
-            onDatosChange = {},
+            onTipoDocumentoChange = {},
+            onDocumentoChange = {},
+            onNombreChange = {},
+            onTelefonoChange = {},
             modifier = Modifier.padding(Spacing.s16)
         )
     }

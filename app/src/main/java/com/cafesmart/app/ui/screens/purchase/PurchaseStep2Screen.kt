@@ -1,4 +1,4 @@
-package com.cafesmart.app.ui.compra
+package com.cafesmart.app.ui.screens.purchase
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -40,11 +40,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.cafesmart.app.data.CafeFormulario
-import com.cafesmart.app.data.Calidad
-import com.cafesmart.app.data.Fecha
-import com.cafesmart.app.data.tiposCafe
-import com.cafesmart.app.domain.fechaDeHoy
+import com.cafesmart.app.data.purchase.CafeFormulario
+import com.cafesmart.app.data.purchase.Calidad
+import com.cafesmart.app.data.purchase.tiposCafe
 import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.AppTextField
 import com.cafesmart.app.ui.components.ChoiceButton
@@ -68,26 +66,23 @@ import com.cafesmart.app.ui.theme.SurfaceSelected
 import com.cafesmart.app.ui.theme.TextMuted
 import com.cafesmart.app.ui.theme.WarningBg
 import com.cafesmart.app.ui.theme.WarningText
+import com.cafesmart.app.viewmodel.purchase.CafeEnPantalla
+import com.cafesmart.app.viewmodel.purchase.PurchaseUiState
 
 // Paso 2: ¿Que cafe compras?
-// Pantalla sin estado de negocio: todo llega por parametros y cada accion sale por una lambda.
-// Solo recuerda si el calendario esta abierto (estado visual).
+// Vista (MVVM): no tiene logica. Recibe el estado del ViewModel ya listo
+// (true/false y textos) y avisa cada accion con una lambda.
+// Solo recuerda si el calendario esta abierto, que es algo visual.
 @Composable
-fun RegistroCompraPaso2Screen(
-    cafes: List<CafeFormulario>,
-    erroresPeso: List<String?>,
-    erroresPrecio: List<String?>,
-    fecha: Fecha,
-    totalKg: Double,
-    totalEstimado: Double,
-    agregarHabilitado: Boolean,
-    mensajeAgregar: String?,
-    continuarHabilitado: Boolean,
-    mensajePendiente: String?,
-    onCafeChange: (Int, CafeFormulario) -> Unit,
+fun PurchaseStep2Screen(
+    estado: PurchaseUiState,
+    onTipoCafeChange: (Int, String) -> Unit,
+    onCalidadChange: (Int, Calidad) -> Unit,
+    onPesoChange: (Int, String) -> Unit,
+    onPrecioChange: (Int, String) -> Unit,
     onQuitarCafe: (Int) -> Unit,
     onAgregarCafe: () -> Unit,
-    onFechaChange: (Fecha) -> Unit,
+    onFechaChange: (Long) -> Unit,
     onContinuar: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
@@ -106,52 +101,52 @@ fun RegistroCompraPaso2Screen(
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
         ) {
-            CompraHeader(paso = 2, pregunta = "¿Qué café compras?", onBack = onBack)
+            PurchaseHeader(paso = 2, pregunta = "¿Qué café compras?", onBack = onBack)
 
             Column(
                 modifier = Modifier.padding(horizontal = Spacing.s20, vertical = Spacing.s16),
                 verticalArrangement = Arrangement.spacedBy(Spacing.s12)
             ) {
-                cafes.forEachIndexed { indice, cafe ->
+                estado.cafesEnPantalla.forEachIndexed { indice, cafe ->
                     TarjetaCafe(
-                        numero = indice + 1,
                         cafe = cafe,
-                        errorPeso = erroresPeso[indice],
-                        errorPrecio = erroresPrecio[indice],
-                        puedeQuitar = cafes.size > 1,
-                        onCafeChange = { onCafeChange(indice, it) },
+                        onTipoCafeChange = { onTipoCafeChange(indice, it) },
+                        onCalidadChange = { onCalidadChange(indice, it) },
+                        onPesoChange = { onPesoChange(indice, it) },
+                        onPrecioChange = { onPrecioChange(indice, it) },
                         onQuitar = { onQuitarCafe(indice) }
                     )
                 }
 
-                BotonAgregarCafe(enabled = agregarHabilitado, onClick = onAgregarCafe)
+                BotonAgregarCafe(enabled = estado.cafesListos, onClick = onAgregarCafe)
                 // Explica por que no se puede agregar otro cafe todavia
+                val mensajeAgregar = estado.mensajeAgregarCafe
                 if (mensajeAgregar != null) {
                     Text(text = mensajeAgregar, style = AppTypography.helper)
                 }
 
-                TarjetaFecha(fecha = fecha, onCambiar = { mostrarCalendario = true })
+                TarjetaFecha(fechaTexto = estado.fechaTexto, onCambiar = { mostrarCalendario = true })
             }
         }
 
-        CompraBottomBar {
+        PurchaseBottomBar {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
                     Text(text = "Total kg", style = AppTypography.caption)
-                    Text(text = formatoKg(totalKg), style = AppTypography.titleModal.copy(color = PrimaryDark))
+                    Text(text = estado.totalKgTexto, style = AppTypography.titleModal.copy(color = PrimaryDark))
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(text = "Total estimado", style = AppTypography.caption)
-                    Text(text = formatoDinero(totalEstimado), style = AppTypography.titleModal.copy(color = PrimaryDark))
+                    Text(text = estado.totalEstimadoTexto, style = AppTypography.titleModal.copy(color = PrimaryDark))
                 }
             }
-            MensajePendiente(mensaje = mensajePendiente)
+            PendingMessage(mensaje = estado.mensajePendientePaso2)
             ContinueButton(
                 text = "Continuar",
-                enabled = continuarHabilitado,
+                enabled = estado.cafesListos,
                 onClick = onContinuar
             )
         }
@@ -159,7 +154,7 @@ fun RegistroCompraPaso2Screen(
 
     if (mostrarCalendario) {
         DialogoFecha(
-            fecha = fecha,
+            fechaMilis = estado.fechaMilis,
             onFechaChange = onFechaChange,
             onCerrar = { mostrarCalendario = false }
         )
@@ -169,12 +164,11 @@ fun RegistroCompraPaso2Screen(
 // Tarjeta "Café N": tipo, calidad, peso y precio de un cafe
 @Composable
 private fun TarjetaCafe(
-    numero: Int,
-    cafe: CafeFormulario,
-    errorPeso: String?,
-    errorPrecio: String?,
-    puedeQuitar: Boolean,
-    onCafeChange: (CafeFormulario) -> Unit,
+    cafe: CafeEnPantalla,
+    onTipoCafeChange: (String) -> Unit,
+    onCalidadChange: (Calidad) -> Unit,
+    onPesoChange: (String) -> Unit,
+    onPrecioChange: (String) -> Unit,
     onQuitar: () -> Unit
 ) {
     Column(
@@ -190,8 +184,8 @@ private fun TarjetaCafe(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "Café $numero", style = AppTypography.titleScreen.copy(color = PrimaryDark))
-            if (puedeQuitar) {
+            Text(text = "Café ${cafe.numero}", style = AppTypography.titleScreen.copy(color = PrimaryDark))
+            if (cafe.puedeQuitar) {
                 TextButton(onClick = onQuitar) {
                     Text(text = "Quitar", style = AppTypography.buttonLink.copy(color = ErrorText))
                 }
@@ -207,7 +201,7 @@ private fun TarjetaCafe(
                         ChoiceButton(
                             text = tipo,
                             selected = cafe.tipoCafe == tipo,
-                            onClick = { onCafeChange(cafe.copy(tipoCafe = tipo)) },
+                            onClick = { onTipoCafeChange(tipo) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -215,32 +209,28 @@ private fun TarjetaCafe(
             }
         }
 
-        SelectorCalidad(
-            calidad = cafe.calidad,
-            onCalidadChange = { onCafeChange(cafe.copy(calidad = it)) }
-        )
+        SelectorCalidad(calidad = cafe.calidad, onCalidadChange = onCalidadChange)
 
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s12)) {
             AppTextField(
                 label = "Peso (kg)",
                 value = cafe.peso,
-                onValueChange = { onCafeChange(cafe.copy(peso = it)) },
+                onValueChange = onPesoChange,
                 placeholder = "Ej. 25",
                 keyboardType = KeyboardType.Decimal,
                 helper = "Máx. 99.999 kg",
-                error = errorPeso,
+                error = cafe.errorPeso,
                 modifier = Modifier.weight(1f)
             )
             AppTextField(
                 label = "Precio por kg",
-                // El estado guarda solo digitos ("14000"); en pantalla se ve "14.000"
-                value = precioEnPantalla(cafe.precio),
-                onValueChange = { onCafeChange(cafe.copy(precio = it)) },
+                value = cafe.precio,
+                onValueChange = onPrecioChange,
                 placeholder = "14.000",
                 keyboardType = KeyboardType.Number,
                 leadingText = "$",
                 helper = "Entre $1.000 y $100.000/kg",
-                error = errorPrecio,
+                error = cafe.errorPrecio,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -255,6 +245,7 @@ private fun SelectorCalidad(calidad: Calidad?, onCalidadChange: (Calidad) -> Uni
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s12)) {
             Calidad.entries.forEach { opcion ->
                 val activa = opcion == calidad
+                // Icono y colores de cada calidad (solo apariencia)
                 val icono = when (opcion) {
                     Calidad.BUENA -> AppIcons.ThumbsUp
                     Calidad.REGULAR -> AppIcons.ArrowRight
@@ -341,7 +332,7 @@ private fun BotonAgregarCafe(enabled: Boolean, onClick: () -> Unit) {
 
 // Tarjeta de la fecha: icono, "Fecha de compra", la fecha y el enlace "Cambiar"
 @Composable
-private fun TarjetaFecha(fecha: Fecha, onCambiar: () -> Unit) {
+private fun TarjetaFecha(fechaTexto: String, onCambiar: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -354,7 +345,7 @@ private fun TarjetaFecha(fecha: Fecha, onCambiar: () -> Unit) {
         Spacer(modifier = Modifier.width(Spacing.s12))
         Column(modifier = Modifier.weight(1f)) {
             Text(text = "Fecha de compra", style = AppTypography.caption)
-            Text(text = formatoFechaLarga(fecha, fechaDeHoy()), style = AppTypography.valueStrong)
+            Text(text = fechaTexto, style = AppTypography.valueStrong)
         }
         TextButton(onClick = onCambiar) {
             Text(text = "Cambiar", style = AppTypography.buttonLink)
@@ -362,17 +353,17 @@ private fun TarjetaFecha(fecha: Fecha, onCambiar: () -> Unit) {
     }
 }
 
+// Calendario de Material: trabaja en milisegundos; la conversion a fecha la hace el ViewModel
 @Composable
-private fun DialogoFecha(fecha: Fecha, onFechaChange: (Fecha) -> Unit, onCerrar: () -> Unit) {
-    // El DatePicker de Material trabaja en milisegundos: se convierte con fechaAMilis / milisAFecha
-    val estado = rememberDatePickerState(initialSelectedDateMillis = fechaAMilis(fecha))
+private fun DialogoFecha(fechaMilis: Long, onFechaChange: (Long) -> Unit, onCerrar: () -> Unit) {
+    val estadoCalendario = rememberDatePickerState(initialSelectedDateMillis = fechaMilis)
     DatePickerDialog(
         onDismissRequest = onCerrar,
         confirmButton = {
             TextButton(onClick = {
-                val millis = estado.selectedDateMillis
+                val millis = estadoCalendario.selectedDateMillis
                 if (millis != null) {
-                    onFechaChange(milisAFecha(millis))
+                    onFechaChange(millis)
                 }
                 onCerrar()
             }) { Text(text = "Aceptar") }
@@ -381,7 +372,7 @@ private fun DialogoFecha(fecha: Fecha, onFechaChange: (Fecha) -> Unit, onCerrar:
             TextButton(onClick = onCerrar) { Text(text = "Cancelar") }
         }
     ) {
-        DatePicker(state = estado)
+        DatePicker(state = estadoCalendario)
     }
 }
 
@@ -389,18 +380,15 @@ private fun DialogoFecha(fecha: Fecha, onFechaChange: (Fecha) -> Unit, onCerrar:
 @Composable
 private fun Paso2Preview() {
     CafesmartTheme {
-        RegistroCompraPaso2Screen(
-            cafes = listOf(CafeFormulario(tipoCafe = "Verde", calidad = Calidad.BUENA, peso = "25", precio = "14000")),
-            erroresPeso = listOf(null),
-            erroresPrecio = listOf(null),
-            fecha = fechaDeHoy(),
-            totalKg = 25.0,
-            totalEstimado = 350000.0,
-            agregarHabilitado = true,
-            mensajeAgregar = null,
-            continuarHabilitado = true,
-            mensajePendiente = null,
-            onCafeChange = { _, _ -> },
+        PurchaseStep2Screen(
+            estado = PurchaseUiState(
+                paso = 2,
+                cafes = listOf(CafeFormulario(tipoCafe = "Verde", calidad = Calidad.BUENA, peso = "25", precio = "14000"))
+            ),
+            onTipoCafeChange = { _, _ -> },
+            onCalidadChange = { _, _ -> },
+            onPesoChange = { _, _ -> },
+            onPrecioChange = { _, _ -> },
             onQuitarCafe = {},
             onAgregarCafe = {},
             onFechaChange = {},

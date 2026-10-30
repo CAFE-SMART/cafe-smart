@@ -1,4 +1,7 @@
-package com.cafesmart.app.data
+package com.cafesmart.app.data.purchase
+
+// Modelo (MVVM): objetos que solo guardan datos. No tienen logica;
+// la logica esta en el ViewModel (viewmodel/purchase).
 
 // Como se elige el productor en el paso 1
 enum class ModoProductor { REGISTRADO, SIN_REGISTRAR, NUEVO }
@@ -38,16 +41,13 @@ data class CafeFormulario(
     val precio: String = ""
 )
 
-// Un sublote es cada cafe ya validado de la compra (tipo + calidad + peso + precio)
+// Un sublote es cada cafe ya validado de la compra
 data class Sublote(
     val tipoCafe: String,
     val calidad: Calidad,
     val pesoKg: Double,
     val precioKg: Double
-) {
-    val total: Double
-        get() = pesoKg * precioKg
-}
+)
 
 // Fecha simple: dia, mes (1 a 12) y anio.
 // Se usa en vez de java.time.LocalDate porque LocalDate solo existe desde Android 8 (API 26)
@@ -57,7 +57,3 @@ data class Fecha(val dia: Int, val mes: Int, val anio: Int)
 val productorSinRegistrar = Productor(nombre = "Sin registrar", documento = "Compra rápida")
 
 val tiposCafe = listOf("Verde", "Seco", "Pasilla", "Trillado")
-
-const val PESO_MAX_KG = 99_999
-const val PRECIO_MIN_KG = 1_000
-const val PRECIO_MAX_KG = 100_000

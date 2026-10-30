@@ -1,38 +1,39 @@
-package com.cafesmart.app
+package com.cafesmart.app.purchase
 
-import com.cafesmart.app.data.CafeFormulario
-import com.cafesmart.app.data.Calidad
-import com.cafesmart.app.data.Fecha
-import com.cafesmart.app.data.ModoProductor
-import com.cafesmart.app.data.NuevoProductor
-import com.cafesmart.app.data.Productor
-import com.cafesmart.app.data.TipoDocumento
-import com.cafesmart.app.domain.cafesCompletos
-import com.cafesmart.app.domain.crearSublote
-import com.cafesmart.app.domain.errorPeso
-import com.cafesmart.app.domain.errorPrecio
-import com.cafesmart.app.domain.filtrarProductores
-import com.cafesmart.app.domain.hayMasProductores
-import com.cafesmart.app.domain.limpiarDocumento
-import com.cafesmart.app.domain.limpiarNombre
-import com.cafesmart.app.domain.limpiarPeso
-import com.cafesmart.app.domain.limpiarPrecio
-import com.cafesmart.app.domain.mensajeAgregarCafe
-import com.cafesmart.app.domain.mensajePendientePaso1
-import com.cafesmart.app.domain.mensajePendientePaso2
-import com.cafesmart.app.domain.productoresVisibles
-import com.cafesmart.app.domain.puedeContinuarPaso1
-import com.cafesmart.app.domain.totalEstimado
-import com.cafesmart.app.domain.totalKg
-import com.cafesmart.app.domain.validarDocumento
-import com.cafesmart.app.domain.validarNombre
-import com.cafesmart.app.domain.validarTelefono
-import com.cafesmart.app.ui.compra.fechaAMilis
-import com.cafesmart.app.ui.compra.formatoDinero
-import com.cafesmart.app.ui.compra.formatoFechaLarga
-import com.cafesmart.app.ui.compra.formatoKg
-import com.cafesmart.app.ui.compra.milisAFecha
-import com.cafesmart.app.ui.compra.precioEnPantalla
+import com.cafesmart.app.data.purchase.CafeFormulario
+import com.cafesmart.app.data.purchase.Calidad
+import com.cafesmart.app.data.purchase.Fecha
+import com.cafesmart.app.data.purchase.ModoProductor
+import com.cafesmart.app.data.purchase.NuevoProductor
+import com.cafesmart.app.data.purchase.Productor
+import com.cafesmart.app.data.purchase.TipoDocumento
+import com.cafesmart.app.viewmodel.purchase.cafesCompletos
+import com.cafesmart.app.viewmodel.purchase.crearSublote
+import com.cafesmart.app.viewmodel.purchase.errorPeso
+import com.cafesmart.app.viewmodel.purchase.errorPrecio
+import com.cafesmart.app.viewmodel.purchase.fechaAMilis
+import com.cafesmart.app.viewmodel.purchase.filtrarProductores
+import com.cafesmart.app.viewmodel.purchase.formatoDinero
+import com.cafesmart.app.viewmodel.purchase.formatoFechaLarga
+import com.cafesmart.app.viewmodel.purchase.formatoKg
+import com.cafesmart.app.viewmodel.purchase.hayMasProductores
+import com.cafesmart.app.viewmodel.purchase.limpiarDocumento
+import com.cafesmart.app.viewmodel.purchase.limpiarNombre
+import com.cafesmart.app.viewmodel.purchase.limpiarPeso
+import com.cafesmart.app.viewmodel.purchase.limpiarPrecio
+import com.cafesmart.app.viewmodel.purchase.mensajeAgregarCafe
+import com.cafesmart.app.viewmodel.purchase.mensajePendientePaso1
+import com.cafesmart.app.viewmodel.purchase.mensajePendientePaso2
+import com.cafesmart.app.viewmodel.purchase.milisAFecha
+import com.cafesmart.app.viewmodel.purchase.precioEnPantalla
+import com.cafesmart.app.viewmodel.purchase.productoresVisibles
+import com.cafesmart.app.viewmodel.purchase.puedeContinuarPaso1
+import com.cafesmart.app.viewmodel.purchase.totalDe
+import com.cafesmart.app.viewmodel.purchase.totalEstimado
+import com.cafesmart.app.viewmodel.purchase.totalKg
+import com.cafesmart.app.viewmodel.purchase.validarDocumento
+import com.cafesmart.app.viewmodel.purchase.validarNombre
+import com.cafesmart.app.viewmodel.purchase.validarTelefono
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -40,7 +41,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class RegistroCompraLogicaTest {
+class PurchaseRulesTest {
 
     private val productores = listOf(
         Productor(nombre = "Juan Pérez", documento = "123456789"),
@@ -158,7 +159,7 @@ class RegistroCompraLogicaTest {
     fun crearSublote_conDatosCompletos() {
         val sublote = crearSublote(cafeCompleto)
         assertNotNull(sublote)
-        assertEquals(350000.0, sublote!!.total, 0.001)
+        assertEquals(350000.0, totalDe(sublote!!), 0.001)
     }
 
     @Test

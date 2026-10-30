@@ -1,11 +1,12 @@
-package com.cafesmart.app.ui.compra
+package com.cafesmart.app.viewmodel.purchase
 
-import com.cafesmart.app.data.Fecha
+import com.cafesmart.app.data.purchase.Fecha
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
-// Formatos para mostrar valores en pantalla (con String.format como en la Guia 1).
+// Formatos: convierten los datos en el texto que muestra la vista (con String.format como en la Guia 1).
+// Estan en el ViewModel para que la vista no tenga logica: solo recibe el texto listo.
 // Se usa Locale.US para que el resultado sea igual en cualquier celular,
 // y luego se cambian los separadores al estilo colombiano.
 
@@ -28,7 +29,7 @@ fun precioEnPantalla(digitos: String): String =
 fun formatoDinero(valor: Double): String = "$ " + formatoMiles(valor.toLong())
 
 // ---------------- Fechas (con Calendar, que existe en todas las versiones de Android) ----------------
-// La fecha de hoy (fechaDeHoy) esta en la capa de dominio
+// La fecha de hoy (fechaDeHoy) esta en PurchaseRules.kt
 
 private val meses = listOf(
     "enero", "febrero", "marzo", "abril", "mayo", "junio",

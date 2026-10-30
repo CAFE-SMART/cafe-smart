@@ -1,4 +1,4 @@
-package com.cafesmart.app.ui.compra
+package com.cafesmart.app.ui.screens.purchase
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -24,10 +24,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.cafesmart.app.data.ModoProductor
-import com.cafesmart.app.data.NuevoProductor
-import com.cafesmart.app.data.Productor
-import com.cafesmart.app.domain.SIN_RESULTADOS
+import com.cafesmart.app.data.purchase.ModoProductor
+import com.cafesmart.app.data.purchase.Productor
+import com.cafesmart.app.data.purchase.TipoDocumento
 import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.ContinueButton
 import com.cafesmart.app.ui.components.OptionCard
@@ -43,27 +42,23 @@ import com.cafesmart.app.ui.theme.SurfaceCard
 import com.cafesmart.app.ui.theme.SurfaceScreen
 import com.cafesmart.app.ui.theme.SurfaceSelected
 import com.cafesmart.app.ui.theme.TextMuted
+import com.cafesmart.app.viewmodel.purchase.ProductorEnPantalla
+import com.cafesmart.app.viewmodel.purchase.PurchaseUiState
 
 // Paso 1: ¿A quien le compras el cafe?
-// Pantalla sin estado propio: todo llega por parametros y cada accion sale por una lambda.
+// Vista (MVVM): no tiene logica. Recibe el estado del ViewModel ya listo
+// (true/false y textos) y avisa cada accion con una lambda.
 @Composable
-fun RegistroCompraPaso1Screen(
-    modo: ModoProductor?,
-    busqueda: String,
-    productores: List<Productor>,
-    hayMasProductores: Boolean,
-    productorElegido: Productor?,
-    nuevoProductor: NuevoProductor,
-    documentoError: String?,
-    nombreError: String?,
-    telefonoError: String?,
-    continuarHabilitado: Boolean,
-    mensajePendiente: String?,
+fun PurchaseStep1Screen(
+    estado: PurchaseUiState,
     onModoChange: (ModoProductor) -> Unit,
     onBusquedaChange: (String) -> Unit,
     onProductorClick: (Productor) -> Unit,
     onVerMas: () -> Unit,
-    onNuevoProductorChange: (NuevoProductor) -> Unit,
+    onTipoDocumentoChange: (TipoDocumento) -> Unit,
+    onDocumentoChange: (String) -> Unit,
+    onNombreChange: (String) -> Unit,
+    onTelefonoChange: (String) -> Unit,
     onContinuar: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
@@ -83,7 +78,7 @@ fun RegistroCompraPaso1Screen(
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
         ) {
-            CompraHeader(paso = 1, pregunta = "¿A quién le compras el café?", onBack = onBack)
+            PurchaseHeader(paso = 1, pregunta = "¿A quién le compras el café?", onBack = onBack)
 
             Column(
                 modifier = Modifier.padding(horizontal = Spacing.s20, vertical = Spacing.s16),
@@ -93,14 +88,15 @@ fun RegistroCompraPaso1Screen(
                     title = "Productor registrado",
                     description = "Elígelo de tu lista.",
                     icon = AppIcons.Search,
-                    selected = modo == ModoProductor.REGISTRADO,
+                    selected = estado.registradoSeleccionado,
                     onClick = { onModoChange(ModoProductor.REGISTRADO) }
                 ) {
                     BuscadorProductor(
-                        busqueda = busqueda,
-                        productores = productores,
-                        hayMasProductores = hayMasProductores,
-                        productorElegido = productorElegido,
+                        busqueda = estado.busqueda,
+                        titulo = estado.tituloLista,
+                        productores = estado.productoresEnPantalla,
+                        mensajeListaVacia = estado.mensajeListaVacia,
+                        hayMasProductores = estado.hayMasProductores,
                         onBusquedaChange = onBusquedaChange,
                         onProductorClick = onProductorClick,
                         onVerMas = onVerMas
@@ -111,7 +107,7 @@ fun RegistroCompraPaso1Screen(
                     title = "Sin registrar",
                     description = "Compra rápida, sin datos.",
                     icon = AppIcons.User,
-                    selected = modo == ModoProductor.SIN_REGISTRAR,
+                    selected = estado.sinRegistrarSeleccionado,
                     onClick = { onModoChange(ModoProductor.SIN_REGISTRAR) }
                 )
 
@@ -119,25 +115,31 @@ fun RegistroCompraPaso1Screen(
                     title = "Productor nuevo",
                     description = "Guarda sus datos.",
                     icon = AppIcons.UserPlus,
-                    selected = modo == ModoProductor.NUEVO,
+                    selected = estado.nuevoSeleccionado,
                     onClick = { onModoChange(ModoProductor.NUEVO) }
                 ) {
-                    NuevoProductorForm(
-                        datos = nuevoProductor,
-                        documentoError = documentoError,
-                        nombreError = nombreError,
-                        telefonoError = telefonoError,
-                        onDatosChange = onNuevoProductorChange
+                    NewProducerForm(
+                        esEmpresa = estado.esEmpresa,
+                        documento = estado.nuevoProductor.documento,
+                        nombre = estado.nuevoProductor.nombre,
+                        telefono = estado.nuevoProductor.telefono,
+                        documentoError = estado.documentoError,
+                        nombreError = estado.nombreError,
+                        telefonoError = estado.telefonoError,
+                        onTipoDocumentoChange = onTipoDocumentoChange,
+                        onDocumentoChange = onDocumentoChange,
+                        onNombreChange = onNombreChange,
+                        onTelefonoChange = onTelefonoChange
                     )
                 }
             }
         }
 
-        CompraBottomBar {
-            MensajePendiente(mensaje = mensajePendiente)
+        PurchaseBottomBar {
+            PendingMessage(mensaje = estado.mensajePendientePaso1)
             ContinueButton(
                 text = "Continuar",
-                enabled = continuarHabilitado,
+                enabled = estado.continuarPaso1Habilitado,
                 onClick = onContinuar
             )
         }
@@ -148,9 +150,10 @@ fun RegistroCompraPaso1Screen(
 @Composable
 private fun BuscadorProductor(
     busqueda: String,
-    productores: List<Productor>,
+    titulo: String,
+    productores: List<ProductorEnPantalla>,
+    mensajeListaVacia: String?,
     hayMasProductores: Boolean,
-    productorElegido: Productor?,
     onBusquedaChange: (String) -> Unit,
     onProductorClick: (Productor) -> Unit,
     onVerMas: () -> Unit
@@ -180,22 +183,14 @@ private fun BuscadorProductor(
             modifier = Modifier.fillMaxWidth()
         )
 
-        if (productores.isEmpty()) {
-            Text(
-                text = if (busqueda.isBlank()) {
-                    "Aún no tienes productores registrados. Usa \"Productor nuevo\" para crear uno."
-                } else {
-                    SIN_RESULTADOS
-                },
-                style = AppTypography.bodyMd
-            )
+        if (mensajeListaVacia != null) {
+            Text(text = mensajeListaVacia, style = AppTypography.bodyMd)
         } else {
-            Text(text = if (busqueda.isBlank()) "Recientes" else "Resultados", style = AppTypography.labelField)
-            productores.forEach { productor ->
+            Text(text = titulo, style = AppTypography.labelField)
+            productores.forEach { fila ->
                 FilaProductor(
-                    productor = productor,
-                    elegido = productor == productorElegido,
-                    onClick = { onProductorClick(productor) }
+                    fila = fila,
+                    onClick = { onProductorClick(fila.productor) }
                 )
             }
             if (hayMasProductores) {
@@ -216,14 +211,14 @@ private fun BuscadorProductor(
 
 // Un productor de la lista: nombre, "Cédula 123..." y circulo de seleccion
 @Composable
-private fun FilaProductor(productor: Productor, elegido: Boolean, onClick: () -> Unit) {
+private fun FilaProductor(fila: ProductorEnPantalla, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = AppShapes.medium,
-        color = if (elegido) SurfaceSelected else SurfaceCard,
+        color = if (fila.elegido) SurfaceSelected else SurfaceCard,
         border = BorderStroke(
-            width = if (elegido) 2.dp else 1.dp,
-            color = if (elegido) Primary else BorderDefault
+            width = if (fila.elegido) 2.dp else 1.dp,
+            color = if (fila.elegido) Primary else BorderDefault
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -232,96 +227,60 @@ private fun FilaProductor(productor: Productor, elegido: Boolean, onClick: () ->
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = productor.nombre, style = AppTypography.valueStrong)
-                Text(text = "${productor.tipoDocumento.etiqueta} ${productor.documento}", style = AppTypography.bodyMd)
+                Text(text = fila.nombre, style = AppTypography.valueStrong)
+                Text(text = fila.documento, style = AppTypography.bodyMd)
             }
-            RadioCheck(selected = elegido)
+            RadioCheck(selected = fila.elegido)
         }
     }
 }
+
+// ---------------- Previews (con estados de ejemplo) ----------------
 
 private val productoresDePrueba = listOf(
     Productor(nombre = "Pepito Pérez", documento = "890301886"),
     Productor(nombre = "Andy López", documento = "11140596")
 )
 
-@Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
-private fun Paso1SinElegirPreview() {
+private fun Paso1Preview(estado: PurchaseUiState) {
     CafesmartTheme {
-        RegistroCompraPaso1Screen(
-            modo = null,
-            busqueda = "",
-            productores = emptyList(),
-            hayMasProductores = false,
-            productorElegido = null,
-            nuevoProductor = NuevoProductor(),
-            documentoError = null,
-            nombreError = null,
-            telefonoError = null,
-            continuarHabilitado = false,
-            mensajePendiente = "Por favor, selecciona una opción para continuar el proceso.",
+        PurchaseStep1Screen(
+            estado = estado,
             onModoChange = {},
             onBusquedaChange = {},
             onProductorClick = {},
             onVerMas = {},
-            onNuevoProductorChange = {},
+            onTipoDocumentoChange = {},
+            onDocumentoChange = {},
+            onNombreChange = {},
+            onTelefonoChange = {},
             onContinuar = {},
             onBack = {}
         )
     }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+private fun Paso1SinElegirPreview() {
+    Paso1Preview(PurchaseUiState())
 }
 
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
 private fun Paso1RegistradoPreview() {
-    CafesmartTheme {
-        RegistroCompraPaso1Screen(
+    Paso1Preview(
+        PurchaseUiState(
             modo = ModoProductor.REGISTRADO,
-            busqueda = "",
             productores = productoresDePrueba,
-            hayMasProductores = true,
-            productorElegido = productoresDePrueba[1],
-            nuevoProductor = NuevoProductor(),
-            documentoError = null,
-            nombreError = null,
-            telefonoError = null,
-            continuarHabilitado = true,
-            mensajePendiente = null,
-            onModoChange = {},
-            onBusquedaChange = {},
-            onProductorClick = {},
-            onVerMas = {},
-            onNuevoProductorChange = {},
-            onContinuar = {},
-            onBack = {}
+            productorElegido = productoresDePrueba[1]
         )
-    }
+    )
 }
 
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
 private fun Paso1NuevoPreview() {
-    CafesmartTheme {
-        RegistroCompraPaso1Screen(
-            modo = ModoProductor.NUEVO,
-            busqueda = "",
-            productores = emptyList(),
-            hayMasProductores = false,
-            productorElegido = null,
-            nuevoProductor = NuevoProductor(),
-            documentoError = null,
-            nombreError = null,
-            telefonoError = null,
-            continuarHabilitado = false,
-            mensajePendiente = "Por favor, selecciona una opción para continuar el proceso.",
-            onModoChange = {},
-            onBusquedaChange = {},
-            onProductorClick = {},
-            onVerMas = {},
-            onNuevoProductorChange = {},
-            onContinuar = {},
-            onBack = {}
-        )
-    }
+    Paso1Preview(PurchaseUiState(modo = ModoProductor.NUEVO))
 }

@@ -1,19 +1,22 @@
-package com.cafesmart.app.domain
+package com.cafesmart.app.viewmodel.purchase
 
-import com.cafesmart.app.data.CafeFormulario
-import com.cafesmart.app.data.Fecha
-import com.cafesmart.app.data.ModoProductor
-import com.cafesmart.app.data.NuevoProductor
-import com.cafesmart.app.data.PESO_MAX_KG
-import com.cafesmart.app.data.PRECIO_MAX_KG
-import com.cafesmart.app.data.PRECIO_MIN_KG
-import com.cafesmart.app.data.Productor
-import com.cafesmart.app.data.Sublote
-import com.cafesmart.app.data.TipoDocumento
+import com.cafesmart.app.data.purchase.CafeFormulario
+import com.cafesmart.app.data.purchase.Fecha
+import com.cafesmart.app.data.purchase.ModoProductor
+import com.cafesmart.app.data.purchase.NuevoProductor
+import com.cafesmart.app.data.purchase.Productor
+import com.cafesmart.app.data.purchase.Sublote
+import com.cafesmart.app.data.purchase.TipoDocumento
 import java.util.Calendar
 
-// Capa de Dominio: reglas del registro de compra (validaciones y calculos).
-// Son funciones puras: no dependen de Compose ni de Android, por eso se prueban con JUnit.
+// Reglas del registro de compra (validaciones y calculos): son parte de la logica del ViewModel.
+// Estan en un archivo aparte como funciones puras (no dependen de Compose ni de Android)
+// para poder probarlas con JUnit.
+
+// Limites de peso y precio por kg
+const val PESO_MAX_KG = 99_999
+const val PRECIO_MIN_KG = 1_000
+const val PRECIO_MAX_KG = 100_000
 
 // ---------------- Paso 1: productor ----------------
 
@@ -223,6 +226,9 @@ fun mensajeAgregarCafe(cafes: List<CafeFormulario>): String? {
     val indice = cafes.indexOfFirst { crearSublote(it) == null }
     return if (indice == -1) null else "Recuerda terminar de diligenciar los datos de Café ${indice + 1} antes de agregar otro."
 }
+
+// Valor de un sublote: peso x precio por kg
+fun totalDe(sublote: Sublote): Double = sublote.pesoKg * sublote.precioKg
 
 // RF-COM-13: los totales suman lo que ya se ha escrito en todas las tarjetas
 fun totalKg(cafes: List<CafeFormulario>): Double = cafes.sumOf { pesoKg(it) ?: 0.0 }

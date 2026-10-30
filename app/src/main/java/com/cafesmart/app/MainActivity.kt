@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,19 +24,24 @@ import com.cafesmart.app.ui.components.AppBottomSheet
 import com.cafesmart.app.ui.components.BackArrow
 import com.cafesmart.app.ui.components.ContinueButton
 import com.cafesmart.app.ui.components.SegmentedProgressBar
-import com.cafesmart.app.ui.compra.RegistroCompraFlow
+import com.cafesmart.app.ui.screens.purchase.PurchaseFlow
 import com.cafesmart.app.ui.theme.AppTypography
 import com.cafesmart.app.ui.theme.CafesmartTheme
 import com.cafesmart.app.ui.theme.Spacing
+import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
 
 class MainActivity : ComponentActivity() {
+
+    private val purchaseViewModel: PurchaseViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             CafesmartTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    RegistroCompraFlow(
+                    PurchaseFlow(
+                        viewModel = purchaseViewModel,
                         onSalir = {},
                         onFinalizar = { _, _, _ -> },
                         modifier = Modifier.padding(innerPadding)

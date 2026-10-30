@@ -1,4 +1,4 @@
-package com.cafesmart.app.ui.compra
+package com.cafesmart.app.ui.screens.purchase
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -26,11 +26,11 @@ import com.cafesmart.app.ui.theme.Spacing
 import com.cafesmart.app.ui.theme.SurfaceCard
 import com.cafesmart.app.ui.theme.SurfaceScreen
 
-const val TOTAL_PASOS_COMPRA = 3
+const val PURCHASE_STEPS = 3
 
 // Parte de arriba de cada paso: ← "Registro de compra", "Paso n de 3", barra de progreso y la pregunta
 @Composable
-fun CompraHeader(
+fun PurchaseHeader(
     paso: Int,
     pregunta: String,
     onBack: () -> Unit,
@@ -49,9 +49,9 @@ fun CompraHeader(
             Text(text = "Registro de compra", style = AppTypography.titleScreen)
         }
         Spacer(modifier = Modifier.height(Spacing.s16))
-        Text(text = "Paso $paso de $TOTAL_PASOS_COMPRA", style = AppTypography.labelField)
+        Text(text = "Paso $paso de $PURCHASE_STEPS", style = AppTypography.labelField)
         Spacer(modifier = Modifier.height(Spacing.s8))
-        SegmentedProgressBar(total = TOTAL_PASOS_COMPRA, current = paso)
+        SegmentedProgressBar(total = PURCHASE_STEPS, current = paso)
         Spacer(modifier = Modifier.height(Spacing.s20))
         Text(text = pregunta, style = AppTypography.titleScreen)
     }
@@ -60,7 +60,7 @@ fun CompraHeader(
 // Pie de accion: barra blanca fija abajo con linea superior de 1 px (border/default)
 // y relleno 16 arriba, 20 a los lados y 28 abajo, segun la guia de diseno
 @Composable
-fun CompraBottomBar(
+fun PurchaseBottomBar(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -80,7 +80,7 @@ fun CompraBottomBar(
 
 // Texto pequeno sobre "Continuar" que dice que falta para poder seguir
 @Composable
-fun MensajePendiente(mensaje: String?) {
+fun PendingMessage(mensaje: String?) {
     if (mensaje != null) {
         Text(
             text = mensaje,
@@ -93,12 +93,12 @@ fun MensajePendiente(mensaje: String?) {
 
 @Preview(showBackground = true)
 @Composable
-private fun CompraHeaderPreview() {
+private fun PurchaseHeaderPreview() {
     CafesmartTheme {
         Column(modifier = Modifier.background(SurfaceScreen)) {
-            CompraHeader(paso = 1, pregunta = "¿A quién le compras el café?", onBack = {})
-            CompraBottomBar {
-                MensajePendiente(mensaje = "Por favor, selecciona una opción para continuar el proceso.")
+            PurchaseHeader(paso = 1, pregunta = "¿A quién le compras el café?", onBack = {})
+            PurchaseBottomBar {
+                PendingMessage(mensaje = "Por favor, selecciona una opción para continuar el proceso.")
                 ContinueButton(text = "Continuar", enabled = false, onClick = {})
             }
         }
