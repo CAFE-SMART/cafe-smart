@@ -1,134 +1,312 @@
+
 package com.cafesmart.app.ui.home
+
+// ============================================================
+// IMPORTACIONES NECESARIAS
+// ============================================================
+
+// Componentes para fondos, bordes y acciones de clic
 import androidx.compose.foundation.BorderStroke
-import com.cafesmart.app.ui.components.AppBottomBar
-import com.cafesmart.app.ui.components.CafeIcon
-// Importaciones para construir la interfaz.
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+
+// Componentes para organizar los elementos
 import androidx.compose.foundation.layout.*
+
+// Permite crear contenido vertical desplazable
 import androidx.compose.foundation.lazy.LazyColumn
+
+// Formas utilizadas en los componentes
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+
+// Componentes de Material Design 3
 import androidx.compose.material3.*
+
+// Herramientas para manejar estados de Compose
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+
+// Permite alinear elementos
 import androidx.compose.ui.Alignment
+
+// Permite modificar la apariencia
 import androidx.compose.ui.Modifier
+
+// Permite recortar elementos con diferentes formas
 import androidx.compose.ui.draw.clip
+
+// Herramientas para manejar colores y degradados
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+
+// Herramientas para accesibilidad
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+
+// Configuración de textos
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+
+// Permite visualizar la pantalla en Android Studio
 import androidx.compose.ui.tooling.preview.Preview
+
+// Unidades de medida
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Importamos los componentes que ya están separados.
-// Así evitamos copiar la barra y los íconos nuevamente.
+// Componentes reutilizables de Café Smart
+import com.cafesmart.app.ui.components.AppBottomBar
+import com.cafesmart.app.ui.components.CafeIcon
+
+// Tema de la aplicación
 import com.cafesmart.app.ui.theme.CafesmartTheme
 
-// Colores utilizados en esta pantalla.
+// Permite redondear números decimales
+import kotlin.math.roundToInt
+
+
+// ============================================================
+// 1. COLORES UTILIZADOS EN LA PANTALLA
+// ============================================================
+
+/**
+ * Estos colores definen la apariencia de Home.
+ *
+ * private significa que solamente pueden
+ * utilizarse dentro de este archivo.
+ */
+
+// Azul principal de la aplicación
 private val Azul = Color(0xFF2458D3)
+
+// Azul utilizado para textos y botones destacados
 private val AzulOscuro = Color(0xFF203D91)
+
+// Azul claro para el degradado del encabezado
 private val AzulClaro = Color(0xFF3889F8)
+
+// Fondo general de la pantalla
 private val Fondo = Color(0xFFF3F5FB)
+
+// Color principal de los textos
 private val Texto = Color(0xFF1D293F)
+
+// Color secundario de los textos
 private val Gris = Color(0xFF62738D)
+
+// Color utilizado para estados positivos
 private val Verde = Color(0xFF008767)
+
+// Color de los bordes
 private val Borde = Color(0xFFE5EBF3)
 
-/*
- * Clase para representar los sublotes de ejemplo.
+
+// ============================================================
+// 2. MODELO DE DATOS PARA LOS SUBLOTES
+// ============================================================
+
+/**
+ * SubloteEjemplo representa la información
+ * de un sublote que aparece en Home.
  *
- * data class crea una clase destinada a almacenar datos.
- * Int representa un número entero.
- * String representa texto.
+ * data class permite almacenar datos
+ * dentro de un objeto.
  *
- * private significa que solamente se utiliza en este archivo.
+ * Propiedades:
+ *
+ * tipo: identifica el tipo de café.
+ * dias: antigüedad del sublote.
+ * peso: cantidad de café.
+ * estado: estado o calidad del sublote.
+ *
+ * Los datos son de demostración.
  */
 private data class SubloteEjemplo(
+
     val tipo: String,
+
     val dias: Int,
+
     val peso: String,
+
     val estado: String
 )
 
-// listOf crea una lista con tres sublotes de ejemplo.
-// Más adelante podrán reemplazarse por datos reales.
+
+// ============================================================
+// 3. LISTA DE SUBLOTES DE EJEMPLO
+// ============================================================
+
+/**
+ * listOf crea una lista de elementos.
+ *
+ * En este caso contiene tres sublotes
+ * que se muestran en la pantalla principal.
+ *
+ * Posteriormente podrán reemplazarse
+ * por información de la base de datos.
+ */
 private val sublotesEjemplo = listOf(
-    SubloteEjemplo("Seco", 26, "1 kg", "Regular"),
-    SubloteEjemplo("Seco", 25, "190 kg", "Buena"),
-    SubloteEjemplo("Verde", 15, "50 kg", "Buena")
+
+    // Primer sublote
+    SubloteEjemplo(
+        "Seco",
+        26,
+        "1 kg",
+        "Regular"
+    ),
+
+    // Segundo sublote
+    SubloteEjemplo(
+        "Seco",
+        25,
+        "190 kg",
+        "Buena"
+    ),
+
+    // Tercer sublote
+    SubloteEjemplo(
+        "Verde",
+        15,
+        "50 kg",
+        "Buena"
+    )
 )
 
-/*
- * PANTALLA PRINCIPAL HOME
+
+// ============================================================
+// 4. PANTALLA PRINCIPAL HOME
+// ============================================================
+
+/**
+ * HomeScreen representa la pantalla de inicio
+ * de la aplicación Café Smart.
  *
- * @Composable indica que la función dibuja interfaz
- * utilizando Jetpack Compose.
+ * Incluye las siguientes secciones:
  *
- * Los parámetros onSalir, onActualizar, etc. son callbacks.
- * Un callback es una función que se ejecuta cuando
- * ocurre una acción, por ejemplo al pulsar un botón.
+ * - Encabezado de bienvenida.
+ * - Resumen del día.
+ * - Capacidad de la bodega.
+ * - Sublotes más antiguos.
+ * - Barra de navegación inferior.
  *
- * () -> Unit:
- * función que no recibe parámetros ni devuelve un resultado.
+ * También permite ejecutar acciones
+ * relacionadas con cada sección.
  *
- * (Int) -> Unit:
- * función que recibe un número entero.
+ * IMPORTANTE:
  *
- * (String) -> Unit:
- * función que recibe un texto.
+ * Los parámetros onSalir, onActualizar,
+ * onRegistrarGasto y los demás son callbacks.
  *
- * = {} indica que, por defecto, no realiza ninguna acción.
+ * Un callback es una función que se ejecuta
+ * cuando el usuario realiza una acción.
+ *
+ * () -> Unit representa una función
+ * que no recibe parámetros.
+ *
+ * (Int) -> Unit recibe un número entero.
+ *
+ * (String) -> Unit recibe un texto.
+ *
+ * = {} significa que, por defecto,
+ * la función no realiza ninguna acción.
  */
 @Composable
 fun HomeScreen(
+
+    // Acción para salir
     onSalir: () -> Unit = {},
+
+    // Acción para actualizar la información
     onActualizar: () -> Unit = {},
+
+    // Acción para registrar un gasto
     onRegistrarGasto: () -> Unit = {},
+
+    // Acción para ajustar la capacidad de bodega
     onAjustarBodega: () -> Unit = {},
+
+    // Acción para consultar todos los sublotes
     onVerSublotes: () -> Unit = {},
+
+    // Acción para abrir un sublote determinado
     onAbrirSublote: (Int) -> Unit = {},
+
+    // Acción para navegar a otras pantallas
     onNavegar: (String) -> Unit = {}
 ) {
 
-    /*
-     * rememberSaveable conserva el valor seleccionado
-     * cuando Compose recompone la pantalla y en ciertas
-     * recreaciones, como al girar el dispositivo.
+
+    // ========================================================
+    // 5. ESTADO DE LA NAVEGACIÓN INFERIOR
+    // ========================================================
+
+    /**
+     * Almacena la sección seleccionada
+     * dentro de la barra de navegación.
      *
-     * mutableStateOf crea un valor observable.
+     * rememberSaveable conserva el valor
+     * durante recomposiciones y recreaciones
+     * compatibles de la pantalla.
      *
-     * by permite utilizar la variable directamente
-     * sin escribir .value.
+     * mutableStateOf crea un estado observable.
+     *
+     * Inicialmente se selecciona "inicio".
      */
     var seccionSeleccionada by rememberSaveable {
+
         mutableStateOf("inicio")
     }
 
-    /*
-     * Scaffold organiza las partes principales
-     * de una pantalla.
+
+    // ========================================================
+    // 6. ESTRUCTURA GENERAL DE LA PANTALLA
+    // ========================================================
+
+    /**
+     * Scaffold organiza los componentes
+     * principales de la interfaz.
      *
-     * containerColor: color del fondo.
-     * bottomBar: componente que aparece abajo.
+     * Permite definir:
+     *
+     * - Color de fondo.
+     * - Barra inferior.
+     * - Contenido principal.
      */
     Scaffold(
+
+        // Color de fondo
         containerColor = Fondo,
 
+
+        // ====================================================
+        // 7. BARRA DE NAVEGACIÓN INFERIOR
+        // ====================================================
+
         bottomBar = {
-            // Reutilizamos la barra definida en components.
+
+            /**
+             * AppBottomBar es un componente
+             * reutilizable del proyecto.
+             *
+             * Muestra las opciones de navegación
+             * de la aplicación Café Smart.
+             */
             AppBottomBar(
+
+                // Ruta que está seleccionada
                 selectedRoute = seccionSeleccionada,
 
+                // Acción cuando se pulsa una opción
                 onNavigate = { ruta ->
 
-                    // Actualiza visualmente el botón seleccionado.
+                    // Actualiza la opción seleccionada
                     seccionSeleccionada = ruta
 
-                    // Informa a la aplicación qué ruta se pulsó.
+                    // Informa a la aplicación
+                    // sobre la ruta seleccionada
                     onNavegar(ruta)
                 }
             )
@@ -136,50 +314,99 @@ fun HomeScreen(
 
     ) { innerPadding ->
 
-        /*
-         * innerPadding es el espacio que Scaffold reserva
-         * para evitar que el contenido se superponga
-         * con la barra inferior.
+
+        // ====================================================
+        // 8. CONTENIDO PRINCIPAL CON LAZYCOLUMN
+        // ====================================================
+
+        /**
+         * LazyColumn organiza las diferentes
+         * secciones verticalmente.
          *
-         * LazyColumn organiza elementos verticalmente.
-         * También permite desplazamiento vertical (scroll).
+         * A diferencia de Column con verticalScroll,
+         * LazyColumn compone los elementos
+         * cuando son necesarios.
          *
-         * item agrega una sección dentro de la lista.
+         * Esto facilita el desplazamiento
+         * y permite ampliar la pantalla.
+         *
+         * innerPadding evita que el contenido
+         * quede detrás de la barra inferior.
+         *
+         * item() agrega una sección a la lista.
+         *
+         * key identifica cada sección
+         * mediante una clave estable.
          */
         LazyColumn(
+
             modifier = Modifier
+
+                // Ocupa toda la pantalla
                 .fillMaxSize()
+
+                // Respeta el espacio del Scaffold
                 .padding(innerPadding),
 
-            contentPadding = PaddingValues(bottom = 24.dp)
+            // Agrega espacio al final del contenido
+            contentPadding = PaddingValues(
+                bottom = 24.dp
+            )
+
         ) {
 
-            // Primera sección: encabezado azul.
-            item {
+
+            // =================================================
+            // 9. ENCABEZADO DE BIENVENIDA
+            // =================================================
+
+            item(key = "encabezado") {
+
                 EncabezadoInicio(
+
                     onSalir = onSalir,
+
                     onActualizar = onActualizar
                 )
             }
 
-            // Segunda sección: resumen del día.
-            item {
+
+            // =================================================
+            // 10. RESUMEN DEL DÍA
+            // =================================================
+
+            item(key = "resumen") {
+
                 ResumenDelDia(
+
                     onRegistrarGasto = onRegistrarGasto
                 )
             }
 
-            // Tercera sección: capacidad de la bodega.
-            item {
+
+            // =================================================
+            // 11. CAPACIDAD DE LA BODEGA
+            // =================================================
+
+            item(key = "bodega") {
+
                 CapacidadBodega(
+
                     onAjustarBodega = onAjustarBodega
                 )
             }
 
-            // Cuarta sección: sublotes más antiguos.
-            item {
+
+            // =================================================
+            // 12. SUBLOTES MÁS ANTIGUOS
+            // =================================================
+
+            item(key = "sublotes") {
+
                 SublotesAntiguos(
+
                     onVerSublotes = onVerSublotes,
+
                     onAbrirSublote = onAbrirSublote
                 )
             }
@@ -187,352 +414,710 @@ fun HomeScreen(
     }
 }
 
-/*
- * ENCABEZADO DE HOME
+
+// ============================================================
+// 13. ENCABEZADO DE LA PANTALLA
+// ============================================================
+
+/**
+ * EncabezadoInicio muestra:
  *
- * Muestra:
- * - Bienvenido a Café Smart.
- * - Botón Actualizar.
- * - Botón Salir.
- * - Indicador Conectado a internet.
+ * - Mensaje de bienvenida.
+ * - Nombre de Café Smart.
+ * - Botón de actualizar.
+ * - Botón de salir.
+ * - Indicador visual de conexión.
+ *
+ * Utiliza un fondo con degradado azul.
  */
 @Composable
 private fun EncabezadoInicio(
+
     onSalir: () -> Unit,
+
     onActualizar: () -> Unit
 ) {
 
+    // Organiza verticalmente el encabezado
     Column(
+
         modifier = Modifier
 
-            // Ocupa todo el ancho disponible.
+            // Ocupa todo el ancho
             .fillMaxWidth()
 
-            // Redondea solamente las esquinas inferiores.
+            // Redondea las esquinas inferiores
             .clip(
+
                 RoundedCornerShape(
+
                     bottomStart = 22.dp,
+
                     bottomEnd = 22.dp
                 )
             )
 
-            // Brush permite crear degradados de colores.
+            // Aplica el degradado de colores
             .background(
+
                 Brush.linearGradient(
-                    listOf(AzulOscuro, AzulClaro, Azul)
+
+                    listOf(
+                        AzulOscuro,
+                        AzulClaro,
+                        Azul
+                    )
                 )
             )
 
-            // Espacio interior del encabezado.
+            // Espacios internos del encabezado
             .padding(
+
                 start = 16.dp,
+
                 end = 16.dp,
+
                 top = 30.dp,
+
                 bottom = 22.dp
             )
+
     ) {
 
-        // Row organiza los elementos horizontalmente.
+
+        // ====================================================
+        // 14. FILA DE BIENVENIDA Y BOTONES
+        // ====================================================
+
         Row(
+
             modifier = Modifier.fillMaxWidth(),
+
             verticalAlignment = Alignment.CenterVertically
         ) {
 
+
+            // =================================================
+            // 15. TEXTO DE BIENVENIDA
+            // =================================================
+
             Column(
-                // weight(1f) utiliza el espacio disponible
-                // y deja lugar para los botones.
+
+                /**
+                 * weight(1f) permite ocupar
+                 * el espacio disponible y dejar
+                 * lugar para los botones.
+                 */
                 modifier = Modifier.weight(1f)
             ) {
 
                 Text(
-                    "Bienvenido a",
-                    color = Color.White.copy(alpha = 0.8f),
+
+                    text = "Bienvenido a",
+
+                    color = Color.White.copy(
+                        alpha = 0.8f
+                    ),
+
                     fontSize = 13.sp
                 )
 
                 Text(
-                    "Café Smart",
+
+                    text = "Café Smart",
+
                     color = Color.White,
+
                     fontSize = 23.sp,
+
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            // Botón circular de actualizar.
+
+            // =================================================
+            // 16. BOTÓN ACTUALIZAR
+            // =================================================
+
+            /**
+             * Permite solicitar la actualización
+             * de la información del panel.
+             *
+             * La carga real de datos depende
+             * de la función onActualizar.
+             */
             Box(
+
                 modifier = Modifier
+
+                    // Tamaño del botón
                     .size(42.dp)
+
+                    // Forma circular
                     .clip(CircleShape)
+
+                    // Fondo semitransparente
                     .background(
-                        Color.White.copy(alpha = 0.17f)
+
+                        Color.White.copy(
+                            alpha = 0.17f
+                        )
                     )
 
-                    // clickable ejecuta una acción al tocar.
-                    .clickable(onClick = onActualizar),
+                    // Descripción para accesibilidad
+                    .semantics {
+                        contentDescription = "Actualizar panel"
+                    }
+
+                    // Ejecuta la acción al pulsar
+                    .clickable(
+                        onClick = onActualizar
+                    ),
 
                 contentAlignment = Alignment.Center
             ) {
 
-                // Ícono reutilizado desde AppBottomBar.kt.
+                // Ícono reutilizable del proyecto
                 CafeIcon(
+
                     name = "actualizar",
+
                     color = Color.White,
+
                     modifier = Modifier.size(23.dp)
                 )
             }
 
-            // Separación horizontal de 8 dp.
-            Spacer(Modifier.width(8.dp))
 
-            // Botón para salir.
+            // Separación entre botones
+            Spacer(
+                modifier = Modifier.width(8.dp)
+            )
+
+
+            // =================================================
+            // 17. BOTÓN SALIR
+            // =================================================
+
+            /**
+             * Permite ejecutar la acción de salida.
+             *
+             * La navegación real se controla
+             * mediante onSalir.
+             */
             Button(
+
                 onClick = onSalir,
+
                 shape = RoundedCornerShape(12.dp),
 
                 colors = ButtonDefaults.buttonColors(
+
                     containerColor = Color(0xFFFFE5E8)
                 ),
 
                 contentPadding = PaddingValues(
+
                     horizontal = 12.dp,
+
                     vertical = 8.dp
                 )
             ) {
 
                 CafeIcon(
+
                     name = "salir",
+
                     color = Color(0xFFDC2626),
+
                     modifier = Modifier.size(20.dp)
                 )
 
-                Spacer(Modifier.width(6.dp))
+                Spacer(
+                    modifier = Modifier.width(6.dp)
+                )
 
                 Text(
-                    "Salir",
+
+                    text = "Salir",
+
                     color = Color(0xFFDC2626),
+
                     fontWeight = FontWeight.Bold
                 )
             }
         }
 
-        Spacer(Modifier.height(14.dp))
 
-        // Indicador visual de conexión.
+        Spacer(
+            modifier = Modifier.height(14.dp)
+        )
+
+
+        // ====================================================
+        // 18. INDICADOR VISUAL DE CONEXIÓN
+        // ====================================================
+
+        /**
+         * Muestra una etiqueta con el estado
+         * de conexión a internet.
+         *
+         * IMPORTANTE:
+         *
+         * Actualmente es información de ejemplo.
+         * No comprueba la conexión real del dispositivo.
+         */
         Row(
+
             modifier = Modifier
-                .clip(RoundedCornerShape(30.dp))
-                .background(
-                    Color.White.copy(alpha = 0.15f)
+
+                // Forma redondeada
+                .clip(
+                    RoundedCornerShape(30.dp)
                 )
+
+                // Fondo transparente
+                .background(
+
+                    Color.White.copy(
+                        alpha = 0.15f
+                    )
+                )
+
+                // Espacio interno
                 .padding(
+
                     horizontal = 12.dp,
+
                     vertical = 7.dp
                 ),
 
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+
+            horizontalArrangement =
+                Arrangement.spacedBy(8.dp)
         ) {
 
-            // Punto verde.
+
+            // ================================================
+            // PUNTO VERDE
+            // ================================================
+
             Box(
+
                 modifier = Modifier
+
                     .size(8.dp)
+
                     .background(
+
                         Color(0xFF4ADE80),
+
                         CircleShape
                     )
             )
 
-            // Estado de ejemplo, no verifica internet realmente.
+
+            // ================================================
+            // TEXTO DE CONEXIÓN
+            // ================================================
+
             Text(
-                "Conectado a internet",
+
+                text = "Conectado a internet",
+
                 color = Color.White,
+
                 fontSize = 12.sp
             )
         }
     }
 }
 
-/*
- * TÍTULO DE SECCIÓN
+
+// ============================================================
+// 19. TÍTULO REUTILIZABLE PARA LAS SECCIONES
+// ============================================================
+
+/**
+ * TituloSeccion muestra el título
+ * de una sección y una acción opcional.
  *
- * Se utiliza tres veces:
+ * Se utiliza en:
+ *
  * - Resumen del día.
  * - Capacidad en bodega.
  * - Sublotes más antiguos.
  *
- * Recibe el título, el texto del botón y su acción.
+ * Parámetros:
+ *
+ * titulo: nombre de la sección.
+ * accion: texto que aparece a la derecha.
+ * onAccion: función que se ejecuta al pulsar.
+ *
+ * Si onAccion es null, el elemento
+ * funciona solamente como etiqueta.
  */
 @Composable
 private fun TituloSeccion(
+
     titulo: String,
+
     accion: String,
-    onAccion: () -> Unit
+
+    onAccion: (() -> Unit)? = null
 ) {
 
     Row(
+
         modifier = Modifier.fillMaxWidth(),
+
         verticalAlignment = Alignment.CenterVertically
     ) {
 
+
+        // ====================================================
+        // 20. NOMBRE DE LA SECCIÓN
+        // ====================================================
+
         Text(
-            titulo,
+
+            text = titulo,
+
+            // Ocupa el espacio disponible
             modifier = Modifier.weight(1f),
+
             color = Texto,
+
             fontWeight = FontWeight.Bold,
+
             fontSize = 17.sp
         )
 
-        Spacer(Modifier.width(8.dp))
+        Spacer(
+            modifier = Modifier.width(8.dp)
+        )
 
-        // Botón pequeño con fondo azul claro.
+
+        // ====================================================
+        // 21. ETIQUETA O BOTÓN DE ACCIÓN
+        // ====================================================
+
+        /**
+         * Cuando onAccion tiene una función,
+         * el elemento puede pulsarse.
+         *
+         * Cuando es null, solamente muestra
+         * una etiqueta informativa.
+         *
+         * Esto evita crear botones que
+         * aparentemente funcionan,
+         * pero no ejecutan ninguna acción.
+         */
         Box(
+
             modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFFDCEAFF))
-                .clickable(onClick = onAccion)
+
+                .clip(
+                    RoundedCornerShape(12.dp)
+                )
+
+                .background(
+                    Color(0xFFDCEAFF)
+                )
+
+                .then(
+
+                    onAccion?.let { accionReal ->
+
+                        Modifier.clickable(
+                            onClick = accionReal
+                        )
+
+                    } ?: Modifier
+                )
+
                 .padding(
+
                     horizontal = 12.dp,
+
                     vertical = 8.dp
                 )
         ) {
 
             Text(
-                accion,
+
+                text = accion,
+
                 color = Azul,
+
                 fontSize = 12.sp,
+
                 fontWeight = FontWeight.SemiBold
             )
         }
     }
 }
 
-/*
- * RESUMEN DEL DÍA
+
+// ============================================================
+// 22. RESUMEN DEL DÍA
+// ============================================================
+
+/**
+ * ResumenDelDia muestra los indicadores
+ * principales del negocio.
  *
- * Contiene cuatro tarjetas con datos de ejemplo.
- * Dos tarjetas por fila.
+ * Incluye:
+ *
+ * - Compras.
+ * - Ventas.
+ * - Kilogramos comprados.
+ * - Productores.
+ *
+ * También incluye un botón
+ * para registrar gastos.
+ *
+ * Actualmente utiliza datos de ejemplo.
  */
 @Composable
 private fun ResumenDelDia(
+
     onRegistrarGasto: () -> Unit
 ) {
 
     Column(
+
         modifier = Modifier.padding(
+
             start = 16.dp,
+
             end = 16.dp,
+
             top = 24.dp
         )
     ) {
 
+
+        // ====================================================
+        // 23. TÍTULO DEL RESUMEN
+        // ====================================================
+
         TituloSeccion(
+
             titulo = "Resumen del día",
-            accion = "Hoy",
-            onAccion = {}
+
+            // Es una etiqueta informativa
+            accion = "Hoy"
         )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(
+            modifier = Modifier.height(12.dp)
+        )
 
-        // Tarjeta blanca que agrupa todo el resumen.
+
+        // ====================================================
+        // 24. TARJETA CONTENEDORA DEL RESUMEN
+        // ====================================================
+
         Card(
+
             modifier = Modifier.fillMaxWidth(),
+
             shape = RoundedCornerShape(14.dp),
 
             colors = CardDefaults.cardColors(
+
                 containerColor = Color.White
             )
         ) {
 
             Column(
+
                 modifier = Modifier.padding(20.dp),
 
-                // Coloca 12 dp de separación entre elementos.
                 verticalArrangement =
                     Arrangement.spacedBy(12.dp)
             ) {
 
-                // Primera fila: compras y ventas.
+
+                // ============================================
+                // 25. PRIMERA FILA DE INDICADORES
+                // ============================================
+
+                /**
+                 * Muestra las compras y ventas
+                 * en dos tarjetas del mismo ancho.
+                 */
                 Row(
+
+                    modifier = Modifier.fillMaxWidth(),
+
                     horizontalArrangement =
                         Arrangement.spacedBy(12.dp)
                 ) {
 
-                    Box(Modifier.weight(1f)) {
+
+                    // ========================================
+                    // COMPRAS
+                    // ========================================
+
+                    Box(
+                        modifier = Modifier.weight(1f)
+                    ) {
+
                         TarjetaResumen(
-                            "Compras",
-                            "0",
-                            "compras",
-                            Color(0xFFDCEAFF),
-                            Color(0xFF2563EB)
+
+                            titulo = "Compras",
+
+                            valor = "0",
+
+                            icono = "compras",
+
+                            fondoIcono = Color(0xFFDCEAFF),
+
+                            colorIcono = Color(0xFF2563EB)
                         )
                     }
 
-                    Box(Modifier.weight(1f)) {
+
+                    // ========================================
+                    // VENTAS
+                    // ========================================
+
+                    Box(
+                        modifier = Modifier.weight(1f)
+                    ) {
+
                         TarjetaResumen(
-                            "Ventas",
-                            "0",
-                            "ventas",
-                            Color(0xFFDCF9E8),
-                            Color(0xFF16A34A)
+
+                            titulo = "Ventas",
+
+                            valor = "0",
+
+                            icono = "ventas",
+
+                            fondoIcono = Color(0xFFDCF9E8),
+
+                            colorIcono = Color(0xFF16A34A)
                         )
                     }
                 }
 
-                // Segunda fila: kilogramos y productores.
+
+                // ============================================
+                // 26. SEGUNDA FILA DE INDICADORES
+                // ============================================
+
+                /**
+                 * Muestra kilogramos comprados
+                 * y cantidad de productores.
+                 */
                 Row(
+
+                    modifier = Modifier.fillMaxWidth(),
+
                     horizontalArrangement =
                         Arrangement.spacedBy(12.dp)
                 ) {
 
-                    Box(Modifier.weight(1f)) {
+
+                    // ========================================
+                    // KILOGRAMOS COMPRADOS
+                    // ========================================
+
+                    Box(
+                        modifier = Modifier.weight(1f)
+                    ) {
+
                         TarjetaResumen(
-                            "Kg comprados",
-                            "0 kg",
-                            "balanza",
-                            Color(0xFFFFF0C8),
-                            Color(0xFFE99000)
+
+                            titulo = "Kg comprados",
+
+                            valor = "0 kg",
+
+                            icono = "balanza",
+
+                            fondoIcono = Color(0xFFFFF0C8),
+
+                            colorIcono = Color(0xFFE99000)
                         )
                     }
 
-                    Box(Modifier.weight(1f)) {
+
+                    // ========================================
+                    // PRODUCTORES
+                    // ========================================
+
+                    Box(
+                        modifier = Modifier.weight(1f)
+                    ) {
+
                         TarjetaResumen(
-                            "Productores",
-                            "2",
-                            "usuarios",
-                            Color(0xFFEEE7FF),
-                            Color(0xFF7C3AED)
+
+                            titulo = "Productores",
+
+                            valor = "2",
+
+                            icono = "usuarios",
+
+                            fondoIcono = Color(0xFFEEE7FF),
+
+                            colorIcono = Color(0xFF7C3AED)
                         )
                     }
                 }
 
-                // Botón para registrar un gasto.
+
+                // ============================================
+                // 27. BOTÓN REGISTRAR GASTO
+                // ============================================
+
+                /**
+                 * Ejecuta onRegistrarGasto.
+                 *
+                 * Su función real depende
+                 * de la navegación de la aplicación.
+                 */
                 OutlinedButton(
+
                     onClick = onRegistrarGasto,
 
                     modifier = Modifier
+
                         .fillMaxWidth()
+
                         .height(48.dp),
 
                     shape = RoundedCornerShape(12.dp),
 
                     border = BorderStroke(
+
                         1.dp,
+
                         Color(0xFFB7D1FF)
                     )
                 ) {
 
                     CafeIcon(
+
                         name = "recibo",
+
                         color = AzulOscuro,
+
                         modifier = Modifier.size(19.dp)
                     )
 
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(
+                        modifier = Modifier.width(8.dp)
+                    )
 
                     Text(
-                        "Registrar gasto",
+
+                        text = "Registrar gasto",
+
                         color = AzulOscuro,
+
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -541,453 +1126,985 @@ private fun ResumenDelDia(
     }
 }
 
-/*
- * TARJETA DE RESUMEN
+
+// ============================================================
+// 28. TARJETA INDIVIDUAL DE RESUMEN
+// ============================================================
+
+/**
+ * TarjetaResumen es un componente reutilizable.
  *
- * Esta misma función construye las cuatro tarjetas.
- * Solo cambian los parámetros recibidos.
+ * Se utiliza para mostrar los cuatro
+ * indicadores del resumen del día.
+ *
+ * Recibe:
+ *
+ * titulo: nombre del indicador.
+ * valor: cantidad que debe mostrar.
+ * icono: nombre del ícono.
+ * fondoIcono: fondo del ícono.
+ * colorIcono: color del ícono.
  */
 @Composable
 private fun TarjetaResumen(
+
     titulo: String,
+
     valor: String,
+
     icono: String,
+
     fondoIcono: Color,
+
     colorIcono: Color
 ) {
 
     Row(
+
         modifier = Modifier
+
             .fillMaxWidth()
 
-            // Altura mínima, puede crecer si el contenido lo exige.
+            // Altura mínima
             .heightIn(min = 68.dp)
 
-            // Borde fino y esquinas redondeadas.
+            // Borde de la tarjeta
             .border(
-                1.dp,
-                Borde,
-                RoundedCornerShape(12.dp)
+
+                width = 1.dp,
+
+                color = Borde,
+
+                shape = RoundedCornerShape(12.dp)
             )
 
+            // Espacio interno
             .padding(10.dp),
 
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+
+        horizontalArrangement =
+            Arrangement.spacedBy(8.dp)
     ) {
 
-        // Fondo de color del ícono.
+
+        // ====================================================
+        // 29. ÍCONO DEL INDICADOR
+        // ====================================================
+
         Box(
+
             modifier = Modifier
+
                 .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(fondoIcono),
 
-            contentAlignment = Alignment.Center
-        ) {
-
-            CafeIcon(
-                name = icono,
-                color = colorIcono,
-                modifier = Modifier.size(23.dp)
-            )
-        }
-
-        Column(modifier = Modifier.weight(1f)) {
-
-            Text(
-                titulo,
-                color = Gris,
-                fontSize = 11.sp,
-                lineHeight = 13.sp,
-
-                // Máximo dos líneas de texto.
-                maxLines = 2,
-
-                // Si no cabe, termina con puntos suspensivos.
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Text(
-                valor,
-                color = Texto,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-/*
- * CAPACIDAD EN BODEGA
- *
- * Muestra cuánto espacio está ocupado.
- * Los valores actuales son datos de ejemplo.
- */
-@Composable
-private fun CapacidadBodega(
-    onAjustarBodega: () -> Unit
-) {
-
-    Column(
-        modifier = Modifier.padding(
-            start = 16.dp,
-            end = 16.dp,
-            top = 26.dp
-        )
-    ) {
-
-        TituloSeccion(
-            titulo = "Capacidad en bodega",
-            accion = "Ajustar bodega ›",
-            onAccion = onAjustarBodega
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            )
-        ) {
-
-            Column(
-                modifier = Modifier.padding(20.dp)
-            ) {
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-
-                    horizontalArrangement =
-                        Arrangement.SpaceBetween,
-
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    Text(
-                        "Ocupación actual",
-                        color = Texto,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    Text(
-                        "19%",
-                        color = Verde,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                /*
-                 * Barra de progreso.
-                 *
-                 * 559f / 3000f calcula la proporción ocupada.
-                 * La f indica que los números son Float.
-                 *
-                 * Float permite trabajar con decimales.
-                 * El resultado es aproximadamente 0.1863,
-                 * equivalente a 18.63%, redondeado a 19%.
-                 *
-                 * drawStopIndicator = {} evita mostrar
-                 * el indicador decorativo del extremo.
-                 */
-                LinearProgressIndicator(
-                    progress = { 559f / 3000f },
-
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(10.dp)
-                        .clip(CircleShape),
-
-                    color = Verde,
-                    trackColor = Color(0xFFEAF0F7),
-                    gapSize = 0.dp,
-                    drawStopIndicator = {}
+                .clip(
+                    RoundedCornerShape(10.dp)
                 )
 
-                Spacer(Modifier.height(12.dp))
-
-                // Información inferior de la bodega.
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-
-                    horizontalArrangement =
-                        Arrangement.SpaceBetween
-                ) {
-
-                    Column {
-                        Text(
-                            "Usados",
-                            fontSize = 12.sp,
-                            color = Gris
-                        )
-
-                        Text(
-                            "559 kg",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-
-                    Column(
-                        horizontalAlignment = Alignment.End
-                    ) {
-
-                        Text(
-                            "Total",
-                            fontSize = 12.sp,
-                            color = Gris
-                        )
-
-                        Text(
-                            "3.000 kg",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/*
- * SUBLOTES MÁS ANTIGUOS
- *
- * Recorre los tres sublotes de ejemplo.
- */
-@Composable
-private fun SublotesAntiguos(
-    onVerSublotes: () -> Unit,
-    onAbrirSublote: (Int) -> Unit
-) {
-
-    Column(
-        modifier = Modifier.padding(
-            start = 16.dp,
-            end = 16.dp,
-            top = 26.dp
-        )
-    ) {
-
-        TituloSeccion(
-            titulo = "Sublotes más antiguos",
-            accion = "Ver todos ›",
-            onAccion = onVerSublotes
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            )
-        ) {
-
-            Column(
-                modifier = Modifier.padding(
-                    horizontal = 16.dp,
-                    vertical = 4.dp
-                )
-            ) {
-
-                /*
-                 * forEachIndexed recorre la lista y entrega:
-                 *
-                 * index: posición del elemento.
-                 * sublote: objeto que contiene sus datos.
-                 *
-                 * lastIndex es la última posición de la lista.
-                 * Si hay tres elementos, lastIndex es 2,
-                 * porque las posiciones comienzan en 0.
-                 */
-                sublotesEjemplo.forEachIndexed { index, sublote ->
-
-                    FilaSublote(
-                        sublote = sublote,
-
-                        onClick = {
-                            // Envía la posición del sublote pulsado.
-                            onAbrirSublote(index)
-                        }
-                    )
-
-                    // Agrega un separador entre filas,
-                    // pero no después de la última.
-                    if (index != sublotesEjemplo.lastIndex) {
-                        HorizontalDivider(color = Borde)
-                    }
-                }
-            }
-        }
-    }
-}
-
-/*
- * FILA INDIVIDUAL DE SUBLOTE
- *
- * Cambia el color según el tipo de café y el estado.
- */
-@Composable
-private fun FilaSublote(
-    sublote: SubloteEjemplo,
-    onClick: () -> Unit
-) {
-
-    // == compara si ambos valores son iguales.
-    val esVerde = sublote.tipo == "Verde"
-    val regular = sublote.estado == "Regular"
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
-
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
-        // Círculo que contiene el ícono del tipo de café.
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
                 .background(
-                    if (esVerde) Color(0xFFE7FAF1)
-                    else Color(0xFFFFF8E4)
+                    fondoIcono
                 ),
 
             contentAlignment = Alignment.Center
         ) {
 
             CafeIcon(
-                name = if (esVerde) "hoja" else "sol",
-                color = if (esVerde) Verde
-                else Color(0xFFD99A00),
+
+                name = icono,
+
+                color = colorIcono,
+
                 modifier = Modifier.size(23.dp)
             )
         }
 
-        Spacer(Modifier.width(12.dp))
 
-        // Tipo y antigüedad.
-        Column(modifier = Modifier.weight(1f)) {
+        // ====================================================
+        // 30. INFORMACIÓN DEL INDICADOR
+        // ====================================================
+
+        Column(
+
+            modifier = Modifier.weight(1f)
+        ) {
+
+
+            // ================================================
+            // NOMBRE DEL INDICADOR
+            // ================================================
 
             Text(
-                sublote.tipo,
-                fontWeight = FontWeight.SemiBold,
+
+                text = titulo,
+
+                color = Gris,
+
+                fontSize = 11.sp,
+
+                lineHeight = 13.sp,
+
+                // Máximo dos líneas
+                maxLines = 2,
+
+                // Agrega puntos suspensivos si no cabe
+                overflow = TextOverflow.Ellipsis
+            )
+
+
+            // ================================================
+            // VALOR DEL INDICADOR
+            // ================================================
+
+            Text(
+
+                text = valor,
+
                 color = Texto,
+
+                fontSize = 18.sp,
+
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+
+// ============================================================
+// 31. SECCIÓN DE CAPACIDAD DE BODEGA
+// ============================================================
+
+/**
+ * CapacidadBodega muestra la información
+ * relacionada con el espacio ocupado.
+ *
+ * Incluye:
+ *
+ * - Porcentaje de ocupación.
+ * - Barra de progreso.
+ * - Kilogramos utilizados.
+ * - Capacidad total.
+ * - Opción para ajustar bodega.
+ *
+ * Actualmente utiliza valores de ejemplo.
+ */
+@Composable
+private fun CapacidadBodega(
+
+    onAjustarBodega: () -> Unit
+) {
+
+
+    // ========================================================
+    // 32. VALORES DE EJEMPLO DE LA BODEGA
+    // ========================================================
+
+    /**
+     * Representan la cantidad almacenada
+     * y la capacidad total.
+     *
+     * Posteriormente podrán obtenerse
+     * desde el inventario real.
+     */
+    val kilosUsados = 559
+
+    val kilosTotales = 3000
+
+
+    // ========================================================
+    // 33. CÁLCULO DE OCUPACIÓN
+    // ========================================================
+
+    /**
+     * Calcula la proporción de ocupación.
+     *
+     * toFloat() convierte el número
+     * a un valor decimal.
+     *
+     * Ejemplo:
+     *
+     * 559 / 3000 = 0.1863
+     *
+     * Lo que equivale a 18.63%.
+     *
+     * coerceIn(0f, 1f) evita que el valor
+     * sea menor que cero o mayor que uno.
+     *
+     * También se comprueba que la capacidad
+     * total sea mayor que cero para evitar
+     * una división entre cero.
+     */
+    val ocupacion = if (kilosTotales > 0) {
+
+        (
+                kilosUsados.toFloat() / kilosTotales
+                ).coerceIn(0f, 1f)
+
+    } else {
+
+        0f
+    }
+
+
+    // ========================================================
+    // 34. PORCENTAJE DE OCUPACIÓN
+    // ========================================================
+
+    /**
+     * Multiplica la proporción por 100.
+     *
+     * roundToInt() redondea el resultado
+     * a un número entero.
+     *
+     * En este ejemplo muestra 19%.
+     */
+    val porcentaje = (
+            ocupacion * 100
+            ).roundToInt()
+
+
+    // ========================================================
+    // 35. CONTENEDOR DE LA SECCIÓN
+    // ========================================================
+
+    Column(
+
+        modifier = Modifier.padding(
+
+            start = 16.dp,
+
+            end = 16.dp,
+
+            top = 26.dp
+        )
+    ) {
+
+
+        // ====================================================
+        // 36. TÍTULO Y ACCIÓN DE BODEGA
+        // ====================================================
+
+        TituloSeccion(
+
+            titulo = "Capacidad en bodega",
+
+            accion = "Ajustar bodega ›",
+
+            onAccion = onAjustarBodega
+        )
+
+        Spacer(
+            modifier = Modifier.height(12.dp)
+        )
+
+
+        // ====================================================
+        // 37. TARJETA DE CAPACIDAD
+        // ====================================================
+
+        Card(
+
+            modifier = Modifier.fillMaxWidth(),
+
+            shape = RoundedCornerShape(14.dp),
+
+            colors = CardDefaults.cardColors(
+
+                containerColor = Color.White
+            )
+        ) {
+
+            Column(
+
+                modifier = Modifier.padding(20.dp)
+            ) {
+
+
+                // ============================================
+                // 38. PORCENTAJE ACTUAL
+                // ============================================
+
+                Row(
+
+                    modifier = Modifier.fillMaxWidth(),
+
+                    horizontalArrangement =
+                        Arrangement.SpaceBetween,
+
+                    verticalAlignment =
+                        Alignment.CenterVertically
+                ) {
+
+                    Text(
+
+                        text = "Ocupación actual",
+
+                        color = Texto,
+
+                        fontSize = 15.sp,
+
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Text(
+
+                        // Muestra el porcentaje calculado
+                        text = "$porcentaje%",
+
+                        color = Verde,
+
+                        fontSize = 22.sp,
+
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(
+                    modifier = Modifier.height(8.dp)
+                )
+
+
+                // ============================================
+                // 39. BARRA DE PROGRESO
+                // ============================================
+
+                /**
+                 * LinearProgressIndicator representa
+                 * visualmente el espacio ocupado.
+                 *
+                 * progress recibe un valor
+                 * entre 0 y 1.
+                 *
+                 * Utiliza la misma variable ocupacion
+                 * que se empleó para calcular
+                 * el porcentaje.
+                 *
+                 * drawStopIndicator = {} evita mostrar
+                 * el indicador decorativo del extremo.
+                 */
+                LinearProgressIndicator(
+
+                    progress = {
+                        ocupacion
+                    },
+
+                    modifier = Modifier
+
+                        .fillMaxWidth()
+
+                        .height(10.dp)
+
+                        .clip(CircleShape),
+
+                    color = Verde,
+
+                    trackColor = Color(0xFFEAF0F7),
+
+                    gapSize = 0.dp,
+
+                    drawStopIndicator = {}
+                )
+
+                Spacer(
+                    modifier = Modifier.height(12.dp)
+                )
+
+
+                // ============================================
+                // 40. INFORMACIÓN DE KILOGRAMOS
+                // ============================================
+
+                Row(
+
+                    modifier = Modifier.fillMaxWidth(),
+
+                    horizontalArrangement =
+                        Arrangement.SpaceBetween
+                ) {
+
+
+                    // ========================================
+                    // KILOGRAMOS UTILIZADOS
+                    // ========================================
+
+                    Column {
+
+                        Text(
+
+                            text = "Usados",
+
+                            fontSize = 12.sp,
+
+                            color = Gris
+                        )
+
+                        Text(
+
+                            text = "$kilosUsados kg",
+
+                            fontSize = 13.sp,
+
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+
+                    // ========================================
+                    // CAPACIDAD TOTAL
+                    // ========================================
+
+                    Column(
+
+                        horizontalAlignment = Alignment.End
+                    ) {
+
+                        Text(
+
+                            text = "Total",
+
+                            fontSize = 12.sp,
+
+                            color = Gris
+                        )
+
+                        Text(
+
+                            // Capacidad de ejemplo
+                            text = "3.000 kg",
+
+                            fontSize = 13.sp,
+
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+// ============================================================
+// 41. SECCIÓN DE SUBLOTES MÁS ANTIGUOS
+// ============================================================
+
+/**
+ * SublotesAntiguos muestra los sublotes
+ * que aparecen en la pantalla Home.
+ *
+ * Incluye:
+ *
+ * - Título de la sección.
+ * - Opción para ver todos los sublotes.
+ * - Lista de los sublotes de ejemplo.
+ *
+ * Cada sublote permite ejecutar
+ * una acción al ser seleccionado.
+ */
+@Composable
+private fun SublotesAntiguos(
+
+    onVerSublotes: () -> Unit,
+
+    onAbrirSublote: (Int) -> Unit
+) {
+
+    Column(
+
+        modifier = Modifier.padding(
+
+            start = 16.dp,
+
+            end = 16.dp,
+
+            top = 26.dp
+        )
+    ) {
+
+
+        // ====================================================
+        // 42. TÍTULO DE LA SECCIÓN
+        // ====================================================
+
+        TituloSeccion(
+
+            titulo = "Sublotes más antiguos",
+
+            accion = "Ver todos ›",
+
+            onAccion = onVerSublotes
+        )
+
+        Spacer(
+            modifier = Modifier.height(12.dp)
+        )
+
+
+        // ====================================================
+        // 43. TARJETA CONTENEDORA DE SUBLOTES
+        // ====================================================
+
+        Card(
+
+            modifier = Modifier.fillMaxWidth(),
+
+            shape = RoundedCornerShape(14.dp),
+
+            colors = CardDefaults.cardColors(
+
+                containerColor = Color.White
+            )
+        ) {
+
+            Column(
+
+                modifier = Modifier.padding(
+
+                    horizontal = 16.dp,
+
+                    vertical = 4.dp
+                )
+            ) {
+
+
+                // ============================================
+                // 44. RECORRER LA LISTA DE SUBLOTES
+                // ============================================
+
+                /**
+                 * forEachIndexed recorre los elementos
+                 * de una lista.
+                 *
+                 * Proporciona:
+                 *
+                 * index: posición del elemento.
+                 * sublote: información del sublote.
+                 *
+                 * Las posiciones comienzan en cero.
+                 *
+                 * lastIndex es el índice
+                 * del último elemento.
+                 *
+                 * Aquí se utiliza Column porque
+                 * solamente existen tres sublotes
+                 * dentro de una tarjeta.
+                 *
+                 * La pantalla principal ya utiliza
+                 * LazyColumn para el desplazamiento.
+                 */
+                sublotesEjemplo.forEachIndexed {
+                        index, sublote ->
+
+
+                    // ========================================
+                    // 45. FILA DEL SUBLOTE
+                    // ========================================
+
+                    FilaSublote(
+
+                        sublote = sublote,
+
+                        onClick = {
+
+                            // Informa cuál sublote
+                            // fue seleccionado
+                            onAbrirSublote(index)
+                        }
+                    )
+
+
+                    // ========================================
+                    // 46. SEPARADOR ENTRE SUBLOTES
+                    // ========================================
+
+                    /**
+                     * Muestra una línea entre filas.
+                     *
+                     * No agrega un separador
+                     * después del último sublote.
+                     */
+                    if (
+                        index != sublotesEjemplo.lastIndex
+                    ) {
+
+                        HorizontalDivider(
+                            color = Borde
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+// ============================================================
+// 47. FILA INDIVIDUAL DE UN SUBLOTE
+// ============================================================
+
+/**
+ * FilaSublote muestra la información
+ * de un sublote dentro de la lista.
+ *
+ * Contiene:
+ *
+ * - Ícono del tipo de café.
+ * - Tipo de café.
+ * - Antigüedad en días.
+ * - Peso del sublote.
+ * - Estado de calidad.
+ * - Flecha para consultar detalles.
+ *
+ * El color del ícono y el estado
+ * dependen de los datos del sublote.
+ */
+@Composable
+private fun FilaSublote(
+
+    sublote: SubloteEjemplo,
+
+    onClick: () -> Unit
+) {
+
+
+    // ========================================================
+    // 48. IDENTIFICAR TIPO DE CAFÉ
+    // ========================================================
+
+    /**
+     * == compara si dos valores son iguales.
+     *
+     * Si el tipo es "Verde",
+     * esVerde tendrá el valor true.
+     */
+    val esVerde = sublote.tipo == "Verde"
+
+
+    // ========================================================
+    // 49. IDENTIFICAR ESTADO DE CALIDAD
+    // ========================================================
+
+    /**
+     * Comprueba si el sublote
+     * tiene el estado "Regular".
+     */
+    val regular = sublote.estado == "Regular"
+
+
+    // ========================================================
+    // 50. CONTENEDOR DEL SUBLOTE
+    // ========================================================
+
+    Row(
+
+        modifier = Modifier
+
+            // Ocupa todo el ancho
+            .fillMaxWidth()
+
+            // Permite seleccionar el sublote
+            .clickable(
+                onClick = onClick
+            )
+
+            // Espacio vertical
+            .padding(
+                vertical = 12.dp
+            ),
+
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+
+
+        // ====================================================
+        // 51. ÍCONO DEL TIPO DE CAFÉ
+        // ====================================================
+
+        Box(
+
+            modifier = Modifier
+
+                .size(40.dp)
+
+                .clip(CircleShape)
+
+                // Color según el tipo de café
+                .background(
+
+                    if (esVerde) {
+
+                        Color(0xFFE7FAF1)
+
+                    } else {
+
+                        Color(0xFFFFF8E4)
+                    }
+                ),
+
+            contentAlignment = Alignment.Center
+        ) {
+
+            CafeIcon(
+
+                // Ícono según el tipo de café
+                name =
+                    if (esVerde) {
+
+                        "hoja"
+
+                    } else {
+
+                        "sol"
+                    },
+
+                color =
+                    if (esVerde) {
+
+                        Verde
+
+                    } else {
+
+                        Color(0xFFD99A00)
+                    },
+
+                modifier = Modifier.size(23.dp)
+            )
+        }
+
+
+        Spacer(
+            modifier = Modifier.width(12.dp)
+        )
+
+
+        // ====================================================
+        // 52. TIPO Y ANTIGÜEDAD DEL SUBLOTE
+        // ====================================================
+
+        Column(
+
+            modifier = Modifier.weight(1f)
+        ) {
+
+
+            // ================================================
+            // TIPO DE CAFÉ
+            // ================================================
+
+            Text(
+
+                text = sublote.tipo,
+
+                fontWeight = FontWeight.SemiBold,
+
+                color = Texto,
+
                 fontSize = 14.sp
             )
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(
+                modifier = Modifier.height(4.dp)
+            )
+
+
+            // ================================================
+            // ANTIGÜEDAD EN DÍAS
+            // ================================================
 
             Row(
+
                 verticalAlignment = Alignment.CenterVertically
             ) {
 
                 CafeIcon(
+
                     name = "calendario",
+
                     color = Gris,
+
                     modifier = Modifier.size(13.dp)
                 )
 
-                Spacer(Modifier.width(4.dp))
+                Spacer(
+                    modifier = Modifier.width(4.dp)
+                )
 
-                /*
-                 * ${...} inserta el valor de una expresión
-                 * dentro de un texto.
+                /**
+                 * ${...} inserta un valor
+                 * dentro de una cadena de texto.
                  *
-                 * Ejemplo:
-                 * si sublote.dias es 26, muestra "26 días".
+                 * Por ejemplo:
+                 *
+                 * Si dias es 26,
+                 * se mostrará "26 días".
                  */
                 Text(
-                    "${sublote.dias} días",
+
+                    text = "${sublote.dias} días",
+
                     color = Gris,
+
                     fontSize = 12.sp
                 )
             }
         }
 
-        // Peso y estado de calidad.
+
+        // ====================================================
+        // 53. PESO Y ESTADO DEL SUBLOTE
+        // ====================================================
+
         Column(
+
             horizontalAlignment = Alignment.End
         ) {
 
+
+            // ================================================
+            // PESO DEL SUBLOTE
+            // ================================================
+
             Text(
-                sublote.peso,
+
+                text = sublote.peso,
+
                 color = AzulOscuro,
+
                 fontSize = 14.sp,
+
                 fontWeight = FontWeight.Bold
             )
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(
+                modifier = Modifier.height(4.dp)
+            )
 
+
+            // ================================================
+            // 54. ETIQUETA DE CALIDAD
+            // ================================================
+
+            /**
+             * Muestra una etiqueta con el estado.
+             *
+             * Si el estado es Regular,
+             * utiliza un fondo amarillo.
+             *
+             * En caso contrario,
+             * utiliza un fondo verde.
+             */
             Box(
+
                 modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(
-                        if (regular) Color(0xFFFFF0BC)
-                        else Color(0xFFCDF8E0)
+
+                    .clip(
+                        RoundedCornerShape(4.dp)
                     )
+
+                    .background(
+
+                        if (regular) {
+
+                            Color(0xFFFFF0BC)
+
+                        } else {
+
+                            Color(0xFFCDF8E0)
+                        }
+                    )
+
                     .padding(
+
                         horizontal = 8.dp,
+
                         vertical = 3.dp
                     )
             ) {
 
                 Text(
-                    sublote.estado,
 
-                    color = if (regular)
-                        Color(0xFF946000)
-                    else Color(0xFF006747),
+                    text = sublote.estado,
+
+                    color =
+                        if (regular) {
+
+                            Color(0xFF946000)
+
+                        } else {
+
+                            Color(0xFF006747)
+                        },
 
                     fontSize = 11.sp,
+
                     fontWeight = FontWeight.Medium
                 )
             }
         }
 
-        Spacer(Modifier.width(10.dp))
 
-        // Flecha de acceso al detalle.
+        Spacer(
+            modifier = Modifier.width(10.dp)
+        )
+
+
+        // ====================================================
+        // 55. FLECHA PARA CONSULTAR DETALLES
+        // ====================================================
+
+        /**
+         * Representa visualmente que el usuario
+         * puede abrir el detalle del sublote.
+         */
         Text(
-            "›",
+
+            text = "›",
+
             color = Gris,
+
             fontSize = 25.sp
         )
     }
 }
 
-/*
- * PREVIEW
+
+// ============================================================
+// 56. VISTA PREVIA PARA ANDROID STUDIO
+// ============================================================
+
+/**
+ * HomeScreenPreview permite visualizar
+ * la pantalla principal directamente
+ * en Android Studio.
  *
- * Permite comprobar Home sin modificar MainActivity.
+ * No necesita ejecutar MainActivity.
  *
- * widthDp y heightDp establecen el tamaño
- * de referencia del diseño.
+ * Configuración:
  *
- * CafesmartTheme aplica el tema compartido del proyecto.
+ * - Nombre: Inicio - Panel principal.
+ * - Fondo visible.
+ * - Ancho: 390 dp.
+ * - Alto: 844 dp.
+ *
+ * CafesmartTheme aplica el tema
+ * visual compartido del proyecto.
  */
 @Preview(
+
     name = "Inicio - Panel principal",
+
     showBackground = true,
+
     widthDp = 390,
+
     heightDp = 844
 )
 @Composable
 private fun HomeScreenPreview() {
+
     CafesmartTheme {
+
         HomeScreen()
     }
 }
