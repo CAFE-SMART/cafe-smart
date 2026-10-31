@@ -1,5 +1,5 @@
-
-package com.cafesmart.app.ui.screens
+package com.cafesmart.app.ui.home
+import androidx.compose.foundation.BorderStroke
 import com.cafesmart.app.ui.components.AppBottomBar
 import com.cafesmart.app.ui.components.CafeIcon
 // Importaciones para construir la interfaz.
@@ -26,8 +26,6 @@ import androidx.compose.ui.unit.sp
 
 // Importamos los componentes que ya están separados.
 // Así evitamos copiar la barra y los íconos nuevamente.
-import com.cafesmart.app.ui.components.AppBottomBar
-import com.cafesmart.app.ui.components.CafeIcon
 import com.cafesmart.app.ui.theme.CafesmartTheme
 
 // Colores utilizados en esta pantalla.
@@ -518,7 +516,7 @@ private fun ResumenDelDia(
 
                     shape = RoundedCornerShape(12.dp),
 
-                    border = androidx.compose.foundation.BorderStroke(
+                    border = BorderStroke(
                         1.dp,
                         Color(0xFFB7D1FF)
                     )
