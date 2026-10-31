@@ -14,3 +14,11 @@
 .cxx
 local.properties
 app/google-services.json
+
+# Variantes de archivos de entorno
+.env
+.env.*
+
+# Credenciales privadas de Firebase Admin
+**/serviceAccountKey.json
+**/*-firebase-adminsdk-*.json
