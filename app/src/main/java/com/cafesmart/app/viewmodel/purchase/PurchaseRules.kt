@@ -20,7 +20,8 @@ const val PRECIO_MAX_KG = 100_000
 
 // ---------------- Paso 1: productor ----------------
 
-const val CANTIDAD_RECIENTES = 3
+// El Figma muestra 2 recientes y el boton "Ver más productores"
+const val CANTIDAD_RECIENTES = 2
 
 fun filtrarProductores(productores: List<Productor>, busqueda: String): List<Productor> =
     if (busqueda.isBlank()) {

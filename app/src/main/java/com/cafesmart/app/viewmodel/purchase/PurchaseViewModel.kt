@@ -10,6 +10,7 @@ import com.cafesmart.app.data.purchase.Productor
 import com.cafesmart.app.data.purchase.Sublote
 import com.cafesmart.app.data.purchase.TipoDocumento
 import com.cafesmart.app.data.purchase.productorSinRegistrar
+import com.cafesmart.app.data.purchase.productoresDeEjemplo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -43,7 +44,7 @@ data class PurchaseUiState(
     val busqueda: String = "",
     val verTodos: Boolean = false,
     // Lista en memoria hasta que se incorpore Room
-    val productores: List<Productor> = emptyList(),
+    val productores: List<Productor> = productoresDeEjemplo,
     val productorElegido: Productor? = null,
     val nuevoProductor: NuevoProductor = NuevoProductor(),
     // El productor con el que se hace la compra (sale del paso 1)

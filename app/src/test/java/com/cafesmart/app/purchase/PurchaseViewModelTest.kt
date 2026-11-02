@@ -44,11 +44,44 @@ class PurchaseViewModelTest {
         viewModel.continuarPaso1()
         val estado = viewModel.uiState.value
         assertEquals(2, estado.paso)
-        assertEquals(1, estado.productores.size)
         assertEquals("Pepito Pérez", estado.productorDeLaCompra?.nombre)
+        // El nuevo queda de primero en la lista y elegido
+        assertTrue(estado.productoresEnPantalla[0].elegido)
         assertEquals(NuevoProductor(), estado.nuevoProductor)
         // La lista ya muestra el texto listo para la vista
         assertEquals("Cédula 1114059684", estado.productoresEnPantalla[0].documento)
+    }
+
+    @Test
+    fun productorRegistrado_buscarYSeleccionar() {
+        val viewModel = PurchaseViewModel()
+        viewModel.elegirModo(ModoProductor.REGISTRADO)
+        // Recientes: 2 productores y el boton "Ver más"
+        assertEquals("Recientes", viewModel.uiState.value.tituloLista)
+        assertEquals("Pepito Pérez", viewModel.uiState.value.productoresEnPantalla[0].nombre)
+        assertEquals(2, viewModel.uiState.value.productoresEnPantalla.size)
+        assertTrue(viewModel.uiState.value.hayMasProductores)
+        // Buscar por nombre
+        viewModel.cambiarBusqueda("andy")
+        assertEquals("Resultados", viewModel.uiState.value.tituloLista)
+        assertEquals(1, viewModel.uiState.value.productoresEnPantalla.size)
+        // Seleccionar: se marca y se puede continuar
+        viewModel.elegirProductor(viewModel.uiState.value.productoresEnPantalla[0].productor)
+        assertTrue(viewModel.uiState.value.productoresEnPantalla[0].elegido)
+        assertTrue(viewModel.uiState.value.continuarPaso1Habilitado)
+        // Sin resultados
+        viewModel.cambiarBusqueda("xyz")
+        assertEquals("Lo siento, no pudimos encontrarlo. Prueba con otro nombre o cédula.", viewModel.uiState.value.mensajeListaVacia)
+    }
+
+    @Test
+    fun documentoYaRegistrado_noDejaContinuar() {
+        val viewModel = PurchaseViewModel()
+        viewModel.elegirModo(ModoProductor.NUEVO)
+        viewModel.cambiarDocumento("890301886")
+        viewModel.cambiarNombre("Otro Nombre")
+        assertEquals("Este documento ya está registrado. Verifica en tu lista.", viewModel.uiState.value.documentoError)
+        assertFalse(viewModel.uiState.value.continuarPaso1Habilitado)
     }
 
     @Test

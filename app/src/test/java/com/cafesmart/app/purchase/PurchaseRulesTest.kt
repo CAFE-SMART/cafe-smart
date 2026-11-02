@@ -65,9 +65,9 @@ class PurchaseRulesTest {
     }
 
     @Test
-    fun recientes_muestraLosUltimos3PrimeroElMasNuevo() {
+    fun recientes_muestraLosUltimos2PrimeroElMasNuevo() {
         val visibles = productoresVisibles(productores, "", verTodos = false)
-        assertEquals(listOf(productores[3], productores[2], productores[1]), visibles)
+        assertEquals(listOf(productores[3], productores[2]), visibles)
         assertTrue(hayMasProductores(productores, "", verTodos = false))
         assertEquals(4, productoresVisibles(productores, "", verTodos = true).size)
         assertFalse(hayMasProductores(productores, "", verTodos = true))

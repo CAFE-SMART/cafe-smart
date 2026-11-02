@@ -56,4 +56,13 @@ data class Fecha(val dia: Int, val mes: Int, val anio: Int)
 
 val productorSinRegistrar = Productor(nombre = "Sin registrar", documento = "Compra rápida")
 
+// Productores de ejemplo (nombres del Figma) para ver las pantallas Buscar y Seleccionar.
+// Temporal: se reemplazan por los datos reales cuando se incorpore Room.
+// Va del mas antiguo al mas reciente; "Recientes" los muestra al reves.
+val productoresDeEjemplo = listOf(
+    Productor(nombre = "Finca La Esperanza", documento = "1020304050"),
+    Productor(nombre = "Andy López", documento = "11140596"),
+    Productor(nombre = "Pepito Pérez", documento = "890301886")
+)
+
 val tiposCafe = listOf("Verde", "Seco", "Pasilla", "Trillado")
