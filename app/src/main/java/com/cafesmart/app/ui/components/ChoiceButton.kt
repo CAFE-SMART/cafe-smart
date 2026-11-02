@@ -33,6 +33,7 @@ fun ChoiceButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Surface con clic: cambia de fondo y borde cuando esta seleccionado.
     Surface(
         onClick = onClick,
         selected = selected,
@@ -44,6 +45,7 @@ fun ChoiceButton(
         ),
         modifier = modifier.height(48.dp)
     ) {
+        // Centra el texto dentro del boton.
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
                 text = text,

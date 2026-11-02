@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
                     PurchaseFlow(
                         viewModel = purchaseViewModel,
                         onSalir = {},
-                        onFinalizar = { _, _, _ -> },
+                        onIrAInventario = {},
                         modifier = Modifier.padding(innerPadding)
                     )
                 }

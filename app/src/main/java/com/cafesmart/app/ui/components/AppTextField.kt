@@ -37,25 +37,32 @@ fun AppTextField(
     // Mensaje de error debajo del campo; null si el valor es valido. Reemplaza al helper.
     error: String? = null
 ) {
+    // Etiqueta arriba y campo debajo.
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(Spacing.s8)
     ) {
         Text(text = label, style = AppTypography.labelField)
+        // Campo de texto de Material con borde.
         OutlinedTextField(
             value = value,
+            // Avisa cada letra escrita; el ViewModel limpia y devuelve el valor.
             onValueChange = onValueChange,
             singleLine = true,
             textStyle = AppTypography.bodyLg,
             // TextMuted (#64748B) tiene contraste 4,8:1 sobre blanco; la guia pide minimo 4,5:1 (RNF-27)
             placeholder = { Text(text = placeholder, style = AppTypography.bodyLg.copy(color = TextMuted)) },
+            // Texto a la izquierda del campo, por ejemplo "$". null si no se pidio.
             leadingIcon = if (leadingText != null) {
                 { Text(text = leadingText, style = AppTypography.valueStrongBold, modifier = Modifier.padding(start = Spacing.s4)) }
             } else {
                 null
             },
+            // Tipo de teclado que se abre.
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            // Si hay error, el borde se pone rojo.
             isError = error != null,
+            // Debajo del campo: el error si existe; si no, la ayuda.
             supportingText = if (error != null) {
                 { Text(text = error, style = AppTypography.helper.copy(color = ErrorText)) }
             } else if (helper != null) {
@@ -64,6 +71,7 @@ fun AppTextField(
                 null
             },
             shape = AppShapes.medium,
+            // Colores del tema del equipo.
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Primary,
                 unfocusedBorderColor = BorderField,

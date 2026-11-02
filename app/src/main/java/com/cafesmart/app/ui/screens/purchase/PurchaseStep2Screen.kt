@@ -19,13 +19,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -81,12 +78,15 @@ fun PurchaseStep2Screen(
     onPesoChange: (Int, String) -> Unit,
     onPrecioChange: (Int, String) -> Unit,
     onQuitarCafe: (Int) -> Unit,
+    onAbrirCafe: (Int) -> Unit,
     onAgregarCafe: () -> Unit,
     onFechaChange: (Long) -> Unit,
     onContinuar: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // remember guarda el valor mientras la pantalla este visible.
+    // by permite usarlo como una variable normal.
     var mostrarCalendario by remember { mutableStateOf(false) }
 
     // imePadding(): cuando sale el teclado, la pantalla se encoge para que no tape los campos
@@ -107,19 +107,31 @@ fun PurchaseStep2Screen(
                 modifier = Modifier.padding(horizontal = Spacing.s20, vertical = Spacing.s16),
                 verticalArrangement = Arrangement.spacedBy(Spacing.s12)
             ) {
+                // Dibuja una tarjeta por cafe; indice dice a cual tarjeta pertenece cada cambio.
                 estado.cafesEnPantalla.forEachIndexed { indice, cafe ->
-                    TarjetaCafe(
-                        cafe = cafe,
-                        onTipoCafeChange = { onTipoCafeChange(indice, it) },
-                        onCalidadChange = { onCalidadChange(indice, it) },
-                        onPesoChange = { onPesoChange(indice, it) },
-                        onPrecioChange = { onPrecioChange(indice, it) },
-                        onQuitar = { onQuitarCafe(indice) }
-                    )
+                    // Solo el cafe abierto muestra el formulario; los demas son tiras pequenas
+                    if (cafe.abierto) {
+                        TarjetaCafe(
+                            cafe = cafe,
+                            onTipoCafeChange = { onTipoCafeChange(indice, it) },
+                            onCalidadChange = { onCalidadChange(indice, it) },
+                            onPesoChange = { onPesoChange(indice, it) },
+                            onPrecioChange = { onPrecioChange(indice, it) },
+                            onQuitar = { onQuitarCafe(indice) }
+                        )
+                    } else {
+                        TiraCafe(
+                            cafe = cafe,
+                            onEditar = { onAbrirCafe(indice) },
+                            onQuitar = { onQuitarCafe(indice) }
+                        )
+                    }
                 }
 
+                // Solo se puede agregar otro cafe si los anteriores estan completos.
                 BotonAgregarCafe(enabled = estado.cafesListos, onClick = onAgregarCafe)
                 // Explica por que no se puede agregar otro cafe todavia
+                // Se guarda en un val para que Kotlin sepa que no es null dentro del if.
                 val mensajeAgregar = estado.mensajeAgregarCafe
                 if (mensajeAgregar != null) {
                     Text(text = mensajeAgregar, style = AppTypography.helper)
@@ -130,17 +142,20 @@ fun PurchaseStep2Screen(
         }
 
         PurchaseBottomBar {
+            // Gris mientras no hay totales; azul cuando ya hay valores.
+            val colorTotales = if (estado.hayTotales) PrimaryDark else TextMuted
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                // SpaceBetween: un elemento a cada extremo de la fila.
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
                     Text(text = "Total kg", style = AppTypography.caption)
-                    Text(text = estado.totalKgTexto, style = AppTypography.titleModal.copy(color = PrimaryDark))
+                    Text(text = estado.totalKgTexto, style = AppTypography.titleModal.copy(color = colorTotales))
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(text = "Total estimado", style = AppTypography.caption)
-                    Text(text = estado.totalEstimadoTexto, style = AppTypography.titleModal.copy(color = PrimaryDark))
+                    Text(text = estado.totalEstimadoTexto, style = AppTypography.titleModal.copy(color = colorTotales))
                 }
             }
             PendingMessage(mensaje = estado.mensajePendientePaso2)
@@ -152,12 +167,42 @@ fun PurchaseStep2Screen(
         }
     }
 
+    // El calendario solo existe en pantalla mientras esta abierto.
     if (mostrarCalendario) {
-        DialogoFecha(
+        PurchaseDatePickerDialog(
             fechaMilis = estado.fechaMilis,
             onFechaChange = onFechaChange,
             onCerrar = { mostrarCalendario = false }
         )
+    }
+}
+
+// Tira pequena con el resumen de un cafe que no se esta editando: ahorra espacio
+@Composable
+private fun TiraCafe(cafe: CafeEnPantalla, onEditar: () -> Unit, onQuitar: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(SurfaceCard, AppShapes.medium)
+            .border(1.dp, BorderDefault, AppShapes.medium)
+            .padding(start = Spacing.s16, top = Spacing.s12, bottom = Spacing.s12, end = Spacing.s4),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // weight(1f): el texto ocupa el espacio libre y deja los botones a la derecha
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = cafe.tituloTira, style = AppTypography.titleCard)
+            Text(text = cafe.detalleTira, style = AppTypography.bodyMd)
+            // El total solo aparece cuando el cafe esta completo
+            if (cafe.totalTira.isNotEmpty()) {
+                Text(text = cafe.totalTira, style = AppTypography.valueStrongBold)
+            }
+        }
+        TextButton(onClick = onEditar) {
+            Text(text = "Editar", style = AppTypography.buttonLink)
+        }
+        TextButton(onClick = onQuitar) {
+            Text(text = "Quitar", style = AppTypography.buttonLink.copy(color = ErrorText))
+        }
     }
 }
 
@@ -185,6 +230,7 @@ private fun TarjetaCafe(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(text = "Café ${cafe.numero}", style = AppTypography.titleScreen.copy(color = PrimaryDark))
+            // "Quitar" solo aparece cuando hay mas de un cafe.
             if (cafe.puedeQuitar) {
                 TextButton(onClick = onQuitar) {
                     Text(text = "Quitar", style = AppTypography.buttonLink.copy(color = ErrorText))
@@ -200,6 +246,7 @@ private fun TarjetaCafe(
                     fila.forEach { tipo ->
                         ChoiceButton(
                             text = tipo,
+                            // Queda seleccionado el tipo que coincide con el de esta tarjeta.
                             selected = cafe.tipoCafe == tipo,
                             onClick = { onTipoCafeChange(tipo) },
                             modifier = Modifier.weight(1f)
@@ -224,12 +271,13 @@ private fun TarjetaCafe(
             )
             AppTextField(
                 label = "Precio por kg",
+                // El ViewModel entrega el precio ya con punto de miles.
                 value = cafe.precio,
                 onValueChange = onPrecioChange,
                 placeholder = "14.000",
                 keyboardType = KeyboardType.Number,
                 leadingText = "$",
-                helper = "Entre $1.000 y $100.000/kg",
+                helper = "Entre $ 1.000 y $ 100.000.",
                 error = cafe.errorPrecio,
                 modifier = Modifier.weight(1f)
             )
@@ -243,7 +291,9 @@ private fun SelectorCalidad(calidad: Calidad?, onCalidadChange: (Calidad) -> Uni
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.s8)) {
         Text(text = "Calidad", style = AppTypography.labelField)
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s12)) {
+            // entries es la lista de todos los valores del enum Calidad.
             Calidad.entries.forEach { opcion ->
+                // true si esta opcion es la elegida.
                 val activa = opcion == calidad
                 // Icono y colores de cada calidad (solo apariencia)
                 val icono = when (opcion) {
@@ -261,6 +311,7 @@ private fun SelectorCalidad(calidad: Calidad?, onCalidadChange: (Calidad) -> Uni
                     Calidad.REGULAR -> WarningText
                     Calidad.MALA -> ErrorIcon
                 }
+                // Surface es un fondo con forma, borde y clic.
                 Surface(
                     onClick = { onCalidadChange(opcion) },
                     selected = activa,
@@ -305,6 +356,7 @@ private fun SelectorCalidad(calidad: Calidad?, onCalidadChange: (Calidad) -> Uni
 // Boton con borde punteado: drawBehind dibuja un rectangulo redondeado con linea punteada
 @Composable
 private fun BotonAgregarCafe(enabled: Boolean, onClick: () -> Unit) {
+    // Gris cuando el boton esta desactivado.
     val color = if (enabled) Primary else TextMuted
     Row(
         modifier = Modifier
@@ -320,6 +372,7 @@ private fun BotonAgregarCafe(enabled: Boolean, onClick: () -> Unit) {
                     cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx())
                 )
             }
+            // clickable hace que la fila responda al toque.
             .clickable(enabled = enabled, onClick = onClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
@@ -345,6 +398,7 @@ private fun TarjetaFecha(fechaTexto: String, onCambiar: () -> Unit) {
         Spacer(modifier = Modifier.width(Spacing.s12))
         Column(modifier = Modifier.weight(1f)) {
             Text(text = "Fecha de compra", style = AppTypography.caption)
+            // El ViewModel entrega el texto listo, por ejemplo "Hoy, 2 de junio de 2026".
             Text(text = fechaTexto, style = AppTypography.valueStrong)
         }
         TextButton(onClick = onCambiar) {
@@ -353,31 +407,9 @@ private fun TarjetaFecha(fechaTexto: String, onCambiar: () -> Unit) {
     }
 }
 
-// Calendario de Material: trabaja en milisegundos; la conversion a fecha la hace el ViewModel
-@Composable
-private fun DialogoFecha(fechaMilis: Long, onFechaChange: (Long) -> Unit, onCerrar: () -> Unit) {
-    val estadoCalendario = rememberDatePickerState(initialSelectedDateMillis = fechaMilis)
-    DatePickerDialog(
-        onDismissRequest = onCerrar,
-        confirmButton = {
-            TextButton(onClick = {
-                val millis = estadoCalendario.selectedDateMillis
-                if (millis != null) {
-                    onFechaChange(millis)
-                }
-                onCerrar()
-            }) { Text(text = "Aceptar") }
-        },
-        dismissButton = {
-            TextButton(onClick = onCerrar) { Text(text = "Cancelar") }
-        }
-    ) {
-        DatePicker(state = estadoCalendario)
-    }
-}
-
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
+// Preview con un cafe de ejemplo.
 private fun Paso2Preview() {
     CafesmartTheme {
         PurchaseStep2Screen(
@@ -390,6 +422,7 @@ private fun Paso2Preview() {
             onPesoChange = { _, _ -> },
             onPrecioChange = { _, _ -> },
             onQuitarCafe = {},
+            onAbrirCafe = {},
             onAgregarCafe = {},
             onFechaChange = {},
             onContinuar = {},

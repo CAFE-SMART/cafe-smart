@@ -4,44 +4,36 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.cafesmart.app.data.purchase.ModoProductor
 import com.cafesmart.app.data.purchase.Productor
 import com.cafesmart.app.data.purchase.TipoDocumento
+import com.cafesmart.app.ui.components.AppBottomSheet
 import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.ContinueButton
 import com.cafesmart.app.ui.components.OptionCard
-import com.cafesmart.app.ui.components.RadioCheck
 import com.cafesmart.app.ui.theme.AppShapes
 import com.cafesmart.app.ui.theme.AppTypography
-import com.cafesmart.app.ui.theme.BorderDefault
 import com.cafesmart.app.ui.theme.BorderField
 import com.cafesmart.app.ui.theme.CafesmartTheme
-import com.cafesmart.app.ui.theme.Primary
 import com.cafesmart.app.ui.theme.Spacing
-import com.cafesmart.app.ui.theme.SurfaceCard
 import com.cafesmart.app.ui.theme.SurfaceScreen
-import com.cafesmart.app.ui.theme.SurfaceSelected
-import com.cafesmart.app.ui.theme.TextMuted
 import com.cafesmart.app.viewmodel.purchase.ProductorEnPantalla
 import com.cafesmart.app.viewmodel.purchase.PurchaseUiState
 
@@ -54,7 +46,17 @@ fun PurchaseStep1Screen(
     onModoChange: (ModoProductor) -> Unit,
     onBusquedaChange: (String) -> Unit,
     onProductorClick: (Productor) -> Unit,
-    onVerMas: () -> Unit,
+    onBusquedaListaChange: (String) -> Unit,
+    onEditarProductor: (Productor) -> Unit,
+    onTipoEdicionChange: (TipoDocumento) -> Unit,
+    onDocumentoEdicionChange: (String) -> Unit,
+    onNombreEdicionChange: (String) -> Unit,
+    onTelefonoEdicionChange: (String) -> Unit,
+    onGuardarEdicion: () -> Unit,
+    onCancelarEdicion: () -> Unit,
+    onCerrarLista: () -> Unit,
+    onGuardarNuevo: () -> Unit,
+    onCancelarNuevo: () -> Unit,
     onTipoDocumentoChange: (TipoDocumento) -> Unit,
     onDocumentoChange: (String) -> Unit,
     onNombreChange: (String) -> Unit,
@@ -63,6 +65,11 @@ fun PurchaseStep1Screen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Estado visual: si la hoja "Productores" esta abierta
+    var mostrarLista by remember { mutableStateOf(false) }
+    // Estado visual: si la hoja "Productor nuevo" esta abierta
+    var mostrarNuevo by remember { mutableStateOf(false) }
+
     // imePadding(): cuando sale el teclado, la pantalla se encoge para que no tape
     // los campos ni el boton Continuar
     Column(
@@ -78,17 +85,21 @@ fun PurchaseStep1Screen(
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
         ) {
+            // Encabezado comun: flecha, titulo, paso y pregunta.
             PurchaseHeader(paso = 1, pregunta = "¿A quién le compras el café?", onBack = onBack)
 
             Column(
                 modifier = Modifier.padding(horizontal = Spacing.s20, vertical = Spacing.s16),
                 verticalArrangement = Arrangement.spacedBy(Spacing.s12)
             ) {
+                // Lo que va entre llaves al final solo se muestra cuando la tarjeta esta seleccionada.
                 OptionCard(
                     title = "Productor registrado",
                     description = "Elígelo de tu lista.",
                     icon = AppIcons.Search,
+                    // El ViewModel dice si esta tarjeta esta seleccionada.
                     selected = estado.registradoSeleccionado,
+                    // Avisa al ViewModel la opcion elegida.
                     onClick = { onModoChange(ModoProductor.REGISTRADO) }
                 ) {
                     BuscadorProductor(
@@ -99,7 +110,7 @@ fun PurchaseStep1Screen(
                         hayMasProductores = estado.hayMasProductores,
                         onBusquedaChange = onBusquedaChange,
                         onProductorClick = onProductorClick,
-                        onVerMas = onVerMas
+                        onVerMas = { mostrarLista = true }
                     )
                 }
 
@@ -111,38 +122,81 @@ fun PurchaseStep1Screen(
                     onClick = { onModoChange(ModoProductor.SIN_REGISTRAR) }
                 )
 
+                // No queda seleccionada: al tocarla se abre la hoja con el formulario
                 OptionCard(
                     title = "Productor nuevo",
                     description = "Guarda sus datos.",
                     icon = AppIcons.UserPlus,
-                    selected = estado.nuevoSeleccionado,
-                    onClick = { onModoChange(ModoProductor.NUEVO) }
-                ) {
-                    NewProducerForm(
-                        esEmpresa = estado.esEmpresa,
-                        documento = estado.nuevoProductor.documento,
-                        nombre = estado.nuevoProductor.nombre,
-                        telefono = estado.nuevoProductor.telefono,
-                        documentoError = estado.documentoError,
-                        nombreError = estado.nombreError,
-                        telefonoError = estado.telefonoError,
-                        onTipoDocumentoChange = onTipoDocumentoChange,
-                        onDocumentoChange = onDocumentoChange,
-                        onNombreChange = onNombreChange,
-                        onTelefonoChange = onTelefonoChange
-                    )
-                }
+                    selected = false,
+                    onClick = { mostrarNuevo = true }
+                )
             }
         }
 
+        // Pie fijo abajo: mensaje de lo que falta y boton Continuar.
         PurchaseBottomBar {
             PendingMessage(mensaje = estado.mensajePendientePaso1)
             ContinueButton(
                 text = "Continuar",
+                // El boton solo se activa cuando el ViewModel lo permite.
                 enabled = estado.continuarPaso1Habilitado,
                 onClick = onContinuar
             )
         }
+    }
+
+    if (mostrarNuevo) {
+        // Deslizar para cerrar conserva lo escrito; "Cancelar" lo borra
+        AppBottomSheet(onDismiss = { mostrarNuevo = false }, skipPartiallyExpanded = true) {
+            NewProducerForm(
+                titulo = "Productor nuevo",
+                esEmpresa = estado.esEmpresa,
+                documento = estado.nuevoProductor.documento,
+                nombre = estado.nuevoProductor.nombre,
+                telefono = estado.nuevoProductor.telefono,
+                documentoError = estado.documentoError,
+                nombreError = estado.nombreError,
+                telefonoError = estado.telefonoError,
+                onTipoDocumentoChange = onTipoDocumentoChange,
+                onDocumentoChange = onDocumentoChange,
+                onNombreChange = onNombreChange,
+                onTelefonoChange = onTelefonoChange,
+                textoGuardar = "Guardar productor",
+                guardarHabilitado = estado.guardarNuevoHabilitado,
+                onGuardar = {
+                    onGuardarNuevo()
+                    mostrarNuevo = false
+                },
+                onCancelar = {
+                    onCancelarNuevo()
+                    mostrarNuevo = false
+                }
+            )
+        }
+    }
+
+    if (mostrarLista) {
+        ProducerListSheet(
+            estado = estado,
+            onBusquedaChange = onBusquedaListaChange,
+            // Al elegir un productor se marca y la hoja se cierra
+            onProductorClick = {
+                onProductorClick(it)
+                onCerrarLista()
+                mostrarLista = false
+            },
+            onEditar = onEditarProductor,
+            onTipoEdicionChange = onTipoEdicionChange,
+            onDocumentoEdicionChange = onDocumentoEdicionChange,
+            onNombreEdicionChange = onNombreEdicionChange,
+            onTelefonoEdicionChange = onTelefonoEdicionChange,
+            onGuardarEdicion = onGuardarEdicion,
+            onCancelarEdicion = onCancelarEdicion,
+            onCerrar = {
+                onCerrarLista()
+                mostrarLista = false
+            }
+        )
     }
 }
 
@@ -159,40 +213,22 @@ private fun BuscadorProductor(
     onVerMas: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.s12)) {
-        OutlinedTextField(
-            value = busqueda,
-            onValueChange = onBusquedaChange,
-            singleLine = true,
-            textStyle = AppTypography.bodyLg,
-            placeholder = { Text(text = "Buscar por nombre o cédula", style = AppTypography.bodyLg.copy(color = TextMuted)) },
-            leadingIcon = {
-                Icon(
-                    imageVector = AppIcons.Search,
-                    contentDescription = null,
-                    tint = TextMuted,
-                    modifier = Modifier.size(20.dp)
-                )
-            },
-            shape = AppShapes.medium,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Primary,
-                unfocusedBorderColor = BorderField,
-                focusedContainerColor = SurfaceCard,
-                unfocusedContainerColor = SurfaceCard
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
+        ProducerSearchField(busqueda = busqueda, onBusquedaChange = onBusquedaChange)
 
+        // Si no hay productores muestra el mensaje; si hay, muestra la lista.
         if (mensajeListaVacia != null) {
             Text(text = mensajeListaVacia, style = AppTypography.bodyMd)
         } else {
             Text(text = titulo, style = AppTypography.labelField)
+            // forEach dibuja una fila por cada productor.
             productores.forEach { fila ->
-                FilaProductor(
+                ProducerRow(
                     fila = fila,
+                    // Avisa al ViewModel cual productor se eligio.
                     onClick = { onProductorClick(fila.productor) }
                 )
             }
+            // El boton solo aparece si quedan productores por mostrar.
             if (hayMasProductores) {
                 OutlinedButton(
                     onClick = onVerMas,
@@ -209,40 +245,16 @@ private fun BuscadorProductor(
     }
 }
 
-// Un productor de la lista: nombre, "Cédula 123..." y circulo de seleccion
-@Composable
-private fun FilaProductor(fila: ProductorEnPantalla, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = AppShapes.medium,
-        color = if (fila.elegido) SurfaceSelected else SurfaceCard,
-        border = BorderStroke(
-            width = if (fila.elegido) 2.dp else 1.dp,
-            color = if (fila.elegido) Primary else BorderDefault
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = Spacing.s16, vertical = Spacing.s12),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = fila.nombre, style = AppTypography.valueStrong)
-                Text(text = fila.documento, style = AppTypography.bodyMd)
-            }
-            RadioCheck(selected = fila.elegido)
-        }
-    }
-}
-
 // ---------------- Previews (con estados de ejemplo) ----------------
 
+// Datos solo para ver las Preview en Android Studio.
 private val productoresDePrueba = listOf(
     Productor(nombre = "Pepito Pérez", documento = "890301886"),
     Productor(nombre = "Andy López", documento = "11140596")
 )
 
 @Composable
+// Preview comun que recibe un estado distinto en cada caso.
 private fun Paso1Preview(estado: PurchaseUiState) {
     CafesmartTheme {
         PurchaseStep1Screen(
@@ -250,7 +262,17 @@ private fun Paso1Preview(estado: PurchaseUiState) {
             onModoChange = {},
             onBusquedaChange = {},
             onProductorClick = {},
-            onVerMas = {},
+            onBusquedaListaChange = {},
+            onEditarProductor = {},
+            onTipoEdicionChange = {},
+            onDocumentoEdicionChange = {},
+            onNombreEdicionChange = {},
+            onTelefonoEdicionChange = {},
+            onGuardarEdicion = {},
+            onCancelarEdicion = {},
+            onCerrarLista = {},
+            onGuardarNuevo = {},
+            onCancelarNuevo = {},
             onTipoDocumentoChange = {},
             onDocumentoChange = {},
             onNombreChange = {},
@@ -281,6 +303,6 @@ private fun Paso1RegistradoPreview() {
 
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
-private fun Paso1NuevoPreview() {
-    Paso1Preview(PurchaseUiState(modo = ModoProductor.NUEVO))
+private fun Paso1SinRegistrarPreview() {
+    Paso1Preview(PurchaseUiState(modo = ModoProductor.SIN_REGISTRAR))
 }

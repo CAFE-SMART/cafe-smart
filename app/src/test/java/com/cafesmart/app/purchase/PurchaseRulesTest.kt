@@ -4,7 +4,6 @@ import com.cafesmart.app.data.purchase.CafeFormulario
 import com.cafesmart.app.data.purchase.Calidad
 import com.cafesmart.app.data.purchase.Fecha
 import com.cafesmart.app.data.purchase.ModoProductor
-import com.cafesmart.app.data.purchase.NuevoProductor
 import com.cafesmart.app.data.purchase.Productor
 import com.cafesmart.app.data.purchase.TipoDocumento
 import com.cafesmart.app.viewmodel.purchase.cafesCompletos
@@ -14,6 +13,7 @@ import com.cafesmart.app.viewmodel.purchase.errorPrecio
 import com.cafesmart.app.viewmodel.purchase.fechaAMilis
 import com.cafesmart.app.viewmodel.purchase.filtrarProductores
 import com.cafesmart.app.viewmodel.purchase.formatoDinero
+import com.cafesmart.app.viewmodel.purchase.formatoFecha
 import com.cafesmart.app.viewmodel.purchase.formatoFechaLarga
 import com.cafesmart.app.viewmodel.purchase.formatoKg
 import com.cafesmart.app.viewmodel.purchase.hayMasProductores
@@ -26,6 +26,7 @@ import com.cafesmart.app.viewmodel.purchase.mensajePendientePaso1
 import com.cafesmart.app.viewmodel.purchase.mensajePendientePaso2
 import com.cafesmart.app.viewmodel.purchase.milisAFecha
 import com.cafesmart.app.viewmodel.purchase.precioEnPantalla
+import com.cafesmart.app.viewmodel.purchase.productoresDeLaLista
 import com.cafesmart.app.viewmodel.purchase.productoresVisibles
 import com.cafesmart.app.viewmodel.purchase.puedeContinuarPaso1
 import com.cafesmart.app.viewmodel.purchase.totalDe
@@ -66,35 +67,42 @@ class PurchaseRulesTest {
 
     @Test
     fun recientes_muestraLosUltimos2PrimeroElMasNuevo() {
-        val visibles = productoresVisibles(productores, "", verTodos = false)
+        val visibles = productoresVisibles(productores, "")
         assertEquals(listOf(productores[3], productores[2]), visibles)
-        assertTrue(hayMasProductores(productores, "", verTodos = false))
-        assertEquals(4, productoresVisibles(productores, "", verTodos = true).size)
-        assertFalse(hayMasProductores(productores, "", verTodos = true))
+        assertTrue(hayMasProductores(productores, ""))
+        assertFalse(hayMasProductores(productores, "ana"))
+    }
+
+    @Test
+    fun listaDeProductores_buscaPorNombreCedulaONit() {
+        val conNit = productores + Productor("Café Los Alpes", "9001234567", TipoDocumento.NIT)
+        assertEquals(5, productoresDeLaLista(conNit, "").size)
+        // El mas reciente queda de primero
+        assertEquals("Café Los Alpes", productoresDeLaLista(conNit, "")[0].nombre)
+        assertEquals("Ana Gómez", productoresDeLaLista(conNit, "ana")[0].nombre)
+        assertEquals("Juan Pérez", productoresDeLaLista(conNit, "123456789")[0].nombre)
+        assertEquals("Café Los Alpes", productoresDeLaLista(conNit, "9001234567")[0].nombre)
     }
 
     @Test
     fun continuarPaso1_segunLaOpcionElegida() {
-        val nuevoValido = NuevoProductor(TipoDocumento.CC, "1114059684", "Pepito Pérez", "")
-        assertFalse(puedeContinuarPaso1(null, null, NuevoProductor(), productores))
-        assertTrue(puedeContinuarPaso1(ModoProductor.SIN_REGISTRAR, null, NuevoProductor(), productores))
-        assertFalse(puedeContinuarPaso1(ModoProductor.REGISTRADO, null, NuevoProductor(), productores))
-        assertTrue(puedeContinuarPaso1(ModoProductor.REGISTRADO, productores[0], NuevoProductor(), productores))
-        assertFalse(puedeContinuarPaso1(ModoProductor.NUEVO, null, NuevoProductor(), productores))
-        assertTrue(puedeContinuarPaso1(ModoProductor.NUEVO, null, nuevoValido, productores))
+        assertFalse(puedeContinuarPaso1(null, null))
+        assertTrue(puedeContinuarPaso1(ModoProductor.SIN_REGISTRAR, null))
+        assertFalse(puedeContinuarPaso1(ModoProductor.REGISTRADO, null))
+        assertTrue(puedeContinuarPaso1(ModoProductor.REGISTRADO, productores[0]))
     }
 
     @Test
     fun mensajesPendientesPaso1_RF_COM_01_y_02() {
         assertEquals(
             "Por favor, selecciona una opción para continuar el proceso.",
-            mensajePendientePaso1(null, null, NuevoProductor(), productores)
+            mensajePendientePaso1(null, null)
         )
         assertEquals(
             "Elige un productor de la lista.",
-            mensajePendientePaso1(ModoProductor.REGISTRADO, null, NuevoProductor(), productores)
+            mensajePendientePaso1(ModoProductor.REGISTRADO, null)
         )
-        assertNull(mensajePendientePaso1(ModoProductor.SIN_REGISTRAR, null, NuevoProductor(), productores))
+        assertNull(mensajePendientePaso1(ModoProductor.SIN_REGISTRAR, null))
     }
 
     @Test
@@ -222,6 +230,7 @@ class PurchaseRulesTest {
     @Test
     fun fechaLarga_diceHoySiEsHoy() {
         val fecha = Fecha(dia = 2, mes = 6, anio = 2026)
+        assertEquals("2 de junio de 2026", formatoFecha(fecha))
         assertEquals("Hoy, 2 de junio de 2026", formatoFechaLarga(fecha, hoy = fecha))
         assertEquals("2 de junio de 2026", formatoFechaLarga(fecha, hoy = Fecha(3, 6, 2026)))
     }

@@ -43,8 +43,10 @@ fun OptionCard(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    // Contenido extra que aparece al seleccionar (buscador, formulario). Por defecto, nada.
     expandedContent: @Composable () -> Unit = {}
 ) {
+    // Card es una tarjeta con clic, fondo y borde.
     Card(
         onClick = onClick,
         shape = AppShapes.medium,
@@ -63,6 +65,7 @@ fun OptionCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Spacing.s12)
             ) {
+                // Circulo del icono: azul si esta seleccionada, gris si no.
                 Box(
                     modifier = Modifier
                         .size(44.dp)
@@ -76,12 +79,14 @@ fun OptionCard(
                         modifier = Modifier.size(22.dp)
                     )
                 }
+                // weight(1f): el texto ocupa el espacio libre y empuja el circulo a la derecha.
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = title, style = AppTypography.titleCard)
                     Text(text = description, style = AppTypography.bodyMd)
                 }
                 RadioCheck(selected = selected)
             }
+            // El contenido extra solo se dibuja si la tarjeta esta seleccionada.
             if (selected) {
                 expandedContent()
             }
@@ -91,6 +96,7 @@ fun OptionCard(
 
 // Circulo de seleccion: vacio, o azul con ✓ cuando esta elegido
 @Composable
+// Reutilizable: lo usan las tarjetas y las filas de productor.
 fun RadioCheck(selected: Boolean, modifier: Modifier = Modifier) {
     if (selected) {
         Box(

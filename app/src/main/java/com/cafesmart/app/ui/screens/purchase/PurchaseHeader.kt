@@ -26,6 +26,7 @@ import com.cafesmart.app.ui.theme.Spacing
 import com.cafesmart.app.ui.theme.SurfaceCard
 import com.cafesmart.app.ui.theme.SurfaceScreen
 
+// Total de pasos del registro de compra.
 const val PURCHASE_STEPS = 3
 
 // Parte de arriba de cada paso: ← "Registro de compra", "Paso n de 3", barra de progreso y la pregunta
@@ -34,23 +35,29 @@ fun PurchaseHeader(
     paso: Int,
     pregunta: String,
     onBack: () -> Unit,
+    // modifier permite que quien usa este componente ajuste su tamano o margen.
     modifier: Modifier = Modifier
 ) {
     // Guia de diseno: encabezado de alto 44 con la flecha a la izquierda y el titulo centrado,
     // luego "Paso n de 3" (label/field), la barra y la pregunta (title/screen)
+    // Column pone los elementos uno debajo del otro.
     Column(
         modifier = modifier
+            // Ocupa todo el ancho; luego el margen lateral y superior.
             .fillMaxWidth()
             .padding(horizontal = Spacing.s20)
             .padding(top = Spacing.s8)
     ) {
+        // Box superpone elementos: el titulo queda centrado y la flecha a la izquierda.
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             BackArrow(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart))
             Text(text = "Registro de compra", style = AppTypography.titleScreen)
         }
+        // Spacer deja un espacio vacio entre elementos.
         Spacer(modifier = Modifier.height(Spacing.s16))
         Text(text = "Paso $paso de $PURCHASE_STEPS", style = AppTypography.labelField)
         Spacer(modifier = Modifier.height(Spacing.s8))
+        // Barra de progreso del equipo: pinta de azul los pasos completados.
         SegmentedProgressBar(total = PURCHASE_STEPS, current = paso)
         Spacer(modifier = Modifier.height(Spacing.s20))
         Text(text = pregunta, style = AppTypography.titleScreen)
@@ -62,6 +69,7 @@ fun PurchaseHeader(
 @Composable
 fun PurchaseBottomBar(
     modifier: Modifier = Modifier,
+    // content es lo que va dentro de la barra: cada pantalla pone sus botones.
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(
@@ -69,6 +77,7 @@ fun PurchaseBottomBar(
             .fillMaxWidth()
             .background(SurfaceCard)
     ) {
+        // Linea superior de 1 px que separa el pie del contenido.
         HorizontalDivider(color = BorderDefault)
         Column(
             modifier = Modifier.padding(start = Spacing.s20, top = Spacing.s16, end = Spacing.s20, bottom = Spacing.s28),
@@ -80,6 +89,7 @@ fun PurchaseBottomBar(
 
 // Texto pequeno sobre "Continuar" que dice que falta para poder seguir
 @Composable
+// mensaje puede ser null: en ese caso no se dibuja nada.
 fun PendingMessage(mensaje: String?) {
     if (mensaje != null) {
         Text(
@@ -93,6 +103,7 @@ fun PendingMessage(mensaje: String?) {
 
 @Preview(showBackground = true)
 @Composable
+// Preview: permite ver el componente en Android Studio sin ejecutar la app.
 private fun PurchaseHeaderPreview() {
     CafesmartTheme {
         Column(modifier = Modifier.background(SurfaceScreen)) {

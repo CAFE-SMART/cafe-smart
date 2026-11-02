@@ -76,6 +76,31 @@ object AppIcons {
             "M3 10h18"
         )
     }
+    // Hoja (tipo de cafe)
+    val Leaf: ImageVector by lazy {
+        lineIcon(
+            "Leaf",
+            "M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8c0 5.5-4.78 10-10 10Z",
+            "M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"
+        )
+    }
+    // Lapiz (editar)
+    val Pencil: ImageVector by lazy {
+        lineIcon(
+            "Pencil",
+            "M21.17 6.81a2.82 2.82 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5Z",
+            "M15 5l4 4"
+        )
+    }
+    // Triangulo de advertencia
+    val Warning: ImageVector by lazy {
+        lineIcon(
+            "Warning",
+            "M21.73 18l-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z",
+            "M12 9v4",
+            "M12 17h.01"
+        )
+    }
     // Pulgar arriba (calidad buena)
     val ThumbsUp: ImageVector by lazy {
         lineIcon(

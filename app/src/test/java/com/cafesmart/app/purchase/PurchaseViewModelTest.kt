@@ -38,9 +38,12 @@ class PurchaseViewModelTest {
     @Test
     fun productorNuevo_seGuardaEnLaListaYQuedaElegido() {
         val viewModel = PurchaseViewModel()
-        viewModel.elegirModo(ModoProductor.NUEVO)
         viewModel.cambiarDocumento("1114059684")
         viewModel.cambiarNombre("Pepito Pérez")
+        // Sin guardar no se puede continuar
+        assertFalse(viewModel.uiState.value.continuarPaso1Habilitado)
+        viewModel.guardarNuevoProductor()
+        assertEquals(ModoProductor.REGISTRADO, viewModel.uiState.value.modo)
         viewModel.continuarPaso1()
         val estado = viewModel.uiState.value
         assertEquals(2, estado.paso)
@@ -77,11 +80,10 @@ class PurchaseViewModelTest {
     @Test
     fun documentoYaRegistrado_noDejaContinuar() {
         val viewModel = PurchaseViewModel()
-        viewModel.elegirModo(ModoProductor.NUEVO)
         viewModel.cambiarDocumento("890301886")
         viewModel.cambiarNombre("Otro Nombre")
         assertEquals("Este documento ya está registrado. Verifica en tu lista.", viewModel.uiState.value.documentoError)
-        assertFalse(viewModel.uiState.value.continuarPaso1Habilitado)
+        assertFalse(viewModel.uiState.value.guardarNuevoHabilitado)
     }
 
     @Test
@@ -150,5 +152,187 @@ class PurchaseViewModelTest {
         assertEquals(15, fecha.dia)
         assertEquals(5, fecha.mes)
         assertEquals(2026, fecha.anio)
+    }
+
+    // Lleva el flujo hasta el paso 3 con un cafe completo
+    private fun viewModelEnPaso3(): PurchaseViewModel {
+        val viewModel = PurchaseViewModel()
+        viewModel.elegirModo(ModoProductor.SIN_REGISTRAR)
+        viewModel.continuarPaso1()
+        viewModel.cambiarTipoCafe(0, "Verde")
+        viewModel.cambiarCalidad(0, Calidad.BUENA)
+        viewModel.cambiarPeso(0, "25")
+        viewModel.cambiarPrecio(0, "14000")
+        viewModel.continuarPaso2()
+        return viewModel
+    }
+
+    @Test
+    fun continuarPaso2_noAvanzaSiFaltanDatos() {
+        val viewModel = PurchaseViewModel()
+        viewModel.elegirModo(ModoProductor.SIN_REGISTRAR)
+        viewModel.continuarPaso1()
+        viewModel.continuarPaso2()
+        assertEquals(2, viewModel.uiState.value.paso)
+    }
+
+    @Test
+    fun paso3_entregaElResumenListoParaLaVista() {
+        val estado = viewModelEnPaso3().uiState.value
+        assertEquals(3, estado.paso)
+        assertEquals("Sin registrar", estado.productorTexto)
+        val cafe = estado.cafesEnResumen[0]
+        assertEquals("Café verde", cafe.titulo)
+        assertEquals("Calidad buena", cafe.calidad)
+        assertEquals("25 kg × $ 14.000", cafe.detalle)
+        assertEquals("$ 350.000", cafe.total)
+    }
+
+    @Test
+    fun paso3_editarVuelveAlPaso2SinPerderDatos() {
+        val viewModel = viewModelEnPaso3()
+        viewModel.volverAlPaso2()
+        assertEquals(2, viewModel.uiState.value.paso)
+        assertEquals("25", viewModel.uiState.value.cafes[0].peso)
+    }
+
+    @Test
+    fun confirmarCompra_muestraCompraRegistrada() {
+        val viewModel = viewModelEnPaso3()
+        viewModel.confirmarCompra()
+        assertTrue(viewModel.uiState.value.compraRegistrada)
+    }
+
+    @Test
+    fun reiniciarCompra_empiezaDeCeroYConservaLosProductores() {
+        val viewModel = PurchaseViewModel()
+        viewModel.cambiarDocumento("1114059684")
+        viewModel.cambiarNombre("Ana Gómez")
+        viewModel.guardarNuevoProductor()
+        val productores = viewModel.uiState.value.productores
+
+        viewModel.reiniciarCompra()
+
+        val estado = viewModel.uiState.value
+        assertEquals(1, estado.paso)
+        assertFalse(estado.compraRegistrada)
+        assertNull(estado.modo)
+        assertEquals(productores, estado.productores)
+    }
+
+    // Deja el primer cafe completo
+    private fun viewModelConUnCafe(): PurchaseViewModel {
+        val viewModel = PurchaseViewModel()
+        viewModel.cambiarTipoCafe(0, "Verde")
+        viewModel.cambiarCalidad(0, Calidad.BUENA)
+        viewModel.cambiarPeso(0, "25")
+        viewModel.cambiarPrecio(0, "14000")
+        return viewModel
+    }
+
+    @Test
+    fun agregarCafe_elAnteriorQuedaComoTiraYElNuevoAbierto() {
+        val viewModel = viewModelConUnCafe()
+        viewModel.agregarCafe()
+        val cafes = viewModel.uiState.value.cafesEnPantalla
+        assertFalse(cafes[0].abierto)
+        assertTrue(cafes[1].abierto)
+        assertEquals("Café 1 · Verde", cafes[0].tituloTira)
+        assertEquals("Buena · 25 kg × $ 14.000", cafes[0].detalleTira)
+        assertEquals("$ 350.000", cafes[0].totalTira)
+    }
+
+    @Test
+    fun editarTira_abreEseCafeSinPerderLosDemas() {
+        val viewModel = viewModelConUnCafe()
+        viewModel.agregarCafe()
+        viewModel.abrirCafe(0)
+        val cafes = viewModel.uiState.value.cafesEnPantalla
+        assertTrue(cafes[0].abierto)
+        assertFalse(cafes[1].abierto)
+        assertEquals("Café 2", cafes[1].tituloTira)
+        assertEquals("Sin completar", cafes[1].detalleTira)
+        assertEquals("", cafes[1].totalTira)
+    }
+
+    @Test
+    fun quitarCafe_mantieneAbiertoElCorrecto() {
+        val viewModel = viewModelConUnCafe()
+        viewModel.agregarCafe()
+        // Quitar una tira de arriba: el abierto baja de la posicion 1 a la 0
+        viewModel.quitarCafe(0)
+        assertEquals(0, viewModel.uiState.value.cafeAbierto)
+        assertEquals(1, viewModel.uiState.value.cafes.size)
+
+        val otro = viewModelConUnCafe()
+        otro.agregarCafe()
+        // Quitar el abierto: se abre el ultimo que quede
+        otro.quitarCafe(1)
+        assertEquals(0, otro.uiState.value.cafeAbierto)
+        assertTrue(otro.uiState.value.cafesEnPantalla[0].abierto)
+    }
+
+    @Test
+    fun editarDesdeElPaso3_abreEseCafeEnElPaso2() {
+        val viewModel = viewModelEnPaso3()
+        viewModel.editarCafe(0)
+        assertEquals(2, viewModel.uiState.value.paso)
+        assertTrue(viewModel.uiState.value.cafesEnPantalla[0].abierto)
+    }
+
+    @Test
+    fun cancelarNuevoProductor_borraLoEscritoYConservaLaOpcionElegida() {
+        val viewModel = PurchaseViewModel()
+        viewModel.elegirModo(ModoProductor.SIN_REGISTRAR)
+        viewModel.cambiarNombre("Ana Gómez")
+        viewModel.cancelarNuevoProductor()
+        assertEquals(ModoProductor.SIN_REGISTRAR, viewModel.uiState.value.modo)
+        assertEquals(NuevoProductor(), viewModel.uiState.value.nuevoProductor)
+    }
+
+    @Test
+    fun listaDeProductores_buscaYSeLimpiaAlCerrar() {
+        val viewModel = PurchaseViewModel()
+        assertEquals(3, viewModel.uiState.value.productoresEnLista.size)
+        viewModel.cambiarBusquedaLista("xyz")
+        assertEquals("Lo siento, no pudimos encontrarlo. Prueba con otro nombre o cédula.", viewModel.uiState.value.mensajeSinResultadosLista)
+        viewModel.cerrarLista()
+        assertEquals("", viewModel.uiState.value.busquedaLista)
+        assertEquals(3, viewModel.uiState.value.productoresEnLista.size)
+    }
+
+    @Test
+    fun editarProductor_guardaLosCambiosYActualizaElElegido() {
+        val viewModel = PurchaseViewModel()
+        val pepito = viewModel.uiState.value.productores.last()
+        viewModel.elegirProductor(pepito)
+        viewModel.editarProductor(pepito)
+        // Su propio documento no cuenta como repetido
+        assertNull(viewModel.uiState.value.edicionDocumentoError)
+        viewModel.cambiarNombreEdicion("Pepito Gómez")
+        viewModel.guardarEdicion()
+        val estado = viewModel.uiState.value
+        assertNull(estado.productorEnEdicion)
+        assertEquals("Pepito Gómez", estado.productorElegido?.nombre)
+        assertEquals("Pepito Gómez", estado.productores.last().nombre)
+    }
+
+    @Test
+    fun editarProductor_noDejaUsarElDocumentoDeOtro() {
+        val viewModel = PurchaseViewModel()
+        val pepito = viewModel.uiState.value.productores.last()
+        viewModel.editarProductor(pepito)
+        viewModel.cambiarDocumentoEdicion("11140596")
+        assertFalse(viewModel.uiState.value.guardarEdicionHabilitado)
+    }
+
+    @Test
+    fun cancelarEdicion_noCambiaAlProductor() {
+        val viewModel = PurchaseViewModel()
+        val pepito = viewModel.uiState.value.productores.last()
+        viewModel.editarProductor(pepito)
+        viewModel.cambiarNombreEdicion("Otro Nombre")
+        viewModel.cancelarEdicion()
+        assertEquals(pepito, viewModel.uiState.value.productores.last())
     }
 }
