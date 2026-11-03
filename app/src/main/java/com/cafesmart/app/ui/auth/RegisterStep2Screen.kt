@@ -202,52 +202,8 @@ fun RegisterStep2Screen(
                 RegistrationProgress(step = 2)
 
                 // Separación vertical
-                Spacer(Modifier.height(12.dp))
-
-
-                // =============================================
-                // 6. ENLACES DE AYUDA Y SOPORTE
-                // =============================================
-
-                /**
-                 * Muestra las opciones de ayuda
-                 * alineadas a la derecha.
-                 */
-                Row(
-
-                    modifier = Modifier.fillMaxWidth(),
-
-                    horizontalArrangement =
-                        Arrangement.End,
-
-                    verticalAlignment =
-                        Alignment.CenterVertically
-                ) {
-
-                    // Abre la ayuda del paso 2
-                    TextButton(
-                        onClick = onHelp
-                    ) {
-
-                        Text(
-                            text = "Ver ayuda",
-                            color = Primary
-                        )
-                    }
-
-                    // Abre la opción de soporte
-                    TextButton(
-                        onClick = onSupport
-                    ) {
-
-                        Text(
-                            text = "Contactar soporte",
-                            color = Primary
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
+                // (la ayuda y el soporte van fijos en la barra inferior)
+                Spacer(Modifier.height(20.dp))
             }
 
 
@@ -794,6 +750,18 @@ fun RegisterStep2Screen(
 
                 // Espacio inferior del formulario
                 Spacer(Modifier.height(24.dp))
+            }
+
+            // Ayuda y soporte al final del contenido: no van fijos,
+            // aparecen al desplazar hasta abajo.
+            item {
+
+                SupportLinks(
+                    onHelp = onHelp,
+                    onSupport = onSupport
+                )
+
+                Spacer(Modifier.height(8.dp))
             }
         }
     }

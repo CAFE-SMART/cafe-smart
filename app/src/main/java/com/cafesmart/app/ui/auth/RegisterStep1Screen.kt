@@ -115,11 +115,8 @@ fun RegisterStep1Screen(
      * Contiene:
      *
      * topBar: encabezado superior.
-     * bottomBar: botón Continuar y enlaces de ayuda.
-     * content: formulario de registro.
-     *
-     * Esto permite que el formulario se desplace
-     * sin mover los botones inferiores.
+     * content: formulario de registro, con el botón Continuar
+     * y los enlaces de ayuda al final del desplazamiento.
      */
     Scaffold(
 
@@ -141,96 +138,6 @@ fun RegisterStep1Screen(
                 onBack = onBack
             )
         },
-
-
-        // ====================================================
-        // 4. BARRA INFERIOR DE ACCIONES
-        // ====================================================
-
-        bottomBar = {
-
-            /**
-             * Esta sección permanece separada
-             * del contenido desplazable.
-             *
-             * Contiene el botón Continuar
-             * y los enlaces de ayuda y soporte.
-             */
-            Column(
-
-                modifier = Modifier
-
-                    // Ocupa todo el ancho
-                    .fillMaxWidth()
-
-                    // Aplica el color de fondo
-                    .background(SurfaceCard)
-
-                    // Respeta la zona de navegación
-                    // del sistema Android
-                    .windowInsetsPadding(
-                        WindowInsets.navigationBars
-                    )
-
-                    // Márgenes internos
-                    .padding(
-                        start = 20.dp,
-                        end = 20.dp,
-                        bottom = 12.dp,
-                        top = 12.dp
-                    ),
-
-                // Centra horizontalmente los elementos
-                horizontalAlignment =
-                    Alignment.CenterHorizontally
-            ) {
-
-
-                // ============================================
-                // 5. BOTÓN CONTINUAR
-                // ============================================
-
-                /**
-                 * Ejecuta onContinue cuando el usuario
-                 * intenta avanzar al segundo paso.
-                 *
-                 * AuthViewModel.nextStep() es responsable
-                 * de validar los datos antes de avanzar.
-                 */
-                ContinueButton(
-
-                    text = "Continuar",
-
-                    onClick = onContinue
-                )
-
-                // Espacio entre el botón y los enlaces
-                Spacer(
-                    modifier = Modifier.height(14.dp)
-                )
-
-
-                // ============================================
-                // 6. ENLACES DE AYUDA Y SOPORTE
-                // ============================================
-
-                /**
-                 * Muestra las opciones:
-                 *
-                 * - Ver ayuda.
-                 * - Contactar soporte.
-                 *
-                 * Utiliza el componente reutilizable
-                 * SupportLinks de Café Smart.
-                 */
-                SupportLinks(
-
-                    onHelp = onHelp,
-
-                    onSupport = onSupport
-                )
-            }
-        }
 
     ) { paddingValues ->
 
@@ -482,6 +389,44 @@ fun RegisterStep1Screen(
                         fontSize = 12.sp
                     )
                 }
+            }
+
+
+            // =================================================
+            // 15. AYUDA Y SOPORTE (al final del contenido)
+            // =================================================
+
+            // El botón y los enlaces van al final del contenido, no fijos.
+            // Ayuda y soporte siempre son lo último de la pantalla, debajo del botón.
+            item(key = "continue_button") {
+
+                Spacer(
+                    modifier = Modifier.height(24.dp)
+                )
+
+                ContinueButton(
+                    text = "Continuar",
+                    onClick = onContinue
+                )
+            }
+
+            item(key = "support_links") {
+
+                Spacer(
+                    modifier = Modifier.height(14.dp)
+                )
+
+                SupportLinks(
+                    onHelp = onHelp,
+                    onSupport = onSupport
+                )
+
+                // Deja libre la zona de la barra de navegación del sistema
+                Spacer(
+                    modifier = Modifier.windowInsetsBottomHeight(
+                        WindowInsets.navigationBars
+                    )
+                )
             }
         }
     }

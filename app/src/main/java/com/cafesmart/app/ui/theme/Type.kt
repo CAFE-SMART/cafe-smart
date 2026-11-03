@@ -8,9 +8,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.cafesmart.app.R
-import androidx.compose.ui.graphics.Color
-
-
 
 val Inter = FontFamily(
     Font(R.font.inter_regular, FontWeight.Normal),
@@ -153,7 +150,5 @@ val Typography = InterDefaults.copy(
     bodyMedium = AppTypography.bodyMd,
     titleLarge = AppTypography.titleScreen,
     titleMedium = AppTypography.titleCard,
-    labelLarge = AppTypography.buttonPrimary.copy(
-        color = Color.Unspecified
-    )
+    labelLarge = AppTypography.buttonPrimary
 )

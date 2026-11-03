@@ -243,22 +243,9 @@ fun HomeScreen(
     // 5. ESTADO DE LA NAVEGACIÓN INFERIOR
     // ========================================================
 
-    /**
-     * Almacena la sección seleccionada
-     * dentro de la barra de navegación.
-     *
-     * rememberSaveable conserva el valor
-     * durante recomposiciones y recreaciones
-     * compatibles de la pantalla.
-     *
-     * mutableStateOf crea un estado observable.
-     *
-     * Inicialmente se selecciona "inicio".
-     */
-    var seccionSeleccionada by rememberSaveable {
-
-        mutableStateOf("inicio")
-    }
+    // Home es siempre la pestaña "inicio": las demás pestañas abren otras rutas
+    // del NavHost, así que la barra no guarda una selección propia.
+    val seccionSeleccionada = "inicio"
 
 
     // ========================================================
@@ -301,9 +288,6 @@ fun HomeScreen(
 
                 // Acción cuando se pulsa una opción
                 onNavigate = { ruta ->
-
-                    // Actualiza la opción seleccionada
-                    seccionSeleccionada = ruta
 
                     // Informa a la aplicación
                     // sobre la ruta seleccionada

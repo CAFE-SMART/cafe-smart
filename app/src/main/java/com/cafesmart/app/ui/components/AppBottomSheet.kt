@@ -29,9 +29,11 @@ import com.cafesmart.app.ui.theme.SurfaceCard
 @Composable
 fun AppBottomSheet(
     onDismiss: () -> Unit,
+    // true abre la hoja completa; util para formularios y listas largas
+    skipPartiallyExpanded: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = skipPartiallyExpanded)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
