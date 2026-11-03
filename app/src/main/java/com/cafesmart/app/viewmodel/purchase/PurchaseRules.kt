@@ -1,12 +1,12 @@
 package com.cafesmart.app.viewmodel.purchase
 
 import com.cafesmart.app.data.purchase.CafeFormulario
-import com.cafesmart.app.data.purchase.Fecha
+import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.purchase.ModoProductor
 import com.cafesmart.app.data.purchase.NuevoProductor
-import com.cafesmart.app.data.purchase.Productor
-import com.cafesmart.app.data.purchase.Sublote
-import com.cafesmart.app.data.purchase.TipoDocumento
+import com.cafesmart.app.data.model.Productor
+import com.cafesmart.app.data.purchase.CafeValidado
+import com.cafesmart.app.data.model.TipoDocumento
 import java.util.Calendar
 
 // Reglas del registro de compra (validaciones y calculos): son parte de la logica del ViewModel.
@@ -211,7 +211,7 @@ fun errorPrecio(cafe: CafeFormulario): String? {
 }
 
 // Convierte la tarjeta en un sublote, o null si falta algun dato o esta fuera de rango
-fun crearSublote(cafe: CafeFormulario): Sublote? {
+fun crearSublote(cafe: CafeFormulario): CafeValidado? {
     val tipo = cafe.tipoCafe
     val calidad = cafe.calidad
     val peso = pesoKg(cafe)
@@ -220,7 +220,7 @@ fun crearSublote(cafe: CafeFormulario): Sublote? {
     return if (tipo != null && calidad != null && peso != null && precio != null &&
         pesoValido(cafe) && precioValido(cafe)
     ) {
-        Sublote(tipoCafe = tipo, calidad = calidad, pesoKg = peso, precioKg = precio)
+        CafeValidado(tipoCafe = tipo, calidad = calidad, pesoKg = peso, precioKg = precio)
     } else {
         null
     }
@@ -258,7 +258,7 @@ fun mensajeAgregarCafe(cafes: List<CafeFormulario>): String? {
 }
 
 // Valor de un sublote: peso x precio por kg
-fun totalDe(sublote: Sublote): Double = sublote.pesoKg * sublote.precioKg
+fun totalDe(sublote: CafeValidado): Double = sublote.pesoKg * sublote.precioKg
 
 // RF-COM-13: los totales suman lo que ya se ha escrito en todas las tarjetas
 // sumOf suma el valor de cada tarjeta; ?: 0.0 usa cero si el peso aun no se ha escrito.

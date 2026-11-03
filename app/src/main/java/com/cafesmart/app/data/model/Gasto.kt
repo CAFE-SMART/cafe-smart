@@ -1,6 +1,6 @@
 package com.cafesmart.app.data.model
 
-import com.cafesmart.app.data.purchase.Fecha
+import com.cafesmart.app.data.model.Fecha
 
 // GASTO: dinero que cuesta operar (transporte, cargue, comida, secado...)
 // A qué aplica (aplicaA):
@@ -18,7 +18,26 @@ data class Gasto(
     val estadoPago: EstadoPago,
     val aplicaA: AplicaGasto = AplicaGasto.GENERAL,
     val secadoId: Long? = null
-)
+) {
+    init {
+        require(concepto.isNotBlank()) { "concepto no puede estar vacío" }
+        require(monto > 0) { "monto debe ser mayor a 0" }
+        require((secadoId != null) == (aplicaA == AplicaGasto.SECADO)) {
+            "secadoId debe tener valor si y solo si aplicaA == SECADO"
+        }
+    }
+
+    // El reparto entre sublotes solo tiene sentido si el gasto aplica a SUBLOTES: la suma de
+    // montoAsignado debe ser igual al monto. Para GENERAL y SECADO no debe haber reparto.
+    fun repartoEsValido(reparto: List<GastoSublote>): Boolean =
+        when (aplicaA) {
+            AplicaGasto.SUBLOTES ->
+                reparto.isNotEmpty() &&
+                    reparto.all { it.gastoId == id } &&
+                    reparto.sumOf { it.montoAsignado } == monto
+            else -> reparto.isEmpty()
+        }
+}
 
 // Tabla intermedia Gasto <-> Sublote (relación muchos a muchos: un gasto puede repartirse entre varios
 // sublotes y un sublote puede tener varios gastos). Llave primaria: (gastoId, subloteId).
@@ -30,4 +49,8 @@ data class GastoSublote(
     val gastoId: Long,
     val subloteId: Long,
     val montoAsignado: Long
-)
+) {
+    init {
+        require(montoAsignado > 0) { "montoAsignado debe ser mayor a 0" }
+    }
+}

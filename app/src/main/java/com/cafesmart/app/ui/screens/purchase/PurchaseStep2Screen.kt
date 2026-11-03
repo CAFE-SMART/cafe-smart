@@ -38,7 +38,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.cafesmart.app.data.purchase.CafeFormulario
-import com.cafesmart.app.data.purchase.Calidad
+import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.purchase.tiposCafe
 import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.AppTextField

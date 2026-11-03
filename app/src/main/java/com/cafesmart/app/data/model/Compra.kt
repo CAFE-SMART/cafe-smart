@@ -1,6 +1,6 @@
 package com.cafesmart.app.data.model
 
-import com.cafesmart.app.data.purchase.Fecha
+import com.cafesmart.app.data.model.Fecha
 
 // COMPRA: Transacción para adquisicion de café (identificador único).
 // Una compra puede traer varios cafés ("Café 1", "Café 2"... en el paso 2) y cada uno se convierte en un
@@ -14,7 +14,11 @@ data class Compra(
     val productorId: Long? = null,
     val fecha: Fecha,
     val totalPagado: Long
-)
+) {
+    init {
+        require(totalPagado >= 0) { "totalPagado no puede ser negativo" }
+    }
+}
 
 // Compra con su productor y sublotes: lo que muestra el historial de compras (RF-09).
 data class CompraConSublotes(

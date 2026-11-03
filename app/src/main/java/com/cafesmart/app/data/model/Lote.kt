@@ -1,6 +1,6 @@
 package com.cafesmart.app.data.model
 
-import com.cafesmart.app.data.purchase.Calidad
+import com.cafesmart.app.data.model.Calidad
 
 // LOTE: agrupación lógica de sublotes por tipo y calidad (ej. "café seco bueno", "café verde regular").
 // La unidad real es el Sublote. Por eso aquí NO se guardan pesos ni totales: se calculan sumando los sublotes (ver LoteConSublotes) y así nunca quedan desactualizados.

@@ -1,6 +1,6 @@
 package com.cafesmart.app.data.model
 
-import com.cafesmart.app.data.purchase.TipoDocumento
+import com.cafesmart.app.data.model.TipoDocumento
 
 // PRODUCTOR: quien vende el café a la cooperativa o compraventa.
 //

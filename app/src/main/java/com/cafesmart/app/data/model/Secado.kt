@@ -1,7 +1,7 @@
 package com.cafesmart.app.data.model
 
-import com.cafesmart.app.data.purchase.Fecha
-import kotlin.math.roundToLong
+import com.cafesmart.app.data.model.Fecha
+import com.cafesmart.app.viewmodel.drying.calcularMermaPorcentaje
 
 // SECADO: proceso que convierte café verde en café seco.
 // Aunque no aparecía explicitamente en la tarea de Trello, decidí colocarla para explicar de dónde sale el café seco y
@@ -16,8 +16,19 @@ data class Secado(
     val fechaInicio: Fecha,
     val fechaFin: Fecha? = null,             // null mientras está EN_CURSO
     val estado: EstadoSecado = EstadoSecado.EN_CURSO,
-    val factorRendimiento: Int? = null       // entre 80 y 120 (Paso 5)
-)
+    val factorRendimiento: Int? = null       // entre 70 y 140 (Paso 5)
+) {
+    init {
+        require(estado != EstadoSecado.EN_CURSO || fechaFin == null) {
+            "un secado EN_CURSO no puede tener fechaFin"
+        }
+        factorRendimiento?.let {
+            require(it in FACTOR_RENDIMIENTO_MIN..FACTOR_RENDIMIENTO_MAX) {
+                "factor de rendimiento debe estar entre $FACTOR_RENDIMIENTO_MIN y $FACTOR_RENDIMIENTO_MAX"
+            }
+        }
+    }
+}
 
 // Tabla intermedia Secado <-> Sublote: cuántos kg de cada sublote verde se enviaron a secar.
 // Llave primaria: (secadoId, subloteId).
@@ -25,7 +36,11 @@ data class SecadoSublote(
     val secadoId: Long,
     val subloteId: Long,
     val pesoEnviadoKg: Double
-)
+) {
+    init {
+        require(pesoEnviadoKg > 0) { "pesoEnviadoKg debe ser mayor a 0" }
+    }
+}
 
 // Un sublote enviado a secar, junto con el sublote (para conocer su costo por kg).
 data class EnvioSecado(
@@ -44,14 +59,16 @@ data class SecadoConDetalle(
     val pesoSecoKg: Double get() = resultantes.sumOf { it.pesoInicialKg }
     val mermaKg: Double get() = pesoEnviadoKg - pesoSecoKg
 
+    // Usa la misma fórmula que el resto de la app (calcularMermaPorcentaje). Sin kg enviados no hay
+    // merma que calcular y devuelve 0.0 (calcularMermaPorcentaje exige kgInicial > 0).
     val mermaPorcentaje: Double
-        get() = if (pesoEnviadoKg > 0) mermaKg / pesoEnviadoKg * 100 else 0.0
+        get() = if (pesoEnviadoKg > 0) calcularMermaPorcentaje(pesoEnviadoKg, pesoSecoKg) else 0.0
 
     // Merma en pesos: kg perdidos x costo promedio por kg del café que se envió (promedio ponderado por kg).
     val valorMerma: Long
         get() {
             if (pesoEnviadoKg <= 0) return 0
             val costoPromedioKg = enviados.sumOf { it.envio.pesoEnviadoKg * it.sublote.costoKg } / pesoEnviadoKg
-            return (mermaKg * costoPromedioKg).roundToLong()
+            return (mermaKg * costoPromedioKg).aPesos()
         }
 }

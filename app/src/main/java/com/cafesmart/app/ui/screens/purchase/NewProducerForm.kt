@@ -15,7 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
-import com.cafesmart.app.data.purchase.TipoDocumento
+import com.cafesmart.app.data.model.TipoDocumento
 import com.cafesmart.app.ui.components.AppTextField
 import com.cafesmart.app.ui.components.ChoiceButton
 import com.cafesmart.app.ui.components.ContinueButton

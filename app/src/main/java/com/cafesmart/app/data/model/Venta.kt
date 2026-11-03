@@ -1,8 +1,6 @@
 package com.cafesmart.app.data.model
 
-import com.cafesmart.app.data.purchase.Fecha
-import kotlin.math.roundToLong
-
+import com.cafesmart.app.data.model.Fecha
 // VENTA: una operación de venta
 // Es importante resaltar que, una sola venta puede incluir varios sublotes.
 // Cada sublote incluye cantidad y su precio por kg ("Precio por kg · Buena"), y la venta puede ser total o parcial
@@ -15,7 +13,11 @@ data class Venta(
     val clienteId: Long? = null,
     val fecha: Fecha,
     val totalRecibido: Long
-)
+) {
+    init {
+        require(totalRecibido >= 0) { "totalRecibido no puede ser negativo" }
+    }
+}
 
 // Detalle de la venta: qué sublote se vendió, cuántos kg y a qué precio. Llave primaria: (ventaId, subloteId).
 // Al confirmar la venta, pesoKg se descuenta de Sublote.pesoDisponibleKg y no puede superarse.
@@ -25,7 +27,12 @@ data class VentaSublote(
     val pesoKg: Double,
     val precioKg: Long
 ) {
-    val subtotal: Long get() = (pesoKg * precioKg).roundToLong()
+    init {
+        require(pesoKg > 0) { "pesoKg debe ser mayor a 0" }
+        require(precioKg > 0) { "precioKg debe ser mayor a 0" }
+    }
+
+    val subtotal: Long get() = (pesoKg * precioKg).aPesos()
 }
 
 // Venta con su cliente y detalle: lo que muestra el historial de ventas.

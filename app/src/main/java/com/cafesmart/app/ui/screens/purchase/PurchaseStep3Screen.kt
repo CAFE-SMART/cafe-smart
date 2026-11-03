@@ -32,7 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.cafesmart.app.data.purchase.CafeFormulario
-import com.cafesmart.app.data.purchase.Calidad
+import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.purchase.productorSinRegistrar
 import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.ConfirmSheet
