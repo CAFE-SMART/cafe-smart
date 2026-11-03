@@ -15,3 +15,11 @@
 local.properties
 app/google-services.json
 .kotlin/
+
+# Variantes de archivos de entorno
+.env
+.env.*
+
+# Credenciales privadas de Firebase Admin
+**/serviceAccountKey.json
+**/*-firebase-adminsdk-*.json

@@ -1,11 +1,15 @@
 package com.cafesmart.app.navigation
 
+import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -13,19 +17,79 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.cafesmart.app.ui.auth.AuthAuxDialog
+import com.cafesmart.app.ui.auth.AuthDialogs
+import com.cafesmart.app.ui.auth.AuthDialogsState
+import com.cafesmart.app.ui.auth.AuthHelpContext
+import com.cafesmart.app.ui.auth.AuthPage
+import com.cafesmart.app.ui.auth.AuthViewModel
+import com.cafesmart.app.ui.auth.ConfirmDestructiveDialog
+import com.cafesmart.app.ui.auth.LoginScreen
+import com.cafesmart.app.ui.auth.MODO_DEMOSTRACION
+import com.cafesmart.app.ui.auth.RegisterStep1Screen
+import com.cafesmart.app.ui.auth.RegisterStep2Screen
+import com.cafesmart.app.ui.auth.RegistrationData
+import com.cafesmart.app.ui.auth.RegistrationFailure
+import com.cafesmart.app.ui.auth.RegistrationSuccessScreen
+import com.cafesmart.app.ui.auth.SIMULAR_ERROR_REGISTRO
+import com.cafesmart.app.ui.home.HomeScreen
 import com.cafesmart.app.ui.screens.PlaceholderAction
 import com.cafesmart.app.ui.screens.PlaceholderScreen
+import com.cafesmart.app.ui.screens.SplashScreen
 import com.cafesmart.app.ui.screens.purchase.PurchaseFlow
 import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
-import kotlinx.coroutines.delay
-
-private const val SPLASH_DELAY_MS = 1500L
 
 @Composable
 fun AppNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController()
 ) {
+    val context = LocalContext.current
+
+    // Un solo AuthViewModel compartido por login y registro (paso 1 y 2).
+    val authViewModel: AuthViewModel = viewModel()
+    val dialogs = remember { AuthDialogsState() }
+
+    var registrationSuccess by remember { mutableStateOf<RegistrationData?>(null) }
+    var pendingRegistration by remember { mutableStateOf<RegistrationData?>(null) }
+    var simulateErrorNext by remember { mutableStateOf(SIMULAR_ERROR_REGISTRO) }
+
+    // Procesa el registro en modo demostración (sin backend).
+    lateinit var processRegistration: (RegistrationData) -> Unit
+    processRegistration = { data ->
+        pendingRegistration = data
+        when {
+            !MODO_DEMOSTRACION -> dialogs.registrationError = RegistrationFailure(
+                title = "Registro no disponible",
+                message = "El servicio de creación de cuentas todavía no está integrado. " +
+                        "No se ha creado ningún usuario."
+            )
+
+            simulateErrorNext -> {
+                simulateErrorNext = false
+                dialogs.registrationError = RegistrationFailure(
+                    title = "¡Ups! Hubo un problema de conexión",
+                    message = "No pudimos completar el registro de prueba. Inténtalo nuevamente."
+                )
+            }
+
+            else -> {
+                dialogs.registrationError = null
+                registrationSuccess = data
+                navController.navigate(Routes.REGISTER_SUCCESS) { launchSingleTop = true }
+            }
+        }
+    }
+
+    // Cierra sesión: limpia el estado de auth y deja solo LOGIN en la pila.
+    val cerrarSesion: () -> Unit = {
+        authViewModel.reset()
+        registrationSuccess = null
+        pendingRegistration = null
+        dialogs.clear()
+        navController.logout()
+    }
+
     NavHost(
         navController = navController,
         startDestination = Routes.SPLASH,
@@ -33,64 +97,158 @@ fun AppNavHost(
     ) {
         // ── Cuenta ──────────────────────────────────────────
         composable(Routes.SPLASH) {
-            // Tras un momento pasa al login y saca el splash de la pila.
-            LaunchedEffect(Unit) {
-                delay(SPLASH_DELAY_MS)
-                navController.navigate(Routes.LOGIN) {
-                    popUpTo(Routes.SPLASH) { inclusive = true }
+            // Al terminar el splash pasa al login y lo saca de la pila.
+            SplashScreen(
+                onSplashFinished = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
                 }
-            }
-            PlaceholderScreen(title = "Café Smart", route = Routes.SPLASH)
+            )
         }
         composable(Routes.LOGIN) {
-            PlaceholderScreen(
-                title = "Iniciar sesión",
-                route = Routes.LOGIN,
-                actions = listOf(
-                    PlaceholderAction("Iniciar sesión") {
-                        // Al entrar, el login sale de la pila: "atrás" no vuelve a él.
+            var showExitConfirmation by remember { mutableStateOf(false) }
+
+            LoginScreen(
+                state = authViewModel.uiState,
+                onChange = authViewModel::update,
+                onSubmit = {
+                    authViewModel.submitLogin { _ ->
+                        if (MODO_DEMOSTRACION) {
+                            // Limpia la contraseña temporal; al entrar, el login sale de la pila.
+                            authViewModel.reset()
+                            navController.navigate(Routes.HOME) {
+                                popUpTo(Routes.LOGIN) { inclusive = true }
+                            }
+                        } else {
+                            dialogs.info = "El inicio de sesión real está pendiente de integración."
+                        }
+                    }
+                },
+                onRegister = {
+                    authViewModel.goToRegister()
+                    navController.navigate(Routes.REGISTER_STEP1) { launchSingleTop = true }
+                },
+                onGoogle = {
+                    dialogs.info = "El inicio de sesión con Google está pendiente de integración."
+                },
+                onForgotPassword = { dialogs.active = AuthAuxDialog.RECOVERY },
+                onHelp = { dialogs.help = AuthHelpContext.LOGIN },
+                onSupport = { dialogs.active = AuthAuxDialog.SUPPORT },
+                onExit = { showExitConfirmation = true }
+            )
+
+            if (showExitConfirmation) {
+                ConfirmDestructiveDialog(
+                    title = "Salir de Café Smart",
+                    message = "¿Deseas cerrar la aplicación?",
+                    onConfirm = {
+                        showExitConfirmation = false
+                        (context as? Activity)?.finish()
+                    },
+                    onDismiss = { showExitConfirmation = false }
+                )
+            }
+        }
+        composable(Routes.REGISTER_STEP1) {
+            // "Atrás" del sistema también retrocede el estado del ViewModel.
+            BackHandler {
+                authViewModel.back()
+                navController.popBackStack()
+            }
+            RegisterStep1Screen(
+                state = authViewModel.uiState,
+                onChange = authViewModel::update,
+                onBack = {
+                    authViewModel.back()
+                    navController.popBackStack()
+                },
+                onContinue = {
+                    // nextStep valida; solo avanza si el formulario es correcto.
+                    authViewModel.nextStep()
+                    if (authViewModel.uiState.page == AuthPage.REGISTER_STEP_2) {
+                        navController.navigate(Routes.REGISTER_STEP2) { launchSingleTop = true }
+                    }
+                },
+                onHelp = { dialogs.help = AuthHelpContext.REGISTER_STEP_1 },
+                onSupport = { dialogs.active = AuthAuxDialog.SUPPORT }
+            )
+        }
+        composable(Routes.REGISTER_STEP2) {
+            BackHandler {
+                authViewModel.back()
+                navController.popBackStack()
+            }
+            RegisterStep2Screen(
+                state = authViewModel.uiState,
+                onChange = authViewModel::update,
+                onBack = {
+                    authViewModel.back()
+                    navController.popBackStack()
+                },
+                onCreateAccount = { authViewModel.submitRegistration(processRegistration) },
+                onGoogle = {
+                    dialogs.info = "El inicio de sesión con Google está pendiente de integración."
+                },
+                onHelp = { dialogs.help = AuthHelpContext.REGISTER_STEP_2 },
+                onSupport = { dialogs.active = AuthAuxDialog.SUPPORT }
+            )
+        }
+        composable(Routes.REGISTER_SUCCESS) {
+            registrationSuccess?.let { data ->
+                RegistrationSuccessScreen(
+                    registration = data,
+                    isDemo = MODO_DEMOSTRACION,
+                    onGoHome = {
+                        registrationSuccess = null
+                        pendingRegistration = null
+                        authViewModel.reset()
                         navController.navigate(Routes.HOME) {
                             popUpTo(Routes.LOGIN) { inclusive = true }
                         }
                     },
-                    PlaceholderAction("Crear cuenta") {
-                        navController.navigate(Routes.REGISTER_STEP1) { launchSingleTop = true }
+                    // Vuelve al paso 2 conservando los campos.
+                    onBackToRegister = {
+                        registrationSuccess = null
+                        navController.popBackStack()
                     }
                 )
-            )
-        }
-        composable(Routes.REGISTER_STEP1) {
-            NavPlaceholder(navController, "Crear cuenta · Paso 1", Routes.REGISTER_STEP1, true, "Continuar" to Routes.REGISTER_STEP2)
-        }
-        composable(Routes.REGISTER_STEP2) {
-            PlaceholderScreen(
-                title = "Crear cuenta · Paso 2",
-                route = Routes.REGISTER_STEP2,
-                onBack = { navController.popBackStack() },
-                actions = listOf(
-                    PlaceholderAction("Crear cuenta") {
-                        navController.navigate(Routes.HOME) {
-                            popUpTo(Routes.LOGIN) { inclusive = true }
-                        }
-                    }
-                )
-            )
+            }
         }
 
         // ── Inicio ──────────────────────────────────────────
         composable(Routes.HOME) {
-            PlaceholderScreen(
-                title = "Inicio",
-                route = Routes.HOME,
-                actions = listOf(
-                    PlaceholderAction("Inventario") { navController.navigateTo(Routes.INVENTORY) },
-                    PlaceholderAction("Registrar compra") { navController.navigateTo(Routes.PURCHASE_STEP1) },
-                    PlaceholderAction("Registrar venta") { navController.navigateTo(Routes.SALE_STEP1) },
-                    PlaceholderAction("Registrar gasto") { navController.navigateTo(Routes.EXPENSE_NEW) },
-                    PlaceholderAction("Ajustes") { navController.navigateTo(Routes.SETTINGS) },
-                    PlaceholderAction("Salir") { navController.logout() }
-                )
+            var showLogoutConfirmation by remember { mutableStateOf(false) }
+
+            HomeScreen(
+                onSalir = { showLogoutConfirmation = true },
+                onRegistrarGasto = { navController.navigateTo(Routes.EXPENSE_NEW) },
+                onVerSublotes = { navController.navigateTo(Routes.INVENTORY_LIST) },
+                // La barra inferior manda el nombre de la pestaña.
+                onNavegar = { destino ->
+                    when (destino) {
+                        "compras" -> navController.navigateTo(Routes.PURCHASE_STEP1)
+                        "inventario" -> navController.navigateTo(Routes.INVENTORY)
+                        "ventas" -> navController.navigateTo(Routes.SALE_STEP1)
+                        "ajustes" -> navController.navigateTo(Routes.SETTINGS)
+                    }
+                },
+                onActualizar = { /* TODO ciclo 2 */ },
+                onAjustarBodega = { /* TODO ciclo 2 */ },
+                onAbrirSublote = { /* TODO ciclo 2 */ }
             )
+
+            if (showLogoutConfirmation) {
+                ConfirmDestructiveDialog(
+                    title = "Cerrar sesión",
+                    message = "¿Deseas salir de tu cuenta y volver al inicio de sesión?",
+                    onConfirm = {
+                        showLogoutConfirmation = false
+                        cerrarSesion()
+                    },
+                    onDismiss = { showLogoutConfirmation = false }
+                )
+            }
         }
 
         // ── Inventario ──────────────────────────────────────
@@ -270,11 +428,17 @@ fun AppNavHost(
                 actions = listOf(
                     PlaceholderAction("Proceso de secado") { navController.navigateTo(Routes.DRYING_STEP1) },
                     PlaceholderAction("Gastos operativos") { navController.navigateTo(Routes.EXPENSES) },
-                    PlaceholderAction("Cerrar sesión") { navController.logout() }
+                    PlaceholderAction("Cerrar sesión") { cerrarSesion() }
                 )
             )
         }
     }
+
+    // Diálogos de ayuda, recuperación, soporte, avisos y error de registro.
+    AuthDialogs(
+        state = dialogs,
+        onRetryRegistration = { pendingRegistration?.let(processRegistration) }
+    )
 }
 
 /** Navega a una ruta sin duplicarla en la cima de la pila. */

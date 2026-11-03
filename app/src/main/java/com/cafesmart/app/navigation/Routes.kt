@@ -11,6 +11,7 @@ object Routes {
     const val LOGIN = "login"                      // Cuenta · Iniciar sesión
     const val REGISTER_STEP1 = "register_step1"    // Cuenta · Crear cuenta · Paso 1
     const val REGISTER_STEP2 = "register_step2"    // Cuenta · Crear cuenta · Paso 2
+    const val REGISTER_SUCCESS = "register_success" // Cuenta · Registro exitoso
 
     // ── Inicio ──────────────────────────────────────────────
     const val HOME = "home"                        // Inicio · Panel principal
