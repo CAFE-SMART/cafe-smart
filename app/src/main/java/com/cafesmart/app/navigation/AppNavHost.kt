@@ -3,7 +3,10 @@ package com.cafesmart.app.navigation
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -12,6 +15,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.cafesmart.app.ui.screens.PlaceholderAction
 import com.cafesmart.app.ui.screens.PlaceholderScreen
+import com.cafesmart.app.ui.screens.purchase.PurchaseFlow
+import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
 import kotlinx.coroutines.delay
 
 private const val SPLASH_DELAY_MS = 1500L
@@ -160,27 +165,26 @@ fun AppNavHost(
         }
 
         // ── Compras ─────────────────────────────────────────
-        composable(Routes.PURCHASE_STEP1) { NavPlaceholder(navController, "Compra · Paso 1 · Productor", Routes.PURCHASE_STEP1, true, "Siguiente" to Routes.PURCHASE_STEP2) }
-        composable(Routes.PURCHASE_STEP2) { NavPlaceholder(navController, "Compra · Paso 2 · Café", Routes.PURCHASE_STEP2, true, "Siguiente" to Routes.PURCHASE_STEP3) }
-        composable(Routes.PURCHASE_STEP3) { NavPlaceholder(navController, "Compra · Paso 3 · Confirmar", Routes.PURCHASE_STEP3, true, "Registrar compra" to Routes.PURCHASE_DONE) }
-        composable(Routes.PURCHASE_DONE) {
-            // "Atrás" del sistema lleva al inicio, no al paso 3 del formulario.
-            BackHandler { navController.popBackStack(Routes.HOME, inclusive = false) }
-            PlaceholderScreen(
-                title = "Compra registrada",
-                route = Routes.PURCHASE_DONE,
-                actions = listOf(
-                    PlaceholderAction("Registrar nueva compra") {
-                        navController.navigate(Routes.PURCHASE_STEP1) {
-                            popUpTo(Routes.HOME)
-                        }
-                    },
-                    PlaceholderAction("Ir a inventario") {
-                        navController.navigate(Routes.INVENTORY) {
-                            popUpTo(Routes.HOME)
-                        }
+        // Los pasos 1-3 y la pantalla final los resuelve PurchaseFlow con el estado del ViewModel.
+        composable(Routes.PURCHASE_STEP1) {
+            // viewModel() ligado a esta entrada del NavHost: se limpia al salir de la ruta.
+            val purchaseViewModel: PurchaseViewModel = viewModel()
+            val estado by purchaseViewModel.uiState.collectAsState()
+
+            // "Atrás" del sistema en la pantalla final lleva al inicio, no al paso 3.
+            BackHandler(enabled = estado.compraRegistrada) {
+                purchaseViewModel.reiniciarCompra()
+                navController.popBackStack(Routes.HOME, inclusive = false)
+            }
+
+            PurchaseFlow(
+                viewModel = purchaseViewModel,
+                onSalir = { navController.popBackStack() },
+                onIrAInventario = {
+                    navController.navigate(Routes.INVENTORY) {
+                        popUpTo(Routes.HOME)
                     }
-                )
+                }
             )
         }
 
