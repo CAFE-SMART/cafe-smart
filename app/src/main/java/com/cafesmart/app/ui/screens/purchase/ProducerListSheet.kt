@@ -22,8 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.cafesmart.app.data.purchase.Productor
-import com.cafesmart.app.data.purchase.TipoDocumento
+import com.cafesmart.app.data.model.Productor
+import com.cafesmart.app.data.model.TipoDocumento
 import com.cafesmart.app.ui.components.AppBottomSheet
 import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.RadioCheck

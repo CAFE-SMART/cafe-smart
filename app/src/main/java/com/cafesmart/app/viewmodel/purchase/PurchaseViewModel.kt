@@ -2,13 +2,13 @@ package com.cafesmart.app.viewmodel.purchase
 
 import androidx.lifecycle.ViewModel
 import com.cafesmart.app.data.purchase.CafeFormulario
-import com.cafesmart.app.data.purchase.Calidad
-import com.cafesmart.app.data.purchase.Fecha
+import com.cafesmart.app.data.model.Calidad
+import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.purchase.ModoProductor
 import com.cafesmart.app.data.purchase.NuevoProductor
-import com.cafesmart.app.data.purchase.Productor
-import com.cafesmart.app.data.purchase.Sublote
-import com.cafesmart.app.data.purchase.TipoDocumento
+import com.cafesmart.app.data.model.Productor
+import com.cafesmart.app.data.purchase.CafeValidado
+import com.cafesmart.app.data.model.TipoDocumento
 import com.cafesmart.app.data.purchase.productorSinRegistrar
 import com.cafesmart.app.data.purchase.productoresDeEjemplo
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -218,7 +218,7 @@ data class PurchaseUiState(
         get() = mensajeAgregarCafe(cafes)
 
     // mapNotNull convierte las tarjetas en sublotes y descarta las incompletas (null).
-    val sublotes: List<Sublote>
+    val sublotes: List<CafeValidado>
         get() = cafes.mapNotNull { crearSublote(it) }
 
     // ---------- Paso 3 y compra registrada ----------

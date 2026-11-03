@@ -1,9 +1,9 @@
 package com.cafesmart.app.purchase
 
-import com.cafesmart.app.data.purchase.Calidad
+import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.purchase.ModoProductor
 import com.cafesmart.app.data.purchase.NuevoProductor
-import com.cafesmart.app.data.purchase.TipoDocumento
+import com.cafesmart.app.data.model.TipoDocumento
 import com.cafesmart.app.data.purchase.productorSinRegistrar
 import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
 import org.junit.Assert.assertEquals

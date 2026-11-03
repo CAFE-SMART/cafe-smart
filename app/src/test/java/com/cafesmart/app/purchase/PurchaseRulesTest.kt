@@ -1,11 +1,11 @@
 package com.cafesmart.app.purchase
 
 import com.cafesmart.app.data.purchase.CafeFormulario
-import com.cafesmart.app.data.purchase.Calidad
-import com.cafesmart.app.data.purchase.Fecha
+import com.cafesmart.app.data.model.Calidad
+import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.purchase.ModoProductor
-import com.cafesmart.app.data.purchase.Productor
-import com.cafesmart.app.data.purchase.TipoDocumento
+import com.cafesmart.app.data.model.Productor
+import com.cafesmart.app.data.model.TipoDocumento
 import com.cafesmart.app.viewmodel.purchase.cafesCompletos
 import com.cafesmart.app.viewmodel.purchase.crearSublote
 import com.cafesmart.app.viewmodel.purchase.errorPeso
@@ -75,7 +75,7 @@ class PurchaseRulesTest {
 
     @Test
     fun listaDeProductores_buscaPorNombreCedulaONit() {
-        val conNit = productores + Productor("Café Los Alpes", "9001234567", TipoDocumento.NIT)
+        val conNit = productores + Productor(nombre = "Café Los Alpes", documento = "9001234567", tipoDocumento = TipoDocumento.NIT)
         assertEquals(5, productoresDeLaLista(conNit, "").size)
         // El mas reciente queda de primero
         assertEquals("Café Los Alpes", productoresDeLaLista(conNit, "")[0].nombre)

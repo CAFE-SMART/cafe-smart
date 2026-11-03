@@ -1,6 +1,6 @@
 package com.cafesmart.app.viewmodel.purchase
 
-import com.cafesmart.app.data.purchase.Fecha
+import com.cafesmart.app.data.model.Fecha
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
