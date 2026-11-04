@@ -37,7 +37,9 @@ import com.cafesmart.app.ui.screens.PlaceholderAction
 import com.cafesmart.app.ui.screens.PlaceholderScreen
 import com.cafesmart.app.ui.screens.SplashScreen
 import com.cafesmart.app.ui.screens.purchase.PurchaseFlow
+import com.cafesmart.app.ui.settings.SettingsScreen
 import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
+import com.cafesmart.app.viewmodel.settings.SettingsViewModel
 
 @Composable
 fun AppNavHost(
@@ -421,15 +423,20 @@ fun AppNavHost(
 
         // ── Ajustes ─────────────────────────────────────────
         composable(Routes.SETTINGS) {
-            PlaceholderScreen(
-                title = "Ajustes",
-                route = Routes.SETTINGS,
+            val settingsViewModel: SettingsViewModel = viewModel()
+            val settingsState by settingsViewModel.uiState.collectAsState()
+
+            SettingsScreen(
+                perfil = settingsState.perfil,
+                mostrarConfirmacion = settingsState.mostrarConfirmacion,
                 onBack = { navController.popBackStack() },
-                actions = listOf(
-                    PlaceholderAction("Proceso de secado") { navController.navigateTo(Routes.DRYING_STEP1) },
-                    PlaceholderAction("Gastos operativos") { navController.navigateTo(Routes.EXPENSES) },
-                    PlaceholderAction("Cerrar sesión") { cerrarSesion() }
-                )
+                onPedirCerrarSesion = settingsViewModel::pedirCerrarSesion,
+                onCancelarCierre = settingsViewModel::cancelarCierre,
+                onConfirmarCierre = {
+                    // Cierra la sesión de Firebase y luego vuelve al login borrando la pila.
+                    settingsViewModel.confirmarCierre()
+                    cerrarSesion()
+                }
             )
         }
     }

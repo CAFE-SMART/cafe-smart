@@ -27,3 +27,32 @@ jobs:
 
       - name: Tests y build
         run: ./gradlew testDebugUnitTest assembleDebug
+
+      - name: Resumen de pruebas JUnit
+        if: always()
+        run: |
+          {
+            echo "## Resultado de las pruebas JUnit"
+            echo
+            echo "| Archivo de prueba | Pruebas | Fallos | Errores |"
+            echo "|---|---|---|---|"
+            for f in app/build/test-results/testDebugUnitTest/*.xml; do
+              [ -e "$f" ] || continue
+              nombre=$(basename "$f" .xml | sed 's/^TEST-//')
+              tests=$(grep -o 'tests="[0-9]*"' "$f" | head -1 | grep -o '[0-9]*')
+              fallos=$(grep -o 'failures="[0-9]*"' "$f" | head -1 | grep -o '[0-9]*')
+              errores=$(grep -o 'errors="[0-9]*"' "$f" | head -1 | grep -o '[0-9]*')
+              echo "| $nombre | $tests | $fallos | $errores |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar reporte de pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-pruebas-junit
+          path: |
+            app/build/reports/tests/testDebugUnitTest/
+            app/build/test-results/testDebugUnitTest/
+          if-no-files-found: warn
+          retention-days: 14
