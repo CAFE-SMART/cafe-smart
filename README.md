@@ -37,7 +37,7 @@ reemplazan por la pantalla real dentro de su `composable(...)`.
 **Orden de pantallas (igual que el prototipo del Figma):**
 - Inventario: `inventory` (resumen) → `inventory_type` (calidades de un tipo, p. ej. Verde) → `inventory_list` (sublotes del grupo) → `inventory_detail/{batchId}` → `inventory_batch_expenses/{batchId}` o `sale_batch_step1/{batchId}` → `sale_batch_step2/{batchId}` → `sale_done`.
 - Secado: `drying_step1` → `2` → `3` → `4` → `5` → `drying_step6` (sin gastos) **o** `5` → `drying_step7` (gastos) → `drying_step6`. El paso 6 siempre es el final.
-- Se entra a Secado desde `inventory_type` (botón "Iniciar secado") o desde `settings` ("Proceso de secado"); a la lista de gastos (`expenses`) desde `settings`; a "Registrar gasto" (`expense_new`) desde `home`.
+- Se entra a Secado desde `inventory_type` (botón "Iniciar secado"); a "Registrar gasto" (`expense_new`) desde `home`. `settings` ya es la pantalla real (perfil y "Cerrar sesión"): sus filas "Proceso de secado" y "Gastos operativos" del Figma aún no existen, así que la lista de gastos (`expenses`) no tiene entrada por ahora.
 - `home` y `settings` tienen "Salir" / "Cerrar sesión", que vuelve a `login` y borra la pila.
 
 | Módulo | Ruta | Pantalla |
@@ -127,9 +127,11 @@ En cada pull request el workflow `CI` corre las pruebas y guarda el reporte:
 | `viewmodel/inventory/WarehouseCapacityTest.kt` | Ocupación de la bodega y sus estados (normal, advertencia, crítica, sin capacidad) | 36 |
 | `viewmodel/finance/ProfitCalculatorTest.kt` | Utilidad de una venta (ingresos − costo de compra − gastos) | 25 |
 | `viewmodel/finance/ExpenseRulesTest.kt` | Validaciones de un gasto (concepto, tipo, valor, fecha, descripción) | 45 |
+| `viewmodel/settings/ProfileRulesTest.kt` | Perfil de Ajustes (nombre, respaldo con el correo y tipo de negocio) | 15 |
+| `viewmodel/settings/SettingsViewModelTest.kt` | Estado de Ajustes y cierre de sesión (confirmar y cancelar) | 9 |
 | `ExampleUnitTest.kt` | Prueba de ejemplo de Android Studio | 1 |
 
-Total: 201 pruebas. Al agregar un archivo de prueba, añade su fila a esta tabla.
+Total: 225 pruebas. Al agregar un archivo de prueba, añade su fila a esta tabla.
 
 ## Flujo de trabajo en Git (trunk-based)
 - Un solo tronco: `main`, siempre compilable.
