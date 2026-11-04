@@ -90,6 +90,47 @@ Si agregas una pantalla, añade su constante en `Routes.kt`, su `composable` en 
 ## Configuración de Firebase
 `google-services.json` no está en el repositorio. Las credenciales están en el Google Doc del equipo (pestaña "Móvil — Credenciales y Firebase"); descárgalo de ahí y colócalo en `app/`. Como referencia de su estructura está `app/google-services.json.example` (quítale el `.example` al nombre).
 
+## Pruebas
+El proyecto usa **JUnit 4** para las pruebas unitarias. Están en `app/src/test/java/com/cafesmart/app/` y no necesitan emulador ni celular.
+
+### Cómo correrlas en Android Studio
+1. Abre la carpeta `app/src/test/java/` en el panel *Project*.
+2. Clic derecho sobre una clase de prueba (por ejemplo `WarehouseCapacityTest`) → **Run 'WarehouseCapacityTest'**.
+3. Para correr todas: clic derecho sobre la carpeta `app/src/test/java` → **Run 'Tests in ...'**.
+4. El resultado aparece abajo, en la pestaña *Run* (verde = pasa, rojo = falla).
+
+### Cómo correrlas en la terminal
+Desde la raíz del proyecto (necesitas el `google-services.json`; ver *Configuración de Firebase*):
+```
+./gradlew testDebugUnitTest
+```
+Para una sola clase:
+```
+./gradlew :app:testDebugUnitTest --tests "*WarehouseCapacityTest"
+```
+El reporte en HTML queda en `app/build/reports/tests/testDebugUnitTest/index.html` (ábrelo en el navegador) y los resultados en XML en `app/build/test-results/testDebugUnitTest/`.
+
+### Reporte en GitHub Actions
+En cada pull request el workflow `CI` corre las pruebas y guarda el reporte:
+- En la pestaña *Summary* de la ejecución hay una tabla con las pruebas, fallos y errores de cada archivo.
+- Al final de esa página, en *Artifacts*, se descarga `reporte-pruebas-junit` (el HTML y los XML; se conserva 14 días).
+
+### Archivos de prueba
+| Archivo | Qué prueba | Pruebas |
+|---|---|---|
+| `data/model/ModeloDatosTest.kt` | Cálculos del modelo de datos (merma del secado, valor en bodega, costos) | 12 |
+| `data/model/ReglasModeloTest.kt` | Validaciones de las entidades (sublotes, gastos, repartos) | 15 |
+| `purchase/PurchaseRulesTest.kt` | Reglas del registro de compra (productores, pesos, precios) | 21 |
+| `purchase/PurchaseViewModelTest.kt` | Estado y pasos del flujo de compra | 24 |
+| `ui/auth/LoginValidationTest.kt` | Validaciones de inicio de sesión (correo y contraseña) | 15 |
+| `viewmodel/drying/MermaCalculatorTest.kt` | Porcentaje de merma del secado | 7 |
+| `viewmodel/inventory/WarehouseCapacityTest.kt` | Ocupación de la bodega y sus estados (normal, advertencia, crítica, sin capacidad) | 36 |
+| `viewmodel/finance/ProfitCalculatorTest.kt` | Utilidad de una venta (ingresos − costo de compra − gastos) | 25 |
+| `viewmodel/finance/ExpenseRulesTest.kt` | Validaciones de un gasto (concepto, tipo, valor, fecha, descripción) | 45 |
+| `ExampleUnitTest.kt` | Prueba de ejemplo de Android Studio | 1 |
+
+Total: 201 pruebas. Al agregar un archivo de prueba, añade su fila a esta tabla.
+
 ## Flujo de trabajo en Git (trunk-based)
 - Un solo tronco: `main`, siempre compilable.
 - Ramas cortas (1-2 días) con prefijo `feat/` o `fix/`.
