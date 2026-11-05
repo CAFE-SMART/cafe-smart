@@ -2,6 +2,8 @@ package com.cafesmart.app.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
@@ -19,12 +21,15 @@ import com.cafesmart.app.ui.theme.OnPrimary
 import com.cafesmart.app.ui.theme.Primary
 import com.cafesmart.app.ui.theme.TextMuted
 
+/** Botón principal compartido; [leadingIcon] añade un icono opcional sin cambiar sus usos previos. */
 @Composable
 fun ContinueButton(
     text: String = "Continuar",
     onClick: () -> Unit,
     enabled: Boolean = true,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Contenido opcional antes del texto; conserva todas las llamadas de otros módulos.
+    leadingIcon: (@Composable () -> Unit)? = null
 ) {
     Button(
         onClick = onClick,
@@ -52,6 +57,10 @@ fun ContinueButton(
                 }
             }
     ) {
+        if (leadingIcon != null) {
+            leadingIcon()
+            Spacer(Modifier.width(8.dp))
+        }
         Text(
             text = text,
             style = AppTypography.buttonPrimary,
