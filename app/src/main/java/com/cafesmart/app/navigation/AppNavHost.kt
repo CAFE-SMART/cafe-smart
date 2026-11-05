@@ -416,10 +416,16 @@ fun AppNavHost(
         composable(Routes.DRYING_STEP7) { NavPlaceholder(navController, "Secado · Paso 7 · Gastos del secado", Routes.DRYING_STEP7, true, "Guardar gasto" to Routes.DRYING_STEP6) }
 
         // ── Gastos ──────────────────────────────────────────
-        composable(Routes.EXPENSES) { GastosRoute(navController, registro = false) }
-        composable(Routes.EXPENSE_NEW) { GastosRoute(navController, registro = true) }
+        composable(Routes.EXPENSES) { backStackEntry ->
+            GastosRoute(navController, backStackEntry, registro = false)
+        }
+        composable(Routes.EXPENSE_NEW) { backStackEntry ->
+            GastosRoute(navController, backStackEntry, registro = true)
+        }
         // Reutiliza el registro con asociación activa, sin crear una tercera pantalla principal.
-        composable(Routes.EXPENSE_LINK_BATCHES) { GastosRoute(navController, registro = true, asociar = true) }
+        composable(Routes.EXPENSE_LINK_BATCHES) { backStackEntry ->
+            GastosRoute(navController, backStackEntry, registro = true, asociar = true)
+        }
 
         // ── Ajustes ─────────────────────────────────────────
         composable(Routes.SETTINGS) {

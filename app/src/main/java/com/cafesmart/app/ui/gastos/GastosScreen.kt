@@ -1,40 +1,73 @@
 package com.cafesmart.app.ui.gastos
 
+// ============================================================
+// 1. IMPORTACIONES POR RESPONSABILIDAD
+// ============================================================
+// Interacción con el botón Atrás del sistema.
 import androidx.activity.compose.BackHandler
+// Layouts, distribución del espacio y listas desplazables.
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.systemBars
+// Controles de Material 3: tarjetas, textos, botones o superficies.
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
+// Composable, estados observables y efectos del ciclo de composición.
 import androidx.compose.runtime.*
+// Modificadores, alineación, dibujo, tipografía, unidades y accesibilidad.
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+// ViewModel y corrutinas ligadas a su ciclo de vida.
 import androidx.lifecycle.viewmodel.compose.viewModel
+// Rutas y navegación de la aplicación.
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import com.cafesmart.app.navigation.Routes
+// Modelos oficiales que transportan los datos del módulo.
 import com.cafesmart.app.data.model.AplicaGasto
+// Componentes reutilizables del proyecto.
 import com.cafesmart.app.ui.components.*
+// Colores, formas, tipografía y espaciados del tema compartido.
 import com.cafesmart.app.ui.theme.*
+// Estado, eventos y lógica de presentación del ViewModel.
 import com.cafesmart.app.viewmodel.gastos.*
 
+// ============================================================
+// 2. CONEXIÓN ENTRE NAVEGACIÓN Y VIEWMODEL
+// ============================================================
 /**
  * Adaptador MVVM y de navegación de Gastos; sustituye al archivo monolítico original.
  * El ViewModel pertenece a HOME: las tres rutas comparten sesión y se elimina al cerrar
  * sesión. No modifica el estado ni la persistencia de otros módulos.
  * [registro] distingue las dos pantallas y [asociar] abre la variante de sublotes.
+ *
+ * Esta función une MVVM y Navigation Compose: recibe estado del ViewModel y entrega
+ * eventos a las pantallas. Una recomposición vuelve a describir la interfaz, sin guardar por sí misma.
+ *
+ * @param navController Controlador de la pila de rutas que pertenece al contenedor de la aplicación.
+ * @param backStackEntry Entrada del destino actual, recibida desde composable en AppNavHost.
+ * @param registro Si es true, muestra RegistrarGastoScreen; si es false, muestra ListaGastosScreen.
+ * @param asociar Activa la variante del formulario que aplica el gasto a sublotes.
  */
 @Composable
-fun GastosRoute(navController: NavHostController, registro: Boolean, asociar: Boolean = false) {
-    val propietario = remember(navController) { navController.getBackStackEntry(Routes.HOME) }
+fun GastosRoute(navController: NavHostController, backStackEntry: NavBackStackEntry,
+    registro: Boolean, asociar: Boolean = false) {
+    // La entrada del destino es la clave de remember. Una entrada nueva vuelve a buscar HOME,
+    // por ejemplo, tras cerrar sesión e ingresar otra vez con el mismo NavController.
+    // HOME sigue siendo el propietario: Lista y Registro comparten su ViewModel durante la sesión.
+    val propietario = remember(backStackEntry) { navController.getBackStackEntry(Routes.HOME) }
     val modelo: GastosViewModel = viewModel(viewModelStoreOwner = propietario)
+    // collectAsState convierte StateFlow en un estado que Compose observa. by permite leer
+    // el valor directamente; sus cambios actualizan las partes de la interfaz que lo utilizan.
     val estado by modelo.uiState.collectAsState()
     // MainActivity ya aplica el padding del Scaffold. Consumir solo barras evita duplicarlo
     // en estas rutas y conserva los insets del teclado para el formulario desplazable.
     val contenido = Modifier.consumeWindowInsets(WindowInsets.systemBars)
+    // LaunchedEffect ejecuta esta acción al entrar o cambiar su clave, no en cada dibujo de pantalla.
     LaunchedEffect(asociar) {
         if (asociar) modelo.editar { it.copy(aplicaA = AplicaGasto.SUBLOTES) }
     }
@@ -46,6 +79,8 @@ fun GastosRoute(navController: NavHostController, registro: Boolean, asociar: Bo
             }
         }
     }
+    // Estas lambdas son callbacks. nuevoRegistro limpia el borrador, no el listado guardado en memoria.
+    // Unit expresa que la acción no devuelve un resultado al botón.
     val salir = { modelo.nuevoRegistro(); navController.popBackStack(); Unit }
     val listado = {
         modelo.nuevoRegistro()
@@ -57,6 +92,8 @@ fun GastosRoute(navController: NavHostController, registro: Boolean, asociar: Bo
         }
         Unit
     }
+    // BackHandler coordina Atrás. Durante GUARDANDO el ViewModel impide volver a editar.
+    // Las referencias modelo::editar y similares pasan funciones existentes como callbacks.
     if (registro) {
         BackHandler { if (estado.resultado == ResultadoGasto.EDICION) salir() else modelo.volverAEditar() }
         RegistrarGastoScreen(estado, modelo::editar, modelo::solicitarConfirmacion, salir, modifier = contenido)
@@ -66,16 +103,32 @@ fun GastosRoute(navController: NavHostController, registro: Boolean, asociar: Bo
             navController.navigate(Routes.EXPENSE_NEW) { launchSingleTop = true }
         }, modelo::filtrar, modifier = contenido, onActualizar = modelo::actualizar)
     }
-    GastosResultado(estado, modelo::confirmar, modelo::volverAEditar, listado, {
+    GastosResultado(estado, modelo::confirmar, modelo::volverAEditar, listado) {
         modelo.nuevoRegistro()
         if (!registro) navController.navigate(Routes.EXPENSE_NEW) { launchSingleTop = true }
-    })
+    }
 }
 
-/** Hojas de confirmación/resultado del equipo. Durante el guardado no se permite cerrar ni reenviar. */
+// ============================================================
+// 3. CONFIRMACIÓN, GUARDADO Y RESULTADO
+// ============================================================
+/**
+ * Hojas de confirmación/resultado del equipo. Durante el guardado no se permite cerrar ni reenviar.
+ *
+ * La expresión when elige la hoja a partir de ResultadoGasto. ConfirmSheet reutiliza el patrón del proyecto;
+ * el indicador circular solo informa que se está guardando, no representa un porcentaje real.
+ *
+ * @param estado Estado actual del formulario y de la operación.
+ * @param onConfirmar Solicita guardar o reintentar en el ViewModel.
+ * @param onEditar Vuelve al borrador sin borrar sus campos.
+ * @param onVerGastos Permite consultar el listado.
+ * @param onOtro Inicia un borrador nuevo para otro gasto.
+ */
 @Composable
 fun GastosResultado(estado: GastosUiState, onConfirmar: () -> Unit, onEditar: () -> Unit,
     onVerGastos: () -> Unit, onOtro: () -> Unit) {
+    // CONFIRMACION pide permiso al usuario para guardar; GUARDANDO bloquea el cierre.
+    // EXITO solo se muestra cuando el repositorio termina y ERROR permite conservar datos y reintentar.
     when (estado.resultado) {
         ResultadoGasto.CONFIRMACION -> ConfirmSheet(
             icon = AppIcons.Warning, iconBackground = WarningBg, iconTint = WarningText,
