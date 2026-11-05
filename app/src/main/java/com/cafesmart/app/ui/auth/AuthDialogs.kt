@@ -22,9 +22,9 @@ import com.cafesmart.app.ui.theme.SurfaceCard
 import com.cafesmart.app.ui.theme.TextPrimary
 import com.cafesmart.app.ui.theme.TextSecondary
 
-// TODO: poner en false cuando el backend de autenticación esté integrado.
-// true: permite probar las pantallas sin backend.
-const val MODO_DEMOSTRACION = true
+// true: permite probar las pantallas sin backend (sin Firebase).
+// false: login y registro reales con Firebase Authentication.
+const val MODO_DEMOSTRACION = false
 
 // true: simula un error en el primer registro.
 const val SIMULAR_ERROR_REGISTRO = false
@@ -43,17 +43,27 @@ data class RegistrationFailure(
 )
 
 /** Estado de los diálogos que se abren desde las pantallas de autenticación. */
+private const val TITULO_INFO = "Información"
+
 class AuthDialogsState {
     var help by mutableStateOf<AuthHelpContext?>(null)
     var active by mutableStateOf<AuthAuxDialog?>(null)
     var info by mutableStateOf<String?>(null)
+    // Título del aviso; vuelve a "Información" al cerrarlo.
+    var infoTitle by mutableStateOf(TITULO_INFO)
     var registrationError by mutableStateOf<RegistrationFailure?>(null)
 
     fun clear() {
         help = null
         active = null
         info = null
+        infoTitle = TITULO_INFO
         registrationError = null
+    }
+
+    fun cerrarInfo() {
+        info = null
+        infoTitle = TITULO_INFO
     }
 }
 
@@ -140,18 +150,18 @@ fun AuthDialogs(
 
     state.info?.let { message ->
         AlertDialog(
-            onDismissRequest = { state.info = null },
+            onDismissRequest = { state.cerrarInfo() },
             containerColor = SurfaceCard,
             titleContentColor = TextPrimary,
             textContentColor = TextSecondary,
             title = {
-                Text(text = "Información", style = AppTypography.titleModal, color = TextPrimary)
+                Text(text = state.infoTitle, style = AppTypography.titleModal, color = TextPrimary)
             },
             text = {
                 Text(text = message, style = AppTypography.bodyMd, color = TextSecondary)
             },
             confirmButton = {
-                TextButton(onClick = { state.info = null }) {
+                TextButton(onClick = { state.cerrarInfo() }) {
                     Text(text = "Entendido", color = Primary)
                 }
             }

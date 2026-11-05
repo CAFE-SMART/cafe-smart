@@ -3,6 +3,7 @@ package com.cafesmart.app.navigation
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -19,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.cafesmart.app.ui.auth.AuthAuxDialog
 import com.cafesmart.app.ui.auth.AuthDialogs
+import com.cafesmart.app.ui.auth.AuthEvent
 import com.cafesmart.app.ui.auth.AuthDialogsState
 import com.cafesmart.app.ui.auth.AuthHelpContext
 import com.cafesmart.app.ui.auth.AuthPage
@@ -50,6 +52,7 @@ fun AppNavHost(
 
     // Un solo AuthViewModel compartido por login y registro (paso 1 y 2).
     val authViewModel: AuthViewModel = viewModel()
+    val authState by authViewModel.state.collectAsState()
     val dialogs = remember { AuthDialogsState() }
 
     var registrationSuccess by remember { mutableStateOf<RegistrationData?>(null) }
@@ -61,11 +64,8 @@ fun AppNavHost(
     processRegistration = { data ->
         pendingRegistration = data
         when {
-            !MODO_DEMOSTRACION -> dialogs.registrationError = RegistrationFailure(
-                title = "Registro no disponible",
-                message = "El servicio de creación de cuentas todavía no está integrado. " +
-                        "No se ha creado ningún usuario."
-            )
+            // Registro real: el resultado llega por authViewModel.events (ver LaunchedEffect de abajo).
+            !MODO_DEMOSTRACION -> authViewModel.register(data)
 
             simulateErrorNext -> {
                 simulateErrorNext = false
@@ -85,11 +85,41 @@ fun AppNavHost(
 
     // Cierra sesión: limpia el estado de auth y deja solo LOGIN en la pila.
     val cerrarSesion: () -> Unit = {
-        authViewModel.reset()
+        authViewModel.signOut()
         registrationSuccess = null
         pendingRegistration = null
         dialogs.clear()
         navController.logout()
+    }
+
+    // Atiende los resultados de Firebase (una sola vez cada uno): navegar o mostrar el error.
+    LaunchedEffect(Unit) {
+        authViewModel.events.collect { evento ->
+            when (evento) {
+                AuthEvent.LoggedIn -> {
+                    authViewModel.reset()
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                }
+
+                is AuthEvent.Registered -> {
+                    dialogs.registrationError = null
+                    registrationSuccess = evento.data
+                    navController.navigate(Routes.REGISTER_SUCCESS) { launchSingleTop = true }
+                }
+
+                is AuthEvent.LoginFailed -> {
+                    dialogs.infoTitle = "No pudimos iniciar sesión"
+                    dialogs.info = evento.message
+                }
+
+                is AuthEvent.RegistrationFailed -> dialogs.registrationError = RegistrationFailure(
+                    title = "No pudimos crear tu cuenta",
+                    message = evento.message
+                )
+            }
+        }
     }
 
     NavHost(
@@ -112,10 +142,11 @@ fun AppNavHost(
             var showExitConfirmation by remember { mutableStateOf(false) }
 
             LoginScreen(
-                state = authViewModel.uiState,
+                state = authState,
+                isSubmitting = authState.isSubmitting,
                 onChange = authViewModel::update,
                 onSubmit = {
-                    authViewModel.submitLogin { _ ->
+                    authViewModel.submitLogin { credenciales ->
                         if (MODO_DEMOSTRACION) {
                             // Limpia la contraseña temporal; al entrar, el login sale de la pila.
                             authViewModel.reset()
@@ -123,7 +154,7 @@ fun AppNavHost(
                                 popUpTo(Routes.LOGIN) { inclusive = true }
                             }
                         } else {
-                            dialogs.info = "El inicio de sesión real está pendiente de integración."
+                            authViewModel.login(credenciales)
                         }
                     }
                 },
@@ -159,7 +190,7 @@ fun AppNavHost(
                 navController.popBackStack()
             }
             RegisterStep1Screen(
-                state = authViewModel.uiState,
+                state = authState,
                 onChange = authViewModel::update,
                 onBack = {
                     authViewModel.back()
@@ -182,7 +213,8 @@ fun AppNavHost(
                 navController.popBackStack()
             }
             RegisterStep2Screen(
-                state = authViewModel.uiState,
+                state = authState,
+                isSubmitting = authState.isSubmitting,
                 onChange = authViewModel::update,
                 onBack = {
                     authViewModel.back()
