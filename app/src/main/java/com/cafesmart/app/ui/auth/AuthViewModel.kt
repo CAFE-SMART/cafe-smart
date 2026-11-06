@@ -6,16 +6,25 @@ package com.cafesmart.app.ui.auth
 // ============================================================
 
 // Permite leer valores de estado usando "by"
-import androidx.compose.runtime.getValue
 
 // Crea estados observables por Jetpack Compose
-import androidx.compose.runtime.mutableStateOf
 
 // Permite modificar valores de estado usando "by"
-import androidx.compose.runtime.setValue
 
 // Clase base para implementar el patrón MVVM
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.cafesmart.app.data.auth.AuthError
+import com.cafesmart.app.data.auth.AuthRepository
+import com.cafesmart.app.data.auth.AuthResult
+import com.cafesmart.app.data.auth.FirebaseAuthRepository
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 
 
 // ============================================================
@@ -217,8 +226,24 @@ data class AuthUiState(
     val errors: Map<String, String> = emptyMap(),
 
     // Almacena errores generales de una solicitud
-    val requestError: String? = null
+    val requestError: String? = null,
+    // true mientras se espera la respuesta de Firebase (deshabilita los botones)
+    val isSubmitting: Boolean = false
 )
+
+/** Resultados de una solicitud a Firebase que la pantalla debe atender una sola vez (navegar o avisar). */
+sealed interface AuthEvent {
+    data object LoggedIn : AuthEvent
+    data class Registered(val data: RegistrationData) : AuthEvent
+    // Llevan el AuthError para que la pantalla elija título, ícono y botones según la causa.
+    data class LoginFailed(val error: AuthError) : AuthEvent {
+        val message: String get() = error.mensaje
+    }
+
+    data class RegistrationFailed(val error: AuthError) : AuthEvent {
+        val message: String get() = error.mensaje
+    }
+}
 
 
 // ============================================================
@@ -240,25 +265,20 @@ data class AuthUiState(
  *
  * Sigue el patrón MVVM utilizado por Café Smart.
  */
-class AuthViewModel : ViewModel() {
+class AuthViewModel(
+    private val repository: AuthRepository = FirebaseAuthRepository()
+) : ViewModel() {
 
+    // Estado como StateFlow: la interfaz lo observa con collectAsState().
+    private val _state = MutableStateFlow(AuthUiState())
+    val state: StateFlow<AuthUiState> = _state.asStateFlow()
 
-    // ========================================================
-    // 7. ESTADO PRINCIPAL DEL VIEWMODEL
-    // ========================================================
+    /** Estado actual, para leerlo dentro de callbacks y pruebas. */
+    val uiState: AuthUiState get() = _state.value
 
-    /**
-     * Guarda el estado completo del formulario.
-     *
-     * mutableStateOf permite que Compose observe
-     * los cambios y actualice la interfaz.
-     *
-     * private set evita que otras clases
-     * modifiquen directamente este estado.
-     */
-    var uiState by mutableStateOf(AuthUiState())
-        private set
-
+    // Eventos de una sola vez (navegar, mostrar error). Channel: no se pierden si la UI aún no escucha.
+    private val _events = Channel<AuthEvent>(Channel.BUFFERED)
+    val events: Flow<AuthEvent> = _events.receiveAsFlow()
 
     // ========================================================
     // 8. ACTUALIZAR DATOS DEL FORMULARIO
@@ -276,7 +296,7 @@ class AuthViewModel : ViewModel() {
         transform: (AuthUiState) -> AuthUiState
     ) {
 
-        uiState = transform(uiState).copy(
+        _state.value = transform(uiState).copy(
 
             // Limpia los errores de validación
             errors = emptyMap(),
@@ -297,7 +317,7 @@ class AuthViewModel : ViewModel() {
      */
     fun goToRegister() {
 
-        uiState = uiState.copy(
+        _state.value = uiState.copy(
 
             // Establece la pantalla de registro
             page = AuthPage.REGISTER_STEP_1,
@@ -322,9 +342,31 @@ class AuthViewModel : ViewModel() {
      */
     fun goToLogin() {
 
-        uiState = uiState.copy(
+        _state.value = uiState.copy(
 
             page = AuthPage.LOGIN,
+
+            errors = emptyMap(),
+
+            requestError = null
+        )
+    }
+
+    /**
+     * Vuelve al inicio de sesión con el correo ya escrito.
+     *
+     * Se usa cuando el registro falla porque el correo ya tiene cuenta:
+     * la persona solo debe escribir su contraseña.
+     */
+    fun goToLoginWith(email: String) {
+
+        _state.value = uiState.copy(
+
+            page = AuthPage.LOGIN,
+
+            loginEmail = email,
+
+            loginPassword = "",
 
             errors = emptyMap(),
 
@@ -357,7 +399,7 @@ class AuthViewModel : ViewModel() {
             // Desde el paso 2 regresa al paso 1
             AuthPage.REGISTER_STEP_2 -> {
 
-                uiState = uiState.copy(
+                _state.value = uiState.copy(
 
                     page = AuthPage.REGISTER_STEP_1,
 
@@ -393,14 +435,14 @@ class AuthViewModel : ViewModel() {
         // Si existen errores, no permite continuar
         if (errors.isNotEmpty()) {
 
-            uiState = uiState.copy(
+            _state.value = uiState.copy(
                 errors = errors
             )
 
         } else {
 
             // Los campos son válidos y avanza al paso 2
-            uiState = uiState.copy(
+            _state.value = uiState.copy(
 
                 page = AuthPage.REGISTER_STEP_2,
 
@@ -438,7 +480,7 @@ class AuthViewModel : ViewModel() {
         if (errors.isNotEmpty()) {
 
             // Guarda los errores para mostrarlos
-            uiState = uiState.copy(
+            _state.value = uiState.copy(
                 errors = errors
             )
 
@@ -489,7 +531,7 @@ class AuthViewModel : ViewModel() {
         // Si existen errores, detiene el registro
         if (errors.isNotEmpty()) {
 
-            uiState = uiState.copy(
+            _state.value = uiState.copy(
                 errors = errors
             )
 
@@ -544,7 +586,7 @@ class AuthViewModel : ViewModel() {
      */
     fun showRequestError(message: String) {
 
-        uiState = uiState.copy(
+        _state.value = uiState.copy(
 
             requestError = message
         )
@@ -553,6 +595,52 @@ class AuthViewModel : ViewModel() {
 
     // ========================================================
     // 16. LIMPIAR LOS DATOS DE AUTENTICACIÓN
+    // ========================================================
+    // INICIO DE SESIÓN, REGISTRO Y CIERRE DE SESIÓN (Firebase)
+    // ========================================================
+
+    /** Inicia sesión con Firebase. Las credenciales ya vienen validadas por submitLogin. */
+    fun login(credentials: LoginCredentials) {
+        if (_state.value.isSubmitting) return
+        _state.value = _state.value.copy(isSubmitting = true, requestError = null)
+        viewModelScope.launch {
+            val resultado = repository.signIn(credentials.email, credentials.password)
+            _state.value = _state.value.copy(isSubmitting = false)
+            _events.send(
+                when (resultado) {
+                    AuthResult.Success -> AuthEvent.LoggedIn
+                    is AuthResult.Failure -> AuthEvent.LoginFailed(resultado.error)
+                }
+            )
+        }
+    }
+
+    /** Crea la cuenta en Firebase. Los datos ya vienen validados por submitRegistration. */
+    fun register(data: RegistrationData) {
+        if (_state.value.isSubmitting) return
+        _state.value = _state.value.copy(isSubmitting = true, requestError = null)
+        viewModelScope.launch {
+            val resultado = repository.register(
+                email = data.email,
+                password = data.password,
+                displayName = "${data.firstName} ${data.lastName}".trim()
+            )
+            _state.value = _state.value.copy(isSubmitting = false)
+            _events.send(
+                when (resultado) {
+                    AuthResult.Success -> AuthEvent.Registered(data)
+                    is AuthResult.Failure -> AuthEvent.RegistrationFailed(resultado.error)
+                }
+            )
+        }
+    }
+
+    /** Cierra la sesión de Firebase y limpia los formularios. */
+    fun signOut() {
+        repository.signOut()
+        reset()
+    }
+
     // ========================================================
 
     /**
@@ -568,7 +656,7 @@ class AuthViewModel : ViewModel() {
      */
     fun reset() {
 
-        uiState = AuthUiState()
+        _state.value = AuthUiState()
     }
 }
 

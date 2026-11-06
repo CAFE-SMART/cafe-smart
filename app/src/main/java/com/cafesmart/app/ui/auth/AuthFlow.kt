@@ -8,6 +8,8 @@ package com.cafesmart.app.ui.auth
 // Permite crear funciones que muestran interfaces
 // gráficas utilizando Jetpack Compose
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 
 // Permite obtener y conservar una instancia del ViewModel
 // asociada al ciclo de vida de la pantalla
@@ -91,7 +93,7 @@ fun AuthFlow(
      * - Datos ingresados por el usuario.
      * - Errores de validación.
      */
-    val state = viewModel.uiState
+    val state by viewModel.state.collectAsState()
 
 
     // ========================================================
