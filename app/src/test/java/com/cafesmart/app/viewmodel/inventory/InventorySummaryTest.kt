@@ -169,4 +169,22 @@ class InventorySummaryTest {
         assertEquals(0.3, r.totalKg, 1e-12)
         assertEquals("0,3 kg", formatoKg(r.totalKg))
     }
+
+    @Test
+    fun tipoDeLaRutaValidoSeConvierteEnTipoDeCafe() {
+        assertEquals(TipoCafe.SECO, tipoCafeDesdeRuta("SECO"))
+        assertEquals(TipoCafe.PASILLA, tipoCafeDesdeRuta("PASILLA"))
+    }
+
+    @Test
+    fun tipoDeLaRutaDesconocidoDevuelveNull() {
+        assertNull(tipoCafeDesdeRuta("CAFE_INEXISTENTE"))
+        assertNull(tipoCafeDesdeRuta("verde"))
+        assertNull(tipoCafeDesdeRuta(""))
+    }
+
+    @Test
+    fun tipoDeLaRutaNuloDevuelveNull() {
+        assertNull(tipoCafeDesdeRuta(null))
+    }
 }

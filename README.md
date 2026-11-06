@@ -35,7 +35,7 @@ reemplazan por la pantalla real dentro de su `composable(...)`.
 (el splash y el login se sacan de la pila: "atrás" no vuelve a ellos).
 
 **Orden de pantallas (igual que el prototipo del Figma):**
-- Inventario: `inventory` (resumen) → `inventory_type` (calidades de un tipo, p. ej. Verde) → `inventory_list` (sublotes del grupo) → `inventory_detail/{batchId}` → `inventory_batch_expenses/{batchId}` o `sale_batch_step1/{batchId}` → `sale_batch_step2/{batchId}` → `sale_done`.
+- Inventario: `inventory` (resumen) → `inventory_type/{tipo}` (calidades de un tipo: VERDE, SECO, TRILLADO o PASILLA) → `inventory_list` (sublotes del grupo) → `inventory_detail/{batchId}` → `inventory_batch_expenses/{batchId}` o `sale_batch_step1/{batchId}` → `sale_batch_step2/{batchId}` → `sale_done`.
 - Secado: `drying_step1` → `2` → `3` → `4` → `5` → `drying_step6` (sin gastos) **o** `5` → `drying_step7` (gastos) → `drying_step6`. El paso 6 siempre es el final.
 - Se entra a Secado desde `inventory_type` (botón "Iniciar secado"); a "Registrar gasto" (`expense_new`) desde `home`. `settings` ya es la pantalla real (perfil y "Cerrar sesión"): sus filas "Proceso de secado" y "Gastos operativos" del Figma aún no existen, así que la lista de gastos (`expenses`) no tiene entrada por ahora.
 - `home` y `settings` tienen "Salir" / "Cerrar sesión", que vuelve a `login` y borra la pila.
@@ -52,7 +52,7 @@ reemplazan por la pantalla real dentro de su `composable(...)`.
 | Compras | `purchase_step3` | Paso 3 · Confirmar |
 | Compras | `purchase_done` | Compra registrada |
 | Inventario | `inventory` | Resumen (Todos) por tipo |
-| Inventario | `inventory_type` | Lista · Verde (calidades de un tipo de café) |
+| Inventario | `inventory_type/{tipo}` | Lista · Verde (calidades de un tipo de café; el tipo viaja en la ruta) |
 | Inventario | `inventory_list` | Lista de sublotes de un grupo |
 | Inventario | `inventory_detail/{batchId}` | Detalle del sublote |
 | Inventario | `inventory_batch_expenses/{batchId}` | Gastos del sublote |

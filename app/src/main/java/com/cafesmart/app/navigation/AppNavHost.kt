@@ -42,6 +42,7 @@ import com.cafesmart.app.data.model.TipoCafe
 import com.cafesmart.app.ui.inventory.InventoryScreen
 import com.cafesmart.app.ui.settings.SettingsScreen
 import com.cafesmart.app.viewmodel.inventory.InventoryViewModel
+import com.cafesmart.app.viewmodel.inventory.tipoCafeDesdeRuta
 import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
 import com.cafesmart.app.viewmodel.settings.SettingsViewModel
 
@@ -285,8 +286,12 @@ fun AppNavHost(
             route = Routes.INVENTORY_TYPE,
             arguments = listOf(navArgument(Routes.ARG_TIPO) { type = NavType.StringType })
         ) { entry ->
-            val nombre = entry.arguments?.getString(Routes.ARG_TIPO).orEmpty()
-            val tipo = TipoCafe.entries.firstOrNull { it.name == nombre } ?: TipoCafe.VERDE
+            val tipo = tipoCafeDesdeRuta(entry.arguments?.getString(Routes.ARG_TIPO))
+            if (tipo == null) {
+                // Tipo desconocido en la ruta: se vuelve a la pantalla anterior en vez de mostrar otro tipo.
+                androidx.compose.runtime.LaunchedEffect(Unit) { navController.popBackStack() }
+                return@composable
+            }
             NavPlaceholder(
                 navController,
                 "Inventario · Café ${tipo.etiqueta.lowercase()} por calidad", Routes.inventoryType(tipo.name), true,

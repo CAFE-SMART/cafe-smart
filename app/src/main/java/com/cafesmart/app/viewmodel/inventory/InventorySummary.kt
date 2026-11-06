@@ -21,6 +21,10 @@ const val KG_POR_BULTO = 40.7
 val TIPOS_EN_INVENTARIO: List<TipoCafe> =
     listOf(TipoCafe.VERDE, TipoCafe.SECO, TipoCafe.TRILLADO, TipoCafe.PASILLA)
 
+// Convierte el nombre que llega en la ruta (por ejemplo "VERDE") en un tipo de café de la pantalla.
+// Devuelve null si el nombre no existe, para que quien navega no muestre un tipo equivocado.
+fun tipoCafeDesdeRuta(nombre: String?): TipoCafe? = TIPOS_EN_INVENTARIO.firstOrNull { it.name == nombre }
+
 // Opciones del botón "Más reciente" de la lista.
 enum class OrdenInventario(val etiqueta: String) {
     MAS_RECIENTE("Más reciente"),
