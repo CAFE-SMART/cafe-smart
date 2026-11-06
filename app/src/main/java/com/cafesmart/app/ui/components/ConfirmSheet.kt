@@ -42,10 +42,12 @@ fun ConfirmSheet(
     onLink: () -> Unit,
     // Azul por defecto; cancelar lo cambia a rojo.
     actionContainerColor: Color = Primary,
-    actionContentColor: Color = OnPrimary
+    actionContentColor: Color = OnPrimary,
+    // Permite cerrar un resultado sin ejecutar su enlace (por ejemplo, registrar otro gasto).
+    onDismiss: () -> Unit = onLink
 ) {
     // Hoja del equipo. Cerrarla deslizando hace lo mismo que el enlace.
-    AppBottomSheet(onDismiss = onLink) {
+    AppBottomSheet(onDismiss = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

@@ -33,6 +33,7 @@ import com.cafesmart.app.ui.auth.RegistrationFailure
 import com.cafesmart.app.ui.auth.RegistrationSuccessScreen
 import com.cafesmart.app.ui.auth.SIMULAR_ERROR_REGISTRO
 import com.cafesmart.app.ui.home.HomeScreen
+import com.cafesmart.app.ui.gastos.GastosRoute
 import com.cafesmart.app.ui.screens.PlaceholderAction
 import com.cafesmart.app.ui.screens.PlaceholderScreen
 import com.cafesmart.app.ui.screens.SplashScreen
@@ -417,9 +418,16 @@ fun AppNavHost(
         composable(Routes.DRYING_STEP7) { NavPlaceholder(navController, "Secado · Paso 7 · Gastos del secado", Routes.DRYING_STEP7, true, "Guardar gasto" to Routes.DRYING_STEP6) }
 
         // ── Gastos ──────────────────────────────────────────
-        composable(Routes.EXPENSES) { NavPlaceholder(navController, "Gastos · Lista general", Routes.EXPENSES, true, "Registrar gasto" to Routes.EXPENSE_NEW) }
-        composable(Routes.EXPENSE_NEW) { NavPlaceholder(navController, "Gastos · Registrar gasto", Routes.EXPENSE_NEW, true, "Asociar a sublotes" to Routes.EXPENSE_LINK_BATCHES) }
-        composable(Routes.EXPENSE_LINK_BATCHES) { NavPlaceholder(navController, "Gastos · Asociar a sublotes", Routes.EXPENSE_LINK_BATCHES, true) }
+        composable(Routes.EXPENSES) { backStackEntry ->
+            GastosRoute(navController, backStackEntry, registro = false)
+        }
+        composable(Routes.EXPENSE_NEW) { backStackEntry ->
+            GastosRoute(navController, backStackEntry, registro = true)
+        }
+        // Reutiliza el registro con asociación activa, sin crear una tercera pantalla principal.
+        composable(Routes.EXPENSE_LINK_BATCHES) { backStackEntry ->
+            GastosRoute(navController, backStackEntry, registro = true, asociar = true)
+        }
 
         // ── Ajustes ─────────────────────────────────────────
         composable(Routes.SETTINGS) {
