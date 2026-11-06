@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 //   M x y = mover el lapiz, l / h / v / L = linea, a = arco (circulos), Z = cerrar figura.
 // Ejemplo: "M5 12h14" = empieza en (5,12) y traza una linea horizontal de 14 -> "—".
 // El color no va aqui: lo pone el parametro tint de Icon.
-private fun lineIcon(name: String, vararg paths: String): ImageVector {
+private fun lineIcon(name: String, vararg paths: String, strokeWidth: Float = 2f): ImageVector {
     val builder = ImageVector.Builder(
         name = name,
         defaultWidth = 24.dp,
@@ -27,7 +27,7 @@ private fun lineIcon(name: String, vararg paths: String): ImageVector {
             pathData = addPathNodes(pathData),
             fill = null,
             stroke = SolidColor(Color.Black),
-            strokeLineWidth = 2f,
+            strokeLineWidth = strokeWidth,
             strokeLineCap = StrokeCap.Round,
             strokeLineJoin = StrokeJoin.Round
         )
@@ -128,6 +128,72 @@ object AppIcons {
             "ThumbsDown",
             "M17 14V2",
             "M9 18.12L10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"
+        )
+    }
+
+    // Flecha hacia abajo (menu desplegable)
+    val ChevronDown: ImageVector by lazy {
+        lineIcon("ChevronDown", "M6 9l6 6l6-6")
+    }
+    // Flecha hacia la derecha (ir al detalle)
+    val ChevronRight: ImageVector by lazy {
+        lineIcon("ChevronRight", "M9 18l6-6l-6-6")
+    }
+    // Brote (cafe verde)
+    val Sprout: ImageVector by lazy {
+        lineIcon(
+            "Sprout",
+            "M7 20h10",
+            "M10 20c5.5-2.5.8-6.4 3-10",
+            "M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8Z",
+            "M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2Z"
+        )
+    }
+    // Sol (cafe seco)
+    val Sun: ImageVector by lazy {
+        lineIcon(
+            "Sun",
+            "M16 12a4 4 0 1 1-8 0a4 4 0 1 1 8 0Z",
+            "M12 2v2",
+            "M12 20v2",
+            "M4.93 4.93l1.41 1.41",
+            "M17.66 17.66l1.41 1.41",
+            "M2 12h2",
+            "M20 12h2",
+            "M6.34 17.66l-1.41 1.41",
+            "M19.07 4.93l-1.41 1.41"
+        )
+    }
+    // Taza (cafe trillado)
+    val Coffee: ImageVector by lazy {
+        lineIcon(
+            "Coffee",
+            "M10 2v2",
+            "M14 2v2",
+            "M6 2v2",
+            "M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"
+        )
+    }
+    private const val PACKAGE_BOX =
+        "M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73Z"
+    // Caja (cafe pasilla)
+    val Package: ImageVector by lazy {
+        lineIcon("Package", PACKAGE_BOX, "M12 22V12", "M3.3 7l7.703 4.734a2 2 0 0 0 1.994 0L20.7 7", "M7.5 4.27l9 5.15")
+    }
+    // Caja de trazo fino: se dibuja grande en el estado vacio del inventario
+    val PackageFine: ImageVector by lazy {
+        lineIcon(
+            "PackageFine", PACKAGE_BOX, "M12 22V12", "M3.3 7l7.703 4.734a2 2 0 0 0 1.994 0L20.7 7", "M7.5 4.27l9 5.15",
+            strokeWidth = 0.75f
+        )
+    }
+    // Carrito de compras
+    val ShoppingCart: ImageVector by lazy {
+        lineIcon(
+            "ShoppingCart",
+            "M9 21a1 1 0 1 1-2 0a1 1 0 1 1 2 0Z",
+            "M20 21a1 1 0 1 1-2 0a1 1 0 1 1 2 0Z",
+            "M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"
         )
     }
 }

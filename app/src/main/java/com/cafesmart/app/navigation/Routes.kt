@@ -24,7 +24,8 @@ object Routes {
 
     // ── Inventario ──────────────────────────────────────────
     const val INVENTORY = "inventory"              // Inventario · Resumen (Todos)
-    const val INVENTORY_TYPE = "inventory_type"    // Inventario · Lista · Verde (calidades de un tipo de café)
+    const val ARG_TIPO = "tipo"                    // Nombre del TipoCafe (VERDE, SECO, TRILLADO, PASILLA)
+    const val INVENTORY_TYPE = "inventory_type/{$ARG_TIPO}"  // Inventario · Lista · Verde (calidades de un tipo de café)
     const val INVENTORY_LIST = "inventory_list"    // Inventario · Detalle · Lista de sublotes (de un grupo)
     const val ARG_BATCH_ID = "batchId"
     const val INVENTORY_DETAIL = "inventory_detail/{$ARG_BATCH_ID}"                  // Detalle del sublote
@@ -58,6 +59,7 @@ object Routes {
     const val SETTINGS = "settings"                // Cuenta · Ajustes
 
     // ── Helpers para rutas con argumentos ───────────────────
+    fun inventoryType(tipo: String) = "inventory_type/$tipo"
     fun inventoryDetail(batchId: String) = "inventory_detail/$batchId"
     fun inventoryBatchExpenses(batchId: String) = "inventory_batch_expenses/$batchId"
     fun saleBatchStep1(batchId: String) = "sale_batch_step1/$batchId"
