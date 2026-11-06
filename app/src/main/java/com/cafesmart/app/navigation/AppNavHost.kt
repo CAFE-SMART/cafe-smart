@@ -132,6 +132,9 @@ fun AppNavHost(
                 }
 
                 is AuthEvent.Registered -> {
+                    // TODO(Negocio): la cuenta ya existe en Firebase, pero el nombre del negocio, el tipo de
+                    // negocio y el teléfono (evento.data) todavía NO se guardan. Se guardarán en la entidad
+                    // Negocio de Room cuando esté lista (tarjeta "Room: base de datos, entidades y DAOs").
                     dialogs.registrationError = null
                     dialogs.authError = null
                     registrationSuccess = evento.data
