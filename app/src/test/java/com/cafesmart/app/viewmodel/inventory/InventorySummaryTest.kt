@@ -72,6 +72,14 @@ class InventorySummaryTest {
     }
 
     @Test
+    fun unBultoPesa40Coma7KilosSegunElErs() {
+        assertEquals(40.7, KG_POR_BULTO, 0.0)
+        assertEquals(1.0, kgABultos(40.7), 0.0001)
+        // Ejemplo del ERS (RF-G-29): 163 kg son 4 bultos.
+        assertEquals("4,0 bultos", formatoBultos(163.0))
+    }
+
+    @Test
     fun textoDelTotalYDeLaCapacidadCoincideConElFigma() {
         assertEquals("834 kg", formatoKg(ejemplo.totalKg))
         assertEquals("3.000 kg", formatoKg(ejemplo.capacidadKg))

@@ -522,7 +522,13 @@ private fun EstadoVacio(onRegistrarCompra: () -> Unit, modifier: Modifier = Modi
                 ContinueButton(
                     text = "Registrar compra",
                     onClick = onRegistrarCompra,
-                    icon = AppIcons.ShoppingCart
+                    leadingIcon = {
+                        Icon(
+                            imageVector = AppIcons.ShoppingCart,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 )
             }
         }

@@ -38,7 +38,10 @@ import com.cafesmart.app.ui.screens.PlaceholderAction
 import com.cafesmart.app.ui.screens.PlaceholderScreen
 import com.cafesmart.app.ui.screens.SplashScreen
 import com.cafesmart.app.ui.screens.purchase.PurchaseFlow
+import com.cafesmart.app.data.model.TipoCafe
+import com.cafesmart.app.ui.inventory.InventoryScreen
 import com.cafesmart.app.ui.settings.SettingsScreen
+import com.cafesmart.app.viewmodel.inventory.InventoryViewModel
 import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
 import com.cafesmart.app.viewmodel.settings.SettingsViewModel
 
@@ -256,18 +259,42 @@ fun AppNavHost(
 
         // ── Inventario ──────────────────────────────────────
         composable(Routes.INVENTORY) {
-            NavPlaceholder(
-                navController,
-                "Inventario · Resumen", Routes.INVENTORY, true,
-                "Café verde (ver por calidad)" to Routes.INVENTORY_TYPE
+            // viewModel() ligado a esta entrada del NavHost (por ahora lee datos de ejemplo; luego, Room).
+            val inventoryViewModel: InventoryViewModel = viewModel()
+            val inventoryState by inventoryViewModel.uiState.collectAsState()
+
+            InventoryScreen(
+                estado = inventoryState,
+                // Figma: cada tipo abre su lista por calidad. Esa pantalla aún es placeholder.
+                onTipoClick = { tipo -> navController.navigateTo(Routes.inventoryType(tipo.name)) },
+                onOrdenChange = inventoryViewModel::cambiarOrden,
+                onAjustarBodega = { /* TODO ciclo 2: capacidad de bodega en Ajustes (igual que en Inicio) */ },
+                onRegistrarCompra = { navController.navigateTo(Routes.PURCHASE_STEP1) },
+                // La barra inferior manda el nombre de la pestaña.
+                onNavegar = { destino ->
+                    when (destino) {
+                        "inicio" -> navController.popBackStack(Routes.HOME, inclusive = false)
+                        "compras" -> navController.navigateTo(Routes.PURCHASE_STEP1)
+                        "ventas" -> navController.navigateTo(Routes.SALE_STEP1)
+                        "ajustes" -> navController.navigateTo(Routes.SETTINGS)
+                    }
+                }
             )
         }
-        composable(Routes.INVENTORY_TYPE) {
+        composable(
+            route = Routes.INVENTORY_TYPE,
+            arguments = listOf(navArgument(Routes.ARG_TIPO) { type = NavType.StringType })
+        ) { entry ->
+            val nombre = entry.arguments?.getString(Routes.ARG_TIPO).orEmpty()
+            val tipo = TipoCafe.entries.firstOrNull { it.name == nombre } ?: TipoCafe.VERDE
             NavPlaceholder(
                 navController,
-                "Inventario · Café verde por calidad", Routes.INVENTORY_TYPE, true,
-                "Ver sublotes de una calidad" to Routes.INVENTORY_LIST,
-                "Iniciar secado" to Routes.DRYING_STEP1
+                "Inventario · Café ${tipo.etiqueta.lowercase()} por calidad", Routes.inventoryType(tipo.name), true,
+                *listOfNotNull(
+                    "Ver sublotes de una calidad" to Routes.INVENTORY_LIST,
+                    // Solo el café verde se manda a secar.
+                    if (tipo == TipoCafe.VERDE) "Iniciar secado" to Routes.DRYING_STEP1 else null
+                ).toTypedArray()
             )
         }
         composable(Routes.INVENTORY_LIST) {

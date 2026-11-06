@@ -11,9 +11,11 @@ import kotlin.math.roundToInt
 // (el modelo de data/model) y devuelven lo que la vista muestra, ya calculado y con el texto listo.
 // Hoy los lotes vienen de datos de ejemplo; cuando exista Room solo cambia de dónde salen.
 
-// Kilos que pesa un bulto. OJO: no hay una regla escrita en el proyecto; este valor se dedujo de las cifras
-// del Figma (834 kg = 20,5 bultos, 290 kg = 7,1 bultos, 521 kg = 12,8 bultos...). CONFIRMAR con el equipo.
-const val KG_POR_BULTO = 40.75
+// Kilos que pesa un bulto. Valor inicial definido en el ERS (RF-G-29 y parámetros generales): 40,7 kg.
+// Con él salen las cifras del Figma (834 kg = 20,5 bultos, 290 kg = 7,1 bultos, 521 kg = 12,8 bultos...).
+// TODO: el ERS dice que el administrador lo configura en Ajustes; cuando exista esa pantalla, este valor
+// pasa a ser solo el inicial y las funciones de abajo lo reciben como parámetro.
+const val KG_POR_BULTO = 40.7
 
 // Orden de los tipos en pantalla (Figma: Verde, Seco, Trillado, Pasilla). No es el orden del enum TipoCafe.
 val TIPOS_EN_INVENTARIO: List<TipoCafe> =
