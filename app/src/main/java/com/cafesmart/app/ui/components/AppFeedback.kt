@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -36,7 +37,9 @@ data class FeedbackDetail(
 @Composable
 fun AppFeedbackIcon(
     type: FeedbackType,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Si se pasa, se dibuja este ícono en lugar del chulito o la "x" (por ejemplo, sin conexión).
+    icon: ImageVector? = null
 ) {
     val success = type == FeedbackType.SUCCESS
 
@@ -50,12 +53,21 @@ fun AppFeedbackIcon(
 
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = if (success) "✓" else "×",
-            color = OnPrimary,
-            fontSize = 48.sp,
-            fontWeight = FontWeight.Bold
-        )
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = OnPrimary,
+                modifier = Modifier.size(44.dp)
+            )
+        } else {
+            Text(
+                text = if (success) "✓" else "×",
+                color = OnPrimary,
+                fontSize = 48.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
@@ -273,12 +285,17 @@ fun AppErrorDialog(
     title: String,
     message: String,
     primaryButtonText: String = "Reintentar",
-    secondaryButtonText: String = "Regresar",
+    // null: el diálogo muestra un solo botón (cuando no hay una segunda acción útil).
+    secondaryButtonText: String? = "Regresar",
+    // Si se pasa, reemplaza la "x" roja por este ícono (por ejemplo, AppIcons.WifiOff).
+    icon: ImageVector? = null,
     onRetry: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    // Cerrar con la "x" o tocando fuera. Por defecto hace lo mismo que el botón secundario.
+    onDismiss: () -> Unit = onBack
 ) {
     Dialog(
-        onDismissRequest = onBack
+        onDismissRequest = onDismiss
     ) {
 
         Surface(
@@ -303,12 +320,13 @@ fun AppErrorDialog(
                 ) {
 
                     AppFeedbackCloseButton(
-                        onClick = onBack
+                        onClick = onDismiss
                     )
                 }
 
                 AppFeedbackIcon(
-                    type = FeedbackType.ERROR
+                    type = FeedbackType.ERROR,
+                    icon = icon
                 )
 
                 Spacer(Modifier.height(22.dp))
@@ -337,13 +355,16 @@ fun AppErrorDialog(
                     onClick = onRetry
                 )
 
-                Spacer(Modifier.height(10.dp))
+                if (secondaryButtonText != null) {
 
-                AppFeedbackButton(
-                    text = secondaryButtonText,
-                    primary = false,
-                    onClick = onBack
-                )
+                    Spacer(Modifier.height(10.dp))
+
+                    AppFeedbackButton(
+                        text = secondaryButtonText,
+                        primary = false,
+                        onClick = onBack
+                    )
+                }
             }
         }
     }
@@ -394,6 +415,27 @@ private fun CafeSmartFeedbackErrorPreview() {
         AppErrorDialog(
             title = "¡Ups! Hubo un problema",
             message = "No pudimos completar la operación.",
+            onRetry = {},
+            onBack = {}
+        )
+    }
+}
+
+// VISTA PREVIA DE ERROR SIN CONEXIÓN
+@Preview(
+    name = "Café Smart - Sin conexión",
+    showBackground = true,
+    widthDp = 390,
+    heightDp = 844
+)
+@Composable
+private fun CafeSmartFeedbackNoConnectionPreview() {
+
+    CafesmartTheme {
+        AppErrorDialog(
+            title = "Sin conexión",
+            message = "No hay conexión a Internet. Revisa tu red e inténtalo de nuevo.",
+            icon = AppIcons.WifiOff,
             onRetry = {},
             onBack = {}
         )

@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.cafesmart.app.ui.components.AppErrorDialog
+import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.theme.AppTypography
 import com.cafesmart.app.ui.theme.ErrorIcon
 import com.cafesmart.app.ui.theme.OnPrimary
@@ -52,6 +53,8 @@ class AuthDialogsState {
     // Título del aviso; vuelve a "Información" al cerrarlo.
     var infoTitle by mutableStateOf(TITULO_INFO)
     var registrationError by mutableStateOf<RegistrationFailure?>(null)
+    // Error de Firebase (login o registro): ver authErrorDialogData.
+    var authError by mutableStateOf<AuthErrorDialogData?>(null)
 
     fun clear() {
         help = null
@@ -59,6 +62,7 @@ class AuthDialogsState {
         info = null
         infoTitle = TITULO_INFO
         registrationError = null
+        authError = null
     }
 
     fun cerrarInfo() {
@@ -71,7 +75,9 @@ class AuthDialogsState {
 @Composable
 fun AuthDialogs(
     state: AuthDialogsState,
-    onRetryRegistration: () -> Unit
+    onRetryRegistration: () -> Unit,
+    // Ejecuta lo que pide un botón del diálogo de error (reintentar, ir al login, etc.).
+    onAuthErrorAction: (AuthErrorAction, AuthOrigin) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -131,6 +137,26 @@ fun AuthDialogs(
                     state.info = "No se encontró una aplicación de correo instalada."
                 }
             }
+        )
+    }
+
+    state.authError?.let { datos ->
+        AppErrorDialog(
+            title = datos.title,
+            message = datos.message,
+            icon = if (datos.sinConexion) AppIcons.WifiOff else null,
+            primaryButtonText = datos.primaryText,
+            secondaryButtonText = datos.secondaryText,
+            onRetry = {
+                state.authError = null
+                onAuthErrorAction(datos.primaryAction, datos.origin)
+            },
+            onBack = {
+                state.authError = null
+                onAuthErrorAction(datos.secondaryAction, datos.origin)
+            },
+            // La "x" y tocar fuera solo cierran: nunca navegan.
+            onDismiss = { state.authError = null }
         )
     }
 

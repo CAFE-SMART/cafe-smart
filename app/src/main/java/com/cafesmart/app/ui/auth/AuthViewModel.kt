@@ -14,6 +14,7 @@ package com.cafesmart.app.ui.auth
 // Clase base para implementar el patrón MVVM
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cafesmart.app.data.auth.AuthError
 import com.cafesmart.app.data.auth.AuthRepository
 import com.cafesmart.app.data.auth.AuthResult
 import com.cafesmart.app.data.auth.FirebaseAuthRepository
@@ -234,8 +235,14 @@ data class AuthUiState(
 sealed interface AuthEvent {
     data object LoggedIn : AuthEvent
     data class Registered(val data: RegistrationData) : AuthEvent
-    data class LoginFailed(val message: String) : AuthEvent
-    data class RegistrationFailed(val message: String) : AuthEvent
+    // Llevan el AuthError para que la pantalla elija título, ícono y botones según la causa.
+    data class LoginFailed(val error: AuthError) : AuthEvent {
+        val message: String get() = error.mensaje
+    }
+
+    data class RegistrationFailed(val error: AuthError) : AuthEvent {
+        val message: String get() = error.mensaje
+    }
 }
 
 
@@ -338,6 +345,28 @@ class AuthViewModel(
         _state.value = uiState.copy(
 
             page = AuthPage.LOGIN,
+
+            errors = emptyMap(),
+
+            requestError = null
+        )
+    }
+
+    /**
+     * Vuelve al inicio de sesión con el correo ya escrito.
+     *
+     * Se usa cuando el registro falla porque el correo ya tiene cuenta:
+     * la persona solo debe escribir su contraseña.
+     */
+    fun goToLoginWith(email: String) {
+
+        _state.value = uiState.copy(
+
+            page = AuthPage.LOGIN,
+
+            loginEmail = email,
+
+            loginPassword = "",
 
             errors = emptyMap(),
 
@@ -580,7 +609,7 @@ class AuthViewModel(
             _events.send(
                 when (resultado) {
                     AuthResult.Success -> AuthEvent.LoggedIn
-                    is AuthResult.Failure -> AuthEvent.LoginFailed(resultado.error.mensaje)
+                    is AuthResult.Failure -> AuthEvent.LoginFailed(resultado.error)
                 }
             )
         }
@@ -600,7 +629,7 @@ class AuthViewModel(
             _events.send(
                 when (resultado) {
                     AuthResult.Success -> AuthEvent.Registered(data)
-                    is AuthResult.Failure -> AuthEvent.RegistrationFailed(resultado.error.mensaje)
+                    is AuthResult.Failure -> AuthEvent.RegistrationFailed(resultado.error)
                 }
             )
         }

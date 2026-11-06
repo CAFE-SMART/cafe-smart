@@ -58,6 +58,19 @@ object AppIcons {
     val Check: ImageVector by lazy {
         lineIcon("Check", "M20 6L9 17l-5-5")
     }
+    // Sin conexion a Internet (wifi tachado)
+    val WifiOff: ImageVector by lazy {
+        lineIcon(
+            "WifiOff",
+            "M12 20h.01",
+            "M8.5 16.429a5 5 0 0 1 7 0",
+            "M5 12.859a10 10 0 0 1 5.17-2.69",
+            "M19 12.859a10 10 0 0 0-2.007-1.523",
+            "M2 8.82a15 15 0 0 1 4.177-2.643",
+            "M22 8.82a15 15 0 0 0-11.288-3.764",
+            "M2 2l20 20"
+        )
+    }
     // Signo +
     val Plus: ImageVector by lazy {
         lineIcon("Plus", "M5 12h14", "M12 5v14")

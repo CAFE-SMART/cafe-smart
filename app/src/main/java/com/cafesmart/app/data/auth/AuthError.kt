@@ -4,7 +4,7 @@ package com.cafesmart.app.data.auth
 // Se separan de Firebase para poder probarlos con JUnit sin el SDK.
 enum class AuthError(val mensaje: String) {
     CORREO_INVALIDO("El correo no es válido. Revísalo e inténtalo de nuevo."),
-    CREDENCIALES_INCORRECTAS("Correo o contraseña incorrectos."),
+    CREDENCIALES_INCORRECTAS("Correo o contraseña incorrectos. Revísalos e inténtalo de nuevo."),
     CORREO_YA_REGISTRADO("Ya existe una cuenta con este correo. Inicia sesión o usa otro correo."),
     CONTRASENA_DEBIL("La contraseña es muy débil. Usa mínimo 8 caracteres con mayúscula, minúscula y número."),
     CUENTA_DESHABILITADA("Esta cuenta está deshabilitada. Comunícate con soporte."),

@@ -20,7 +20,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.cafesmart.app.ui.auth.AuthAuxDialog
 import com.cafesmart.app.ui.auth.AuthDialogs
+import com.cafesmart.app.ui.auth.AuthErrorAction
 import com.cafesmart.app.ui.auth.AuthEvent
+import com.cafesmart.app.ui.auth.AuthOrigin
 import com.cafesmart.app.ui.auth.AuthDialogsState
 import com.cafesmart.app.ui.auth.AuthHelpContext
 import com.cafesmart.app.ui.auth.AuthPage
@@ -33,6 +35,7 @@ import com.cafesmart.app.ui.auth.RegisterStep2Screen
 import com.cafesmart.app.ui.auth.RegistrationData
 import com.cafesmart.app.ui.auth.RegistrationFailure
 import com.cafesmart.app.ui.auth.RegistrationSuccessScreen
+import com.cafesmart.app.ui.auth.authErrorDialogData
 import com.cafesmart.app.ui.auth.SIMULAR_ERROR_REGISTRO
 import com.cafesmart.app.ui.home.HomeScreen
 import com.cafesmart.app.ui.screens.PlaceholderAction
@@ -92,6 +95,31 @@ fun AppNavHost(
         navController.logout()
     }
 
+    // Lo que pide cada botón del diálogo de error de autenticación.
+    val onAuthErrorAction: (AuthErrorAction, AuthOrigin) -> Unit = { accion, origen ->
+        when (accion) {
+            AuthErrorAction.CERRAR -> Unit
+
+            // Repite la solicitud con los mismos datos (siguen en el ViewModel).
+            AuthErrorAction.REINTENTAR -> when (origen) {
+                AuthOrigin.LOGIN -> authViewModel.submitLogin { authViewModel.login(it) }
+                AuthOrigin.REGISTRO -> pendingRegistration?.let(processRegistration)
+            }
+
+            // Vuelve al login (que quedó debajo en la pila) con el correo ya escrito.
+            AuthErrorAction.IR_A_LOGIN -> {
+                val correo = pendingRegistration?.email ?: authViewModel.uiState.email.trim()
+                authViewModel.goToLoginWith(correo)
+                navController.popBackStack(Routes.LOGIN, inclusive = false)
+            }
+
+            AuthErrorAction.IR_A_REGISTRO -> {
+                authViewModel.goToRegister()
+                navController.navigate(Routes.REGISTER_STEP1) { launchSingleTop = true }
+            }
+        }
+    }
+
     // Atiende los resultados de Firebase (una sola vez cada uno): navegar o mostrar el error.
     LaunchedEffect(Unit) {
         authViewModel.events.collect { evento ->
@@ -105,19 +133,16 @@ fun AppNavHost(
 
                 is AuthEvent.Registered -> {
                     dialogs.registrationError = null
+                    dialogs.authError = null
                     registrationSuccess = evento.data
                     navController.navigate(Routes.REGISTER_SUCCESS) { launchSingleTop = true }
                 }
 
-                is AuthEvent.LoginFailed -> {
-                    dialogs.infoTitle = "No pudimos iniciar sesión"
-                    dialogs.info = evento.message
-                }
+                is AuthEvent.LoginFailed ->
+                    dialogs.authError = authErrorDialogData(evento.error, AuthOrigin.LOGIN)
 
-                is AuthEvent.RegistrationFailed -> dialogs.registrationError = RegistrationFailure(
-                    title = "No pudimos crear tu cuenta",
-                    message = evento.message
-                )
+                is AuthEvent.RegistrationFailed ->
+                    dialogs.authError = authErrorDialogData(evento.error, AuthOrigin.REGISTRO)
             }
         }
     }
@@ -476,7 +501,8 @@ fun AppNavHost(
     // Diálogos de ayuda, recuperación, soporte, avisos y error de registro.
     AuthDialogs(
         state = dialogs,
-        onRetryRegistration = { pendingRegistration?.let(processRegistration) }
+        onRetryRegistration = { pendingRegistration?.let(processRegistration) },
+        onAuthErrorAction = onAuthErrorAction
     )
 }
 

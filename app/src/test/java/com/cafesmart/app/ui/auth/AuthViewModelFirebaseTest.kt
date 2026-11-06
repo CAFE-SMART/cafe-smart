@@ -75,10 +75,9 @@ class AuthViewModelFirebaseTest {
         val repo = RepositorioFalso(AuthResult.Failure(AuthError.CREDENCIALES_INCORRECTAS))
         val vm = AuthViewModel(repo)
         vm.login(credenciales)
-        assertEquals(
-            AuthEvent.LoginFailed("Correo o contraseña incorrectos."),
-            vm.events.first()
-        )
+        val evento = vm.events.first()
+        assertEquals(AuthEvent.LoginFailed(AuthError.CREDENCIALES_INCORRECTAS), evento)
+        assertEquals(AuthError.CREDENCIALES_INCORRECTAS.mensaje, (evento as AuthEvent.LoginFailed).message)
         assertFalse(vm.state.value.isSubmitting)
     }
 
@@ -110,6 +109,16 @@ class AuthViewModelFirebaseTest {
         vm.register(registro)
         assertEquals(0, repo.llamadasSignIn)
         assertEquals(0, repo.llamadasRegister)
+    }
+
+    @Test
+    fun goToLoginWithVuelveAlLoginConElCorreoYSinContrasena() {
+        val vm = AuthViewModel(RepositorioFalso())
+        vm.goToRegister()
+        vm.goToLoginWith("ana@cafe.com")
+        assertEquals(AuthPage.LOGIN, vm.uiState.page)
+        assertEquals("ana@cafe.com", vm.uiState.loginEmail)
+        assertEquals("", vm.uiState.loginPassword)
     }
 
     @Test
