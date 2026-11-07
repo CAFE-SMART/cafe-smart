@@ -180,8 +180,9 @@ fun limpiarPrecio(texto: String): String = texto.filter { it.isDigit() }.take(6)
 // toDoubleOrNull convierte el texto en numero; devuelve null si no se puede.
 fun pesoKg(cafe: CafeFormulario): Double? = cafe.peso.toDoubleOrNull()
 
-// Convierte el precio a numero despues de dejar solo digitos.
-fun precioKg(cafe: CafeFormulario): Double? = limpiarPrecio(cafe.precio).toDoubleOrNull()
+// Convierte el texto del precio a numero despues de dejar solo digitos.
+// Recibe el texto (no la tarjeta) para que Compras y Ventas usen las mismas reglas del precio.
+fun precioKg(texto: String): Double? = limpiarPrecio(texto).toDoubleOrNull()
 
 // Mayor a 0 y sin pasar del maximo.
 fun pesoValido(cafe: CafeFormulario): Boolean {
@@ -190,8 +191,8 @@ fun pesoValido(cafe: CafeFormulario): Boolean {
 }
 
 // Entre el precio minimo y el maximo.
-fun precioValido(cafe: CafeFormulario): Boolean {
-    val precio = precioKg(cafe)
+fun precioValido(texto: String): Boolean {
+    val precio = precioKg(texto)
     return precio != null && precio >= PRECIO_MIN_KG && precio <= PRECIO_MAX_KG
 }
 
@@ -203,10 +204,10 @@ fun errorPeso(cafe: CafeFormulario): String? {
 }
 
 // El minimo ($1.000) se revisa cuando ya hay 4 digitos, para no marcar error mientras se escribe
-fun errorPrecio(cafe: CafeFormulario): String? {
+fun errorPrecio(texto: String): String? {
     // ?: return null: si el campo esta vacio no hay error que mostrar.
-    val precio = precioKg(cafe) ?: return null
-    val muyBajo = cafe.precio.length >= 4 && precio < PRECIO_MIN_KG
+    val precio = precioKg(texto) ?: return null
+    val muyBajo = texto.length >= 4 && precio < PRECIO_MIN_KG
     return if (muyBajo || precio > PRECIO_MAX_KG) MENSAJE_PRECIO else null
 }
 
@@ -215,10 +216,10 @@ fun crearSublote(cafe: CafeFormulario): CafeValidado? {
     val tipo = cafe.tipoCafe
     val calidad = cafe.calidad
     val peso = pesoKg(cafe)
-    val precio = precioKg(cafe)
+    val precio = precioKg(cafe.precio)
     // Solo crea el sublote si todos los datos estan completos y en rango.
     return if (tipo != null && calidad != null && peso != null && precio != null &&
-        pesoValido(cafe) && precioValido(cafe)
+        pesoValido(cafe) && precioValido(cafe.precio)
     ) {
         CafeValidado(tipoCafe = tipo, calidad = calidad, pesoKg = peso, precioKg = precio)
     } else {
@@ -236,7 +237,7 @@ fun loQueFaltaEnCafe(cafe: CafeFormulario): String? =
         cafe.tipoCafe == null -> "Elige el tipo de café que comprarás."
         cafe.calidad == null -> "Elige la calidad del café que te interesa."
         !pesoValido(cafe) -> MENSAJE_PESO
-        !precioValido(cafe) -> MENSAJE_PRECIO
+        !precioValido(cafe.precio) -> MENSAJE_PRECIO
         else -> null
     }
 
@@ -266,7 +267,7 @@ fun totalKg(cafes: List<CafeFormulario>): Double = cafes.sumOf { pesoKg(it) ?: 0
 
 // Suma de peso x precio de cada tarjeta.
 fun totalEstimado(cafes: List<CafeFormulario>): Double =
-    cafes.sumOf { (pesoKg(it) ?: 0.0) * (precioKg(it) ?: 0.0) }
+    cafes.sumOf { (pesoKg(it) ?: 0.0) * (precioKg(it.precio) ?: 0.0) }
 
 // ---------------- Fecha ----------------
 

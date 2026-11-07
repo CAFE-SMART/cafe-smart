@@ -185,12 +185,12 @@ class PurchaseRulesTest {
     fun errores_soloCuandoSePasaDelMaximo() {
         assertNull(errorPeso(cafeCompleto))
         assertNotNull(errorPeso(cafeCompleto.copy(peso = "100000")))
-        assertNull(errorPrecio(cafeCompleto.copy(precio = "100000")))
-        assertNotNull(errorPrecio(cafeCompleto.copy(precio = "100001")))
+        assertNull(errorPrecio("100000"))
+        assertNotNull(errorPrecio("100001"))
         assertNotNull(errorPeso(cafeCompleto.copy(peso = "0")))
         // Mientras escribe "14" no marca error; con 4 digitos ya revisa el minimo
-        assertNull(errorPrecio(cafeCompleto.copy(precio = "14")))
-        assertNull(errorPrecio(cafeCompleto.copy(precio = "1000")))
+        assertNull(errorPrecio("14"))
+        assertNull(errorPrecio("1000"))
     }
 
     @Test

@@ -176,7 +176,7 @@ data class PurchaseUiState(
                 peso = cafe.peso,
                 precio = precioEnPantalla(cafe.precio),
                 errorPeso = errorPeso(cafe),
-                errorPrecio = errorPrecio(cafe),
+                errorPrecio = errorPrecio(cafe.precio),
                 // Solo se puede quitar una tarjeta si queda al menos otra.
                 puedeQuitar = cafes.size > 1,
                 abierto = indice == cafeAbierto,
