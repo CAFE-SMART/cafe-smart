@@ -5,14 +5,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import android.widget.DatePicker
-import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.action.ViewActions.click
-import androidx.test.espresso.matcher.ViewMatchers.withId
-import androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom
-import androidx.test.espresso.ViewAction
-import androidx.test.espresso.UiController
 import android.view.View
-import org.hamcrest.Matcher
+import android.view.ViewGroup
+import android.widget.Button
+import androidx.test.platform.view.inspector.WindowInspectorCompat
 import androidx.compose.runtime.*
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.text.AnnotatedString
@@ -46,11 +42,14 @@ class GastosFlowTest {
         }, sublotes) else GastosViewModel(sublotes = sublotes)
         compose.setContent {
             var mostrarLista by remember { mutableStateOf(lista) }
+            var mostrarSelector by remember { mutableStateOf(false) }
             val estado by modelo.uiState.collectAsState()
             CafesmartTheme {
-                if (mostrarLista) ListaGastosScreen(estado, {}, { mostrarLista = false }, modelo::filtrar)
+                if (mostrarSelector) AsociarSublotesScreen(estado, modelo::alternarSublote, { mostrarSelector = false })
+                else if (mostrarLista) ListaGastosScreen(estado, {}, { mostrarLista = false }, modelo::filtrar)
                 else {
-                    RegistrarGastoScreen(estado, modelo::editar, modelo::solicitarConfirmacion, { mostrarLista = true })
+                    RegistrarGastoScreen(estado, modelo::editar, modelo::solicitarConfirmacion, { mostrarLista = true },
+                        onSeleccionarSublotes = { mostrarSelector = true })
                     GastosResultado(estado, modelo::confirmar, modelo::volverAEditar, { mostrarLista = true }, modelo::nuevoRegistro)
                 }
             }
@@ -71,6 +70,33 @@ class GastosFlowTest {
         compose.waitForIdle()
         val imagen = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
         File(carpeta, "$nombre.png").outputStream().use { imagen.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+
+    private fun View.descendientes(): Sequence<View> = sequence {
+        yield(this@descendientes)
+        val grupo = this@descendientes as? ViewGroup
+        if (grupo != null) {
+            for (indice in 0 until grupo.childCount) yieldAll(grupo.getChildAt(indice).descendientes())
+        }
+    }
+
+    /** Ventana nativa del mismo proceso, fuera del árbol Compose. No requiere foco ni permisos
+     * de inyección: actualiza el widget real y acciona el botón real en el hilo de UI.
+     * WindowInspectorCompat ya forma parte de AndroidX Test y también soporta API 24-28.
+     */
+    private fun esperarCalendarioNativo(): Pair<View, DatePicker> {
+        var encontrado: Pair<View, DatePicker>? = null
+        compose.waitUntil(5_000) {
+            compose.runOnUiThread {
+                encontrado = WindowInspectorCompat.getGlobalWindowViews().mapNotNull { ventana ->
+                    val calendario = ventana.descendientes().filterIsInstance<DatePicker>()
+                        .singleOrNull { it.isShown && it.isAttachedToWindow }
+                    calendario?.let { ventana to it }
+                }.singleOrNull()
+            }
+            encontrado != null
+        }
+        return checkNotNull(encontrado) { "No se encontró una única ventana con DatePicker visible" }
     }
 
     @Test fun G01_abrirDesdeHome() {
@@ -95,10 +121,9 @@ class GastosFlowTest {
             LaunchedEffect(Unit) {
                 nav.currentBackStackEntryFlow.first()
                 nav.navigate(Routes.HOME) { popUpTo(Routes.SPLASH) { inclusive = true } }
-                nav.navigate(Routes.SETTINGS)
             }
         }
-        texto("Gastos operativos").performClick()
+        texto("Ver gastos").performScrollTo().performClick()
         texto("Gastos generales").assertIsDisplayed(); captura("G02-lista-vacia")
         texto("Registrar gasto").performClick(); texto("Registro de Gastos").assertIsDisplayed()
     }
@@ -123,6 +148,7 @@ class GastosFlowTest {
     @Test fun G08_subloteDisponibleYReparto() {
         montar(sublotes = listOf(Sublote(7, 1, pesoInicialKg = 10.0, pesoDisponibleKg = 10.0, costoKg = 1000, fechaIngreso = Fecha(5,11,2026))))
         llenar(); texto("Asociar a sublotes").performScrollTo().performClick(); texto("Seleccionar…").performScrollTo().performClick(); texto("Sublote 7").performClick()
+        texto("Guardar selección").performClick()
         campo(3).performScrollTo().performTextInput("12500"); guardar(); texto("¿Registrar este gasto?").assertIsDisplayed(); confirmar(); texto("Gasto registrado con éxito").assertIsDisplayed()
     }
     @Test fun G09_exigeSublote() {
@@ -183,19 +209,42 @@ class GastosFlowTest {
     /** Comprueba el calendario nativo, el foco del campo y el acceso a las acciones con scroll. */
     @Test fun G17_calendarioTecladoYScroll() {
         montar()
+        // Una fecha inicial fija garantiza que confirmar cambie el valor, incluso si hoy es día 6.
+        val fechaInicial = Fecha(7, 11, 2026)
+        compose.runOnIdle { modelo.editar { it.copy(fecha = fechaInicial) } }
         texto("Fecha").performScrollTo()
         compose.onNodeWithContentDescription("Seleccionar fecha").performClick()
-        onView(isAssignableFrom(DatePicker::class.java)).perform(object : ViewAction {
-            override fun getConstraints(): Matcher<View> = isAssignableFrom(DatePicker::class.java)
-            override fun getDescription() = "Seleccionar 6 de noviembre de 2026 en el calendario nativo"
-            override fun perform(uiController: UiController, view: View) {
-                (view as DatePicker).updateDate(2026, 10, 6)
-                uiController.loopMainThreadUntilIdle()
-            }
-        })
-        onView(withId(android.R.id.button1)).perform(click())
+        val (ventana, calendario) = esperarCalendarioNativo()
+        compose.runOnUiThread {
+            assertEquals(2026, calendario.year)
+            assertEquals(10, calendario.month)
+            assertEquals(7, calendario.dayOfMonth)
+            calendario.updateDate(2026, 10, 6)
+            assertEquals(6, calendario.dayOfMonth)
+            assertEquals(fechaInicial, modelo.uiState.value.formulario.fecha)
+            val aceptar = checkNotNull(ventana.findViewById<Button>(android.R.id.button1))
+            assertTrue("Aceptar debe estar visible y habilitado", aceptar.isShown && aceptar.isEnabled)
+            assertTrue("El botón debe ejecutar su listener real", aceptar.performClick())
+        }
+        compose.waitForIdle()
+        compose.runOnUiThread { assertFalse("El calendario debe cerrarse al aceptar", calendario.isAttachedToWindow) }
         compose.runOnIdle { assertEquals(Fecha(6, 11, 2026), modelo.uiState.value.formulario.fecha) }
+        texto("06/11/2026").assertIsDisplayed()
+        // Cancelar otra selección no puede sobrescribir la fecha confirmada.
+        compose.onNodeWithContentDescription("Seleccionar fecha").performClick()
+        val (ventanaCancelacion, calendarioCancelacion) = esperarCalendarioNativo()
+        compose.runOnUiThread {
+            calendarioCancelacion.updateDate(2026, 10, 8)
+            val cancelar = checkNotNull(ventanaCancelacion.findViewById<Button>(android.R.id.button2))
+            assertTrue(cancelar.isShown && cancelar.isEnabled)
+            assertTrue(cancelar.performClick())
+        }
+        compose.waitForIdle()
+        compose.runOnUiThread { assertFalse(calendarioCancelacion.isAttachedToWindow) }
+        compose.runOnIdle { assertEquals(Fecha(6, 11, 2026), modelo.uiState.value.formulario.fecha) }
+        texto("06/11/2026").assertIsDisplayed()
         campo(0).performScrollTo().performClick().performTextInput("Prueba de teclado")
+        campo(0).assertIsFocused().assertTextEquals("Prueba de teclado")
         compose.waitForIdle()
         val instrumentacion = InstrumentationRegistry.getInstrumentation()
         val imagen = instrumentacion.uiAutomation.takeScreenshot()
@@ -203,5 +252,6 @@ class GastosFlowTest {
         archivo.parentFile?.mkdirs()
         archivo.outputStream().use { imagen.compress(Bitmap.CompressFormat.PNG, 100, it) }
         texto("Guardar gasto").performScrollTo().assertIsDisplayed()
+        campo(0).performScrollTo().assertTextEquals("Prueba de teclado")
     }
 }
