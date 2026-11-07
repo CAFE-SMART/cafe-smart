@@ -6,6 +6,7 @@ package com.cafesmart.app.data.gastos
 // Modelos oficiales que transportan los datos del módulo.
 import com.cafesmart.app.data.model.Gasto
 import com.cafesmart.app.data.model.GastoSublote
+import com.cafesmart.app.data.sample.gastosEjemplo
 // Flujos observables para publicar y leer el estado.
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,6 +54,13 @@ class DemoGastosRepository : GastosRepository {
     private val registros = MutableStateFlow<List<Gasto>>(emptyList())
     private val repartos = mutableMapOf<Long, List<GastoSublote>>()
     override val gastos: StateFlow<List<Gasto>> = registros
+
+    /** Carga explícita para revisar el estado con datos, sin sobrescribir registros. */
+    @Synchronized
+    fun cargarEjemplos() {
+        if (registros.value.isNotEmpty()) return
+        gastosEjemplo().asReversed().forEach { registrar(it, emptyList()) }
+    }
 
     // La operación es atómica en memoria. Un reintento del mismo ID y contenido no duplica.
     // ============================================================

@@ -56,7 +56,8 @@ import com.cafesmart.app.viewmodel.gastos.*
  */
 @Composable
 fun RegistrarGastoScreen(estado: GastosUiState, onEditar: ((GastoFormulario) -> GastoFormulario) -> Unit,
-    onGuardar: () -> Unit, onCancelar: () -> Unit, modifier: Modifier = Modifier) {
+    onGuardar: () -> Unit, onCancelar: () -> Unit, modifier: Modifier = Modifier,
+    onSeleccionarSublotes: () -> Unit = {}) {
     // Se toma el borrador de presentación y solo se habilita la edición en EDICION.
     val form = estado.formulario
     val habilitado = estado.resultado == ResultadoGasto.EDICION
@@ -108,7 +109,7 @@ fun RegistrarGastoScreen(estado: GastosUiState, onEditar: ((GastoFormulario) -> 
                 // El control segmentado reutilizado comunica Pagado/Pendiente mediante onEditar.
                 GastosSegmentos(EstadoPago.entries, form.estado, { it.etiqueta }, { estado -> onEditar { it.copy(estado = estado) } }, habilitado)
             }
-            GastoAsociacionSelector(estado, onEditar, habilitado)
+            GastoAsociacionSelector(estado, onEditar, habilitado, onSeleccionarSublotes)
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.s8)) {
                 ContinueButton("Guardar gasto", { teclado?.hide(); onGuardar() }, habilitado)
                 TextButton(onClick = onCancelar, enabled = habilitado, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
@@ -127,8 +128,8 @@ fun RegistrarGastoScreen(estado: GastosUiState, onEditar: ((GastoFormulario) -> 
 /**
  * Selector y reparto manual: solo ofrece sublotes proporcionados por el inventario.
  *
- * La selección pertenece al formulario; solo la apertura del menú es estado visual local.
- * No se inventan opciones ni se reparten costos automáticamente. Para cada sublote elegido
+ * La selección pertenece al formulario compartido y se edita en EXPENSE_LINK_BATCHES.
+ * Las opciones proceden del ViewModel; no se reparten costos automáticamente. Para cada sublote elegido
  * se pide un monto y la validación externa comprueba después que la suma coincida.
  *
  * @param estado Fuente de sublotes disponibles, selección y mensajes del formulario.
@@ -136,11 +137,9 @@ fun RegistrarGastoScreen(estado: GastosUiState, onEditar: ((GastoFormulario) -> 
  * @param habilitado Impide editar cuando no se está en la etapa EDICION.
  */
 @Composable
-private fun GastoAsociacionSelector(estado: GastosUiState, onEditar: ((GastoFormulario) -> GastoFormulario) -> Unit, habilitado: Boolean) {
+private fun GastoAsociacionSelector(estado: GastosUiState, onEditar: ((GastoFormulario) -> GastoFormulario) -> Unit,
+    habilitado: Boolean, onSeleccionarSublotes: () -> Unit) {
     val form = estado.formulario
-    // remember conserva la apertura del menú entre recomposiciones. mutableStateOf hace que
-    // el cambio de abierto actualice la interfaz; no convierte la selección en persistencia permanente.
-    var abierto by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.s8)) {
         Text("¿A qué aplica este gasto?", style = AppTypography.labelField)
         Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(Spacing.s12)) {
@@ -151,24 +150,9 @@ private fun GastoAsociacionSelector(estado: GastosUiState, onEditar: ((GastoForm
         }
         if (form.aplicaA == AplicaGasto.SUBLOTES) {
             Text("Seleccionar sublotes", style = AppTypography.labelField)
-            Box {
-                OutlinedButton({ abierto = true }, enabled = habilitado, shape = AppShapes.medium, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text(if (form.asignaciones.isEmpty()) "Seleccionar…" else "${form.asignaciones.size} sublote(s) seleccionado(s)")
-                }
-                DropdownMenu(abierto, { abierto = false }, modifier = Modifier.heightIn(max = 280.dp)) {
-                    if (estado.sublotes.isEmpty()) DropdownMenuItem(text = { Text("No hay sublotes disponibles") }, onClick = { abierto = false })
-                    // Cada opción corresponde a un sublote recibido. Agregar/quitar su ID crea un mapa nuevo
-                    // con + o -; cerrar el menú no borra las asignaciones del formulario.
-                    estado.sublotes.forEach { sublote ->
-                        DropdownMenuItem(text = { Text("Sublote ${sublote.id}") }, leadingIcon = {
-                            Checkbox(sublote.id in form.asignaciones, onCheckedChange = null)
-                        }, onClick = {
-                            onEditar { actual -> actual.copy(asignaciones = if (sublote.id in actual.asignaciones)
-                                actual.asignaciones - sublote.id else actual.asignaciones + (sublote.id to "")) }
-                            abierto = false
-                        })
-                    }
-                }
+            OutlinedButton(onSeleccionarSublotes, enabled = habilitado, shape = AppShapes.medium,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text(if (form.asignaciones.isEmpty()) "Seleccionar…" else "${form.asignaciones.size} sublote(s) seleccionado(s)")
             }
             Text(if (estado.sublotes.isEmpty()) "El inventario todavía no proporciona sublotes. Puedes registrar un gasto general."
                 else "Indica cuánto corresponde a cada sublote. La suma debe coincidir con el total.", style = AppTypography.helper)

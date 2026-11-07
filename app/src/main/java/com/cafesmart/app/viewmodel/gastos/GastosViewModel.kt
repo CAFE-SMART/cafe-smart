@@ -11,6 +11,8 @@ import com.cafesmart.app.data.gastos.DemoGastosRepository
 import com.cafesmart.app.data.gastos.GastosRepository
 // Modelos oficiales que transportan los datos del módulo.
 import com.cafesmart.app.data.model.Sublote
+import com.cafesmart.app.data.model.AplicaGasto
+import com.cafesmart.app.data.sample.lotesEjemplo
 // Corrutinas, cambios de hilo y manejo de cancelación.
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -29,25 +31,27 @@ import kotlinx.coroutines.withContext
  * Único propietario del borrador, filtros y resultados. Las dos pantallas reciben estado
  * y emiten acciones; no escriben datos. Sobrevive a recomposiciones y rotaciones, no al proceso.
  * [repository] permite verificar fallos sin conectar servicios externos.
- * [sublotes] solo debe contener inventario real; por defecto no se fabrican opciones.
+ * [sublotes] reutiliza por defecto los ejemplos del inventario mientras no exista persistencia.
  *
  * ViewModel separa la lógica de presentación de las funciones Composable. Recibe eventos,
  * actualiza un estado y se comunica con el repositorio; no dibuja pantallas. El propietario HOME
  * permite compartir el borrador entre rutas y conservarlo durante cambios de configuración.
  *
  * @param repository Fuente de Gastos; por defecto es una demostración en memoria, sin guardado permanente.
- * @param sublotes Opciones disponibles para asociar; por defecto está vacío.
+ * @param sublotes Opciones disponibles para asociar; por defecto usa los ejemplos de Inventario.
  */
 class GastosViewModel(
     private val repository: GastosRepository = DemoGastosRepository(),
-    sublotes: List<Sublote> = emptyList()
+    sublotes: List<Sublote> = lotesEjemplo().flatMap { it.sublotesConExistencia }
 ) : ViewModel() {
     // MutableStateFlow permite publicar cambios. uiState se expone como StateFlow de lectura
     // para que las pantallas observen el estado sin escribir directamente en este contenedor.
-    private val mutableState = MutableStateFlow(GastosUiState(sublotes = sublotes))
+    private val mutableState = MutableStateFlow(
+        GastosUiState(gastos = repository.gastos.value, sublotes = sublotes)
+    )
     val uiState: StateFlow<GastosUiState> = mutableState
     // El contador y el ID del borrador viven en esta instancia; no se guardan en disco.
-    private var siguienteId = 1L
+    private var siguienteId = (repository.gastos.value.maxOfOrNull { it.id } ?: 0L) + 1L
     private var idBorrador = siguienteId
 
     // La corrutina observa las listas emitidas por el repositorio. Cada emisión crea una copia
@@ -72,6 +76,27 @@ class GastosViewModel(
     fun editar(cambio: (GastoFormulario) -> GastoFormulario) {
         if (uiState.value.resultado != ResultadoGasto.EDICION) return
         mutableState.update { it.copy(formulario = cambio(it.formulario), errores = GastoErrores()) }
+    }
+
+    /** La selección se escribe en el mismo borrador que contiene los montos manuales. */
+    fun alternarSublote(id: Long) {
+        if (uiState.value.sublotes.none { it.id == id }) return
+        editar { form ->
+            form.copy(aplicaA = AplicaGasto.SUBLOTES, asignaciones =
+                if (id in form.asignaciones) form.asignaciones - id
+                else form.asignaciones + (id to ""))
+        }
+    }
+
+    /** Ejemplos opcionales: nunca reemplazan gastos ni el borrador que está en curso. */
+    fun cargarEjemplos() {
+        if (uiState.value.resultado != ResultadoGasto.EDICION) return
+        val demo = repository as? DemoGastosRepository ?: return
+        demo.cargarEjemplos()
+        mutableState.update { it.copy(gastos = demo.gastos.value, filtro = FiltroGasto.TODOS) }
+        // Reservar un ID libre también si ya se había comenzado un borrador vacío.
+        siguienteId = maxOf(siguienteId, (demo.gastos.value.maxOfOrNull { it.id } ?: 0L) + 1L)
+        idBorrador = siguienteId
     }
 
     // ============================================================
