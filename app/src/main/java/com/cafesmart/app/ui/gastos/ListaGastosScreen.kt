@@ -19,12 +19,14 @@ import androidx.compose.runtime.Composable
 // Modificadores, alineación, dibujo, tipografía, unidades y accesibilidad.
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 // Identificadores de los recursos locales de la aplicación.
 import com.cafesmart.app.R
+import com.cafesmart.app.data.sample.gastosEjemplo
 // Componentes reutilizables del proyecto.
 import com.cafesmart.app.ui.components.ContinueButton
 import com.cafesmart.app.ui.components.AppIcons
@@ -54,7 +56,8 @@ import com.cafesmart.app.viewmodel.gastos.*
  */
 @Composable
 fun ListaGastosScreen(estado: GastosUiState, onBack: () -> Unit, onRegistrar: () -> Unit,
-    onFiltro: (FiltroGasto) -> Unit, modifier: Modifier = Modifier, onActualizar: () -> Unit = {}) {
+    onFiltro: (FiltroGasto) -> Unit, modifier: Modifier = Modifier, onActualizar: () -> Unit = {},
+    onCargarEjemplos: (() -> Unit)? = null) {
     // fillMaxSize ocupa el área recibida; background aplica el fondo y safeDrawingPadding
     // respeta los espacios del sistema que aún no haya consumido el contenedor.
     Column(modifier.fillMaxSize().background(SurfaceScreen).safeDrawingPadding()) {
@@ -65,7 +68,7 @@ fun ListaGastosScreen(estado: GastosUiState, onBack: () -> Unit, onRegistrar: ()
         }
         // weight(1f) ocupa el espacio restante bajo el encabezado. LazyColumn compone las filas
         // según se necesitan y contentPadding separa sus tarjetas de los bordes.
-        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(horizontal = Spacing.s16, vertical = Spacing.s8),
+        LazyColumn(Modifier.weight(1f).testTag("gastos_lista"), contentPadding = PaddingValues(horizontal = Spacing.s16, vertical = Spacing.s8),
             verticalArrangement = Arrangement.spacedBy(Spacing.s20)) {
             // El total usa todos los pendientes. Cambiar el filtro de filas no cambia esa suma.
             item {
@@ -82,6 +85,11 @@ fun ListaGastosScreen(estado: GastosUiState, onBack: () -> Unit, onRegistrar: ()
             item { GastosSegmentos(FiltroGasto.entries, estado.filtro, { it.etiqueta }, onFiltro) }
             // Se diferencia el vacío general del vacío causado por el filtro seleccionado.
             if (estado.visibles.isEmpty()) item { GastoVacio(estado.gastos.isEmpty()) }
+            if (estado.gastos.isEmpty() && onCargarEjemplos != null) item {
+                TextButton(onClick = onCargarEjemplos, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Ver datos de ejemplo")
+                }
+            }
             // La key usa el ID del gasto para identificar cada fila al insertar, filtrar o recomponer.
             // La columna con weight distribuye el espacio entre los textos y el resto del contenido.
             items(estado.visibles, key = { it.id }) { gasto ->
@@ -143,3 +151,11 @@ private fun GastoVacio(sinRegistros: Boolean) {
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
 private fun ListaGastosPreview() { CafesmartTheme { ListaGastosScreen(GastosUiState(), {}, {}, {}) } }
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+private fun ListaGastosConDatosPreview() {
+    CafesmartTheme {
+        ListaGastosScreen(GastosUiState(gastos = gastosEjemplo(), filtro = FiltroGasto.TODOS), {}, {}, {})
+    }
+}

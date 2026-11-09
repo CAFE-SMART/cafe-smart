@@ -224,6 +224,7 @@ fun HomeScreen(
 
     // Acción para registrar un gasto
     onRegistrarGasto: () -> Unit = {},
+    onVerGastos: () -> Unit = {},
 
     // Acción para ajustar la capacidad de bodega
     onAjustarBodega: () -> Unit = {},
@@ -363,7 +364,8 @@ fun HomeScreen(
 
                 ResumenDelDia(
 
-                    onRegistrarGasto = onRegistrarGasto
+                    onRegistrarGasto = onRegistrarGasto,
+                    onVerGastos = onVerGastos
                 )
             }
 
@@ -867,7 +869,8 @@ private fun TituloSeccion(
 @Composable
 private fun ResumenDelDia(
 
-    onRegistrarGasto: () -> Unit
+    onRegistrarGasto: () -> Unit,
+    onVerGastos: () -> Unit
 ) {
 
     Column(
@@ -1104,6 +1107,9 @@ private fun ResumenDelDia(
 
                         fontWeight = FontWeight.SemiBold
                     )
+                }
+                TextButton(onClick = onVerGastos, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Ver gastos", color = AzulOscuro, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

@@ -43,7 +43,7 @@ import com.cafesmart.app.viewmodel.gastos.*
  * Adaptador MVVM y de navegación de Gastos; sustituye al archivo monolítico original.
  * El ViewModel pertenece a HOME: las tres rutas comparten sesión y se elimina al cerrar
  * sesión. No modifica el estado ni la persistencia de otros módulos.
- * [registro] distingue las dos pantallas y [asociar] abre la variante de sublotes.
+ * [registro] distingue lista y formulario; [asociar] abre la selección múltiple de sublotes.
  *
  * Esta función une MVVM y Navigation Compose: recibe estado del ViewModel y entrega
  * eventos a las pantallas. Una recomposición vuelve a describir la interfaz, sin guardar por sí misma.
@@ -51,7 +51,7 @@ import com.cafesmart.app.viewmodel.gastos.*
  * @param navController Controlador de la pila de rutas que pertenece al contenedor de la aplicación.
  * @param backStackEntry Entrada del destino actual, recibida desde composable en AppNavHost.
  * @param registro Si es true, muestra RegistrarGastoScreen; si es false, muestra ListaGastosScreen.
- * @param asociar Activa la variante del formulario que aplica el gasto a sublotes.
+ * @param asociar Muestra el selector que conserva el borrador compartido al regresar.
  */
 @Composable
 fun GastosRoute(navController: NavHostController, backStackEntry: NavBackStackEntry,
@@ -71,6 +71,23 @@ fun GastosRoute(navController: NavHostController, backStackEntry: NavBackStackEn
     LaunchedEffect(asociar) {
         if (asociar) modelo.editar { it.copy(aplicaA = AplicaGasto.SUBLOTES) }
     }
+    if (asociar) {
+        val volverAlFormulario = {
+            if (navController.previousBackStackEntry?.destination?.route == Routes.EXPENSE_NEW) {
+                navController.popBackStack()
+            } else {
+                // También admite el acceso desde el detalle de inventario.
+                navController.navigate(Routes.EXPENSE_NEW) {
+                    popUpTo(Routes.EXPENSE_LINK_BATCHES) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+            Unit
+        }
+        BackHandler(onBack = volverAlFormulario)
+        AsociarSublotesScreen(estado, modelo::alternarSublote, volverAlFormulario, contenido)
+        return
+    }
     // El resultado exitoso se muestra sobre el listado ya actualizado, como en Figma.
     LaunchedEffect(estado.resultado, registro) {
         if (registro && estado.resultado == ResultadoGasto.EXITO) {
@@ -81,6 +98,8 @@ fun GastosRoute(navController: NavHostController, backStackEntry: NavBackStackEn
     }
     // Estas lambdas son callbacks. nuevoRegistro limpia el borrador, no el listado guardado en memoria.
     // Unit expresa que la acción no devuelve un resultado al botón.
+    // Cancelar o volver atrás descarta el borrador: así un registro nuevo no arranca con datos viejos.
+    // (Ir a "Seleccionar sublotes" no usa salir, por eso la selección sí se conserva al regresar.)
     val salir = { modelo.nuevoRegistro(); navController.popBackStack(); Unit }
     val listado = {
         modelo.nuevoRegistro()
@@ -96,12 +115,16 @@ fun GastosRoute(navController: NavHostController, backStackEntry: NavBackStackEn
     // Las referencias modelo::editar y similares pasan funciones existentes como callbacks.
     if (registro) {
         BackHandler { if (estado.resultado == ResultadoGasto.EDICION) salir() else modelo.volverAEditar() }
-        RegistrarGastoScreen(estado, modelo::editar, modelo::solicitarConfirmacion, salir, modifier = contenido)
+        RegistrarGastoScreen(estado, modelo::editar, modelo::solicitarConfirmacion, salir,
+            modifier = contenido, onSeleccionarSublotes = {
+                navController.navigate(Routes.EXPENSE_LINK_BATCHES) { launchSingleTop = true }
+            })
     } else {
         ListaGastosScreen(estado, { navController.popBackStack() }, {
             modelo.nuevoRegistro()
             navController.navigate(Routes.EXPENSE_NEW) { launchSingleTop = true }
-        }, modelo::filtrar, modifier = contenido, onActualizar = modelo::actualizar)
+        }, modelo::filtrar, modifier = contenido, onActualizar = modelo::actualizar,
+            onCargarEjemplos = modelo::cargarEjemplos)
     }
     GastosResultado(estado, modelo::confirmar, modelo::volverAEditar, listado) {
         modelo.nuevoRegistro()

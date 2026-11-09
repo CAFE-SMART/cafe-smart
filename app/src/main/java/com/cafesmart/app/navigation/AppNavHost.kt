@@ -290,6 +290,7 @@ fun AppNavHost(
             HomeScreen(
                 onSalir = { showLogoutConfirmation = true },
                 onRegistrarGasto = { navController.navigateTo(Routes.EXPENSE_NEW) },
+                onVerGastos = { navController.navigateTo(Routes.EXPENSES) },
                 onVerSublotes = { navController.navigateTo(Routes.INVENTORY_LIST) },
                 // La barra inferior manda el nombre de la pestaña.
                 onNavegar = { destino ->
@@ -516,7 +517,7 @@ fun AppNavHost(
         composable(Routes.EXPENSE_NEW) { backStackEntry ->
             GastosRoute(navController, backStackEntry, registro = true)
         }
-        // Reutiliza el registro con asociación activa, sin crear una tercera pantalla principal.
+        // Selector de sublotes que comparte el borrador con el formulario de registro.
         composable(Routes.EXPENSE_LINK_BATCHES) { backStackEntry ->
             GastosRoute(navController, backStackEntry, registro = true, asociar = true)
         }
