@@ -98,7 +98,9 @@ fun GastosRoute(navController: NavHostController, backStackEntry: NavBackStackEn
     }
     // Estas lambdas son callbacks. nuevoRegistro limpia el borrador, no el listado guardado en memoria.
     // Unit expresa que la acción no devuelve un resultado al botón.
-    val salir = { navController.popBackStack(); Unit }
+    // Cancelar o volver atrás descarta el borrador: así un registro nuevo no arranca con datos viejos.
+    // (Ir a "Seleccionar sublotes" no usa salir, por eso la selección sí se conserva al regresar.)
+    val salir = { modelo.nuevoRegistro(); navController.popBackStack(); Unit }
     val listado = {
         modelo.nuevoRegistro()
         if (registro && !navController.popBackStack(Routes.EXPENSES, false)) {
@@ -119,6 +121,7 @@ fun GastosRoute(navController: NavHostController, backStackEntry: NavBackStackEn
             })
     } else {
         ListaGastosScreen(estado, { navController.popBackStack() }, {
+            modelo.nuevoRegistro()
             navController.navigate(Routes.EXPENSE_NEW) { launchSingleTop = true }
         }, modelo::filtrar, modifier = contenido, onActualizar = modelo::actualizar,
             onCargarEjemplos = modelo::cargarEjemplos)

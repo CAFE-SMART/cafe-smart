@@ -18,6 +18,7 @@ import com.cafesmart.app.ui.components.ContinueButton
 import com.cafesmart.app.ui.gastos.components.GastosHeader
 import com.cafesmart.app.ui.theme.*
 import com.cafesmart.app.viewmodel.gastos.*
+import com.cafesmart.app.viewmodel.purchase.formatoKg
 
 /** Usa el borrador compartido: Atrás y Guardar selección conservan los mismos IDs y montos. */
 @Composable
@@ -57,7 +58,7 @@ fun AsociarSublotesScreen(
                         horizontalArrangement = Arrangement.spacedBy(Spacing.s12)) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.s4)) {
                             Text("Sublote ${sublote.id}", style = AppTypography.titleCard)
-                            Text("Lote ${sublote.loteId} · ${sublote.pesoDisponibleKg} kg",
+                            Text("Lote ${sublote.loteId} · ${formatoKg(sublote.pesoDisponibleKg)}",
                                 style = AppTypography.bodyMd, color = TextSecondary)
                             Text(fechaGasto(sublote.fechaIngreso), style = AppTypography.caption)
                         }

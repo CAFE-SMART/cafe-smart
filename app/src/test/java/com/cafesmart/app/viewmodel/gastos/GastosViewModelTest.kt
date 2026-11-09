@@ -117,4 +117,14 @@ class GastosViewModelTest {
         vm.solicitarConfirmacion()
         assertEquals(ResultadoGasto.CONFIRMACION, vm.uiState.value.resultado)
     }
+
+    @Test fun nuevoRegistroDescartaElBorradorYLaSeleccion() = runTest {
+        val vm = GastosViewModel()
+        vm.editar { it.copy(concepto = "Transporte", monto = "50000") }
+        vm.alternarSublote(1)
+        assertEquals(1, vm.uiState.value.formulario.asignaciones.size)
+        vm.nuevoRegistro()
+        assertEquals(GastoFormulario(), vm.uiState.value.formulario)
+        assertEquals(ResultadoGasto.EDICION, vm.uiState.value.resultado)
+    }
 }
