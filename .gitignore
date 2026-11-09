@@ -23,3 +23,6 @@ app/google-services.json
 # Credenciales privadas de Firebase Admin
 **/serviceAccountKey.json
 **/*-firebase-adminsdk-*.json
+
+# Copias de trabajo temporales de Claude Code
+.claude/worktrees/

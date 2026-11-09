@@ -15,21 +15,24 @@ Inicio → Compra → Inventario → Secado → Gastos → Venta → Resultado f
 - Navigation Compose
 - Arquitectura MVVM (ViewModel + StateFlow)
 - Room (almacenamiento local) — por incorporar
-- Firebase Authentication — por incorporar
+- Firebase Authentication (inicio de sesión y registro con correo y contraseña)
 - JUnit (pruebas unitarias)
 
 ## Estructura del proyecto
 ```
-app/src/main/java/.../
-├── ui/          # Pantallas, tema y componentes (Compose)
-├── viewmodel/   # Estado y lógica de cada pantalla
-└── data/        # Modelos y repositorios
+app/src/main/java/com/cafesmart/app/
+├── navigation/  # Routes.kt (nombres de ruta) y AppNavHost.kt (grafo)
+├── ui/          # Pantallas, tema y componentes (Compose); Compras vive en ui/screens/purchase
+├── viewmodel/   # Estado y reglas puras por módulo: drying, finance, gastos, inventory, purchase, settings
+└── data/        # Modelos, repositorios (auth, gastos, session) y datos de ejemplo
 ```
+
+Estado de cada módulo, qué falta y cómo se trabaja: [`docs/estado-actual-y-traspaso.md`](docs/estado-actual-y-traspaso.md). Modelo de datos: [`docs/modelo-de-datos.md`](docs/modelo-de-datos.md).
 
 ## Navegación (Navigation Compose)
 Todo el grafo vive en `navigation/AppNavHost.kt` y los nombres de ruta en `navigation/Routes.kt`.
-Cada ruta corresponde a una pantalla del Figma (pestaña "Flujos"). Por ahora son *placeholders* que se
-reemplazan por la pantalla real dentro de su `composable(...)`.
+Cada ruta corresponde a una pantalla del Figma (pestaña "Flujos"). Ya son reales: cuenta (inicio de sesión y registro con Firebase), `home`, Compras (pasos 1 a 3 y `purchase_done`), el resumen de `inventory`, los tres de Gastos y `settings`.
+El resto (lo demás de Inventario, Ventas y Secado) son *placeholders* (`NavPlaceholder`) que se reemplazan por la pantalla real dentro de su `composable(...)`.
 
 **Flujo base:** `splash` → `login` → `home` → `inventory`
 (el splash y el login se sacan de la pila: "atrás" no vuelve a ellos).
@@ -46,6 +49,7 @@ reemplazan por la pantalla real dentro de su `composable(...)`.
 | Cuenta | `login` | Iniciar sesión |
 | Cuenta | `register_step1` | Crear cuenta · Paso 1 |
 | Cuenta | `register_step2` | Crear cuenta · Paso 2 |
+| Cuenta | `register_success` | Registro exitoso |
 | Inicio | `home` | Panel principal |
 | Compras | `purchase_step1` | Paso 1 · Productor |
 | Compras | `purchase_step2` | Paso 2 · Café |
@@ -122,8 +126,15 @@ En cada pull request el workflow `CI` corre las pruebas y guarda el reporte:
 | `data/model/ReglasModeloTest.kt` | Validaciones de las entidades (sublotes, gastos, repartos) | 15 |
 | `purchase/PurchaseRulesTest.kt` | Reglas del registro de compra (productores, pesos, precios) | 21 |
 | `purchase/PurchaseViewModelTest.kt` | Estado y pasos del flujo de compra | 24 |
+| `data/auth/AuthErrorTest.kt` | Traducción de los errores de Firebase a errores de la app | 6 |
+| `ui/auth/AuthErrorDialogDataTest.kt` | Textos y botones de los diálogos de error de cuenta | 7 |
+| `ui/auth/AuthViewModelFirebaseTest.kt` | Inicio de sesión y registro con un Firebase simulado | 7 |
 | `ui/auth/LoginValidationTest.kt` | Validaciones de inicio de sesión (correo y contraseña) | 15 |
 | `viewmodel/drying/MermaCalculatorTest.kt` | Porcentaje de merma del secado | 7 |
+| `viewmodel/gastos/GastosValidationTest.kt` | Validaciones del formulario de gastos | 19 |
+| `viewmodel/gastos/GastosViewModelTest.kt` | Estado de la lista y del registro de gastos | 8 |
+| `viewmodel/inventory/InventorySummaryTest.kt` | Resumen de inventario por tipo, orden y conversión a bultos | 19 |
+| `viewmodel/inventory/InventoryViewModelTest.kt` | Estado de la pantalla de resumen de inventario | 2 |
 | `viewmodel/inventory/WarehouseCapacityTest.kt` | Ocupación de la bodega y sus estados (normal, advertencia, crítica, sin capacidad) | 36 |
 | `viewmodel/finance/ProfitCalculatorTest.kt` | Utilidad de una venta (ingresos − costo de compra − gastos) | 25 |
 | `viewmodel/finance/ExpenseRulesTest.kt` | Validaciones de un gasto (concepto, tipo, valor, fecha, descripción) | 45 |
@@ -131,7 +142,7 @@ En cada pull request el workflow `CI` corre las pruebas y guarda el reporte:
 | `viewmodel/settings/SettingsViewModelTest.kt` | Estado de Ajustes y cierre de sesión (confirmar y cancelar) | 9 |
 | `ExampleUnitTest.kt` | Prueba de ejemplo de Android Studio | 1 |
 
-Total: 225 pruebas. Al agregar un archivo de prueba, añade su fila a esta tabla.
+Total: 293 pruebas (19 archivos). Al agregar un archivo de prueba, añade su fila a esta tabla. Las clases de `androidTest` (pantallas de Gastos y selector de fecha) compilan pero no corren en el CI: necesitan emulador.
 
 ## Flujo de trabajo en Git (trunk-based)
 - Un solo tronco: `main`, siempre compilable.
@@ -139,6 +150,8 @@ Total: 225 pruebas. Al agregar un archivo de prueba, añade su fila a esta tabla
 - Commits pequeños con mensaje claro.
 - Pull de `main` antes de abrir cada PR.
 - PR pequeño, revisado por otra persona.
+- `main` está protegida: no se borra ni se fuerza, y todo entra por PR con **1 aprobación** y el check `build` del CI en verde. Si el PR cambia después de aprobado, hay que aprobarlo otra vez.
+- Si el CI falla por una descarga de Gradle (error de red), repítelo: `gh run rerun <id> --failed`.
 
 ## Equipo
 - Andrés Mauricio Peña López
