@@ -12,6 +12,7 @@
 | **Compra** | Operación de compra. Una compra → N sublotes (un "Café N" = un sublote). |
 | **Gasto** | Concepto, descripción, tipo, monto, fecha, estado de pago, a qué aplica. | 
 | **Venta** | Operación de venta, total o parcial, de varios sublotes a la vez. |
+| **Negocio** (Room, ya existe) | Datos del negocio de la cuenta: nombre, tipo, teléfono, capacidad de bodega y peso del bulto. Ver §5. |
 | *Cliente* (apoyo) | A quién se vende. |
 | *Secado* (apoyo) | Convierte verde en seco y origina la merma. |
 | *GastoSublote, VentaSublote, SecadoSublote* | Tablas intermedias (muchos a muchos con datos propios). |
@@ -67,7 +68,7 @@ erDiagram
 5. **"Sin registrar" = FK nula**, no un productor ficticio (Tony Café no registra nombre ni cédula, RN-V-01).
 6. **Dinero en `Long` (pesos enteros), kg en `Double`.** La app ya fuerza precios enteros; con `Long` los totales no pierden centavos.
 7. **Fechas con la clase `Fecha` existente** (minSdk 24, sin `LocalDate`). Para Room: convertir con `fechaAMilis` / `milisAFecha`, que ya están en `Formatters.kt`.
-8. **Sin anotaciones de Room todavía.** Los ids (`Long = 0`) y las relaciones por FK están listos para `@PrimaryKey(autoGenerate = true)`, `@ForeignKey` y `@Relation` el 19 nov. Las clases `*ConSublotes` / `*ConDetalle` son las vistas de lectura que Room llenará con `@Relation`.
+8. **Sin anotaciones de Room todavía (salvo `Negocio`).** Los ids (`Long = 0`) y las relaciones por FK están listos para `@PrimaryKey(autoGenerate = true)`, `@ForeignKey` y `@Relation` el 19 nov. Las clases `*ConSublotes` / `*ConDetalle` son las vistas de lectura que Room llenará con `@Relation`.
 
 ## 4. Reglas que el modelo valida
 
@@ -98,3 +99,20 @@ Las constantes de rango están en `Sublote.kt` (`HUMEDAD_MIN/MAX_PORCENTAJE`, `F
 ## 6. Verificación
 
 Los archivos del paquete `data/model` compilan con la versión de Kotlin del proyecto y la suite de pruebas completa pasa (`./gradlew testDebugUnitTest`). Las pruebas del modelo reproducen las cifras del Figma: secado 290 kg → 270 kg secos, merma 20 kg (6,9 %), valor de la merma $ 280.000; sublote de 120 kg × $ 14.000 = $ 1.680.000; venta de 150 kg × $ 20.000 = $ 3.000.000.
+
+## 5. Negocio (primera entidad de Room)
+
+**Código:** `data/local/` (`NegocioEntity`, `NegocioDao`, `AppDatabase`) y `data/negocio/` (repositorio y reglas).
+
+| Campo | Notas |
+|---|---|
+| `uid` (PK) | uid de Firebase Auth. Un negocio por cuenta. |
+| `nombre`, `telefono` | Texto recortado. Teléfono: celular colombiano de 10 dígitos que empieza por 3. |
+| `tipo` | Nombre del enum: `COMPRAVENTA`, `COOPERATIVA` o `PERSONALIZADO`. |
+| `capacidadBodegaKg` | `0` = "sin configurar" (estado propio); no confundir con bodega vacía. |
+| `pesoBultoKg` | Valor inicial 40,7. |
+| `creadoEn` | Milisegundos. |
+
+- Firebase Auth solo guarda correo, contraseña y nombre; nombres y apellidos **no** se copian a Room y la contraseña nunca.
+- Se crea al terminar el registro (`AuthEvent.Registered`). Si una cuenta no lo tiene (o se reinstaló la app), se crea desde Ajustes → Información de empresa, que conserva capacidad, bulto y fecha de creación al editar.
+- `AppDatabase` (archivo `cafesmart.db`, versión 1, sin esquema exportado) es la base única: Carlos agrega Productor, Compra y Sublote y sube la versión a 2.
