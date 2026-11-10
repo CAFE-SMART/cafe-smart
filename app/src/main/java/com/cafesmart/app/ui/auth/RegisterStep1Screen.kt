@@ -455,7 +455,7 @@ fun RegisterStep1Screen(
  * onClick: acción que selecciona la opción.
  */
 @Composable
-private fun BusinessChoice(
+internal fun BusinessChoice(
 
     type: BusinessType,
 

@@ -1,6 +1,6 @@
 # Café Smart · guía para la IA
 
-App Android (Kotlin + Jetpack Compose) que digitaliza compra, inventario, secado, gastos y venta de café. Proyecto de la materia Aplicaciones Móviles. Equipo de 4. **Empieza leyendo [`docs/estado-actual-y-traspaso.md`](docs/estado-actual-y-traspaso.md):** dice qué funciona, qué falta y cómo se trabaja.
+App Android (Kotlin + Jetpack Compose) que digitaliza compra, inventario, secado, gastos y venta de café. Proyecto de la materia Aplicaciones Móviles. Equipo de 4. **Empieza leyendo [`README.md`](README.md)** (rutas, pruebas y flujo de Git) y [`docs/modelo-de-datos.md`](docs/modelo-de-datos.md). El estado de las tareas vive en Trello (revísalo antes de confiar en él) y la fuente de verdad del código es el propio repo.
 
 ## Reglas de oro
 - Responde en **español**, con frases cortas y sin relleno.

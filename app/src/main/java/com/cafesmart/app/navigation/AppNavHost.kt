@@ -6,6 +6,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.cafesmart.app.data.negocio.NegocioRepository
+import com.cafesmart.app.data.negocio.negocioDesdeRegistro
+import com.cafesmart.app.data.session.FirebaseSessionGateway
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -45,10 +50,12 @@ import com.cafesmart.app.ui.screens.SplashScreen
 import com.cafesmart.app.ui.screens.purchase.PurchaseFlow
 import com.cafesmart.app.data.model.TipoCafe
 import com.cafesmart.app.ui.inventory.InventoryScreen
+import com.cafesmart.app.ui.settings.NegocioInfoScreen
 import com.cafesmart.app.ui.settings.SettingsScreen
 import com.cafesmart.app.viewmodel.inventory.InventoryViewModel
 import com.cafesmart.app.viewmodel.inventory.tipoCafeDesdeRuta
 import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
+import com.cafesmart.app.viewmodel.settings.NegocioInfoViewModel
 import com.cafesmart.app.viewmodel.settings.SettingsViewModel
 
 @Composable
@@ -125,6 +132,25 @@ fun AppNavHost(
         }
     }
 
+    // Guarda el negocio del registro en Room (nombre, tipo y teléfono). Sin uid (modo demostración) no guarda.
+    val negocios = remember { NegocioRepository.de(context) }
+    val scope = rememberCoroutineScope()
+    val guardarNegocio: (RegistrationData) -> Unit = { data ->
+        FirebaseSessionGateway.usuarioActual()?.uid?.let { uid ->
+            scope.launch {
+                negocios.guardar(
+                    negocioDesdeRegistro(
+                        uid = uid,
+                        nombre = data.businessName,
+                        tipo = data.businessType.name,
+                        telefono = data.phone,
+                        creadoEn = System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+    }
+
     // Atiende los resultados de Firebase (una sola vez cada uno): navegar o mostrar el error.
     LaunchedEffect(Unit) {
         authViewModel.events.collect { evento ->
@@ -137,9 +163,8 @@ fun AppNavHost(
                 }
 
                 is AuthEvent.Registered -> {
-                    // TODO(Negocio): la cuenta ya existe en Firebase, pero el nombre del negocio, el tipo de
-                    // negocio y el teléfono (evento.data) todavía NO se guardan. Se guardarán en la entidad
-                    // Negocio de Room cuando esté lista (tarjeta "Room: base de datos, entidades y DAOs").
+                    // La cuenta ya existe en Firebase; los datos del negocio se guardan en Room con el uid.
+                    guardarNegocio(evento.data)
                     dialogs.registrationError = null
                     dialogs.authError = null
                     registrationSuccess = evento.data
@@ -524,20 +549,42 @@ fun AppNavHost(
 
         // ── Ajustes ─────────────────────────────────────────
         composable(Routes.SETTINGS) {
-            val settingsViewModel: SettingsViewModel = viewModel()
+            val settingsViewModel: SettingsViewModel = viewModel {
+                SettingsViewModel(FirebaseSessionGateway, negocios)
+            }
             val settingsState by settingsViewModel.uiState.collectAsState()
 
             SettingsScreen(
                 perfil = settingsState.perfil,
                 mostrarConfirmacion = settingsState.mostrarConfirmacion,
                 onBack = { navController.popBackStack() },
+                onGastosOperativos = { navController.navigateTo(Routes.EXPENSES) },
+                onInformacionEmpresa = { navController.navigateTo(Routes.SETTINGS_BUSINESS) },
                 onPedirCerrarSesion = settingsViewModel::pedirCerrarSesion,
                 onCancelarCierre = settingsViewModel::cancelarCierre,
                 onConfirmarCierre = {
-                    // Cierra la sesión de Firebase y luego vuelve al login borrando la pila.
+                    // Oculta la hoja; cerrarSesion() hace el signOut y vuelve al login borrando la pila.
                     settingsViewModel.confirmarCierre()
                     cerrarSesion()
                 }
+            )
+        }
+
+        // Ajustes · Información de empresa: completa o edita el Negocio (Room). Al guardar vuelve a Ajustes,
+        // que se actualiza solo porque observa el Negocio.
+        composable(Routes.SETTINGS_BUSINESS) {
+            val negocioViewModel: NegocioInfoViewModel = viewModel {
+                NegocioInfoViewModel(FirebaseSessionGateway, negocios)
+            }
+            val negocioState by negocioViewModel.uiState.collectAsState()
+            LaunchedEffect(negocioState.guardado) {
+                if (negocioState.guardado) navController.popBackStack()
+            }
+            NegocioInfoScreen(
+                estado = negocioState,
+                onBack = { navController.popBackStack() },
+                onEditar = negocioViewModel::editar,
+                onGuardar = negocioViewModel::guardar
             )
         }
     }

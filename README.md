@@ -27,7 +27,7 @@ app/src/main/java/com/cafesmart/app/
 └── data/        # Modelos, repositorios (auth, gastos, session) y datos de ejemplo
 ```
 
-Estado de cada módulo, qué falta y cómo se trabaja: [`docs/estado-actual-y-traspaso.md`](docs/estado-actual-y-traspaso.md). Modelo de datos: [`docs/modelo-de-datos.md`](docs/modelo-de-datos.md).
+Modelo de datos: [`docs/modelo-de-datos.md`](docs/modelo-de-datos.md).
 
 ## Navegación (Navigation Compose)
 Todo el grafo vive en `navigation/AppNavHost.kt` y los nombres de ruta en `navigation/Routes.kt`.

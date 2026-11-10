@@ -697,7 +697,7 @@ object AuthValidation {
      * - Empiece por 3.
      * - Contenga exactamente 10 dígitos.
      */
-    private val phoneRegex =
+    internal val phoneRegex =
         Regex("^3[0-9]{9}$")
 
 
