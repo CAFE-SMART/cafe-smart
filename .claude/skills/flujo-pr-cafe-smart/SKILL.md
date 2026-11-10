@@ -5,7 +5,7 @@ description: Flujo de trabajo de Café Smart para implementar una tarea, probarl
 
 # Flujo de una tarea en Café Smart
 
-Lee primero `CLAUDE.md` y `docs/estado-actual-y-traspaso.md`.
+Lee primero `CLAUDE.md` y `README.md`.
 
 ## 1. Antes de escribir código
 1. Trabaja en la carpeta **principal** del proyecto en Android Studio, no en un worktree (el usuario lo pidió).
@@ -39,5 +39,5 @@ El usuario decide cuándo. **No hagas commit, push ni PR** hasta que lo pida ("h
 
 ## 6. Al cerrar
 - No muevas tarjetas de Trello de otras personas. El usuario mueve las suyas cuando él quiere.
-- Actualiza `docs/estado-actual-y-traspaso.md` si cambió algo de lo que describe (pantallas reales, pruebas, pendientes).
+- Actualiza `README.md` o `docs/modelo-de-datos.md` si cambió algo de lo que describen (rutas, pruebas, modelo de datos).
 - Responde corto y en español.
