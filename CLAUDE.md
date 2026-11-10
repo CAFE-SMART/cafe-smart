@@ -31,4 +31,4 @@ App Android (Kotlin + Jetpack Compose) que digitaliza compra, inventario, secado
 - Umbrales de bodega: menos de 80 % normal; 80 a menos de 90 % amarillo sin mensajes; 90 % o más rojo. Nunca bloquea una compra.
 - Utilidad = ingresos − costo de compra − gastos (los gastos **restan**), en pesos enteros.
 - Un bulto = 40,7 kg (valor inicial; se configurará en Ajustes).
-- Firebase Auth solo guarda la cuenta (correo, contraseña y nombre). Los datos del negocio irán en una entidad `Negocio` de Room (aún no existe).
+- Firebase Auth solo guarda la cuenta (correo, contraseña y nombre). Los datos del negocio (nombre, tipo, teléfono, capacidad de bodega, peso del bulto) viven en la entidad `Negocio` de Room (`data/local/`, clave = uid de Firebase; se guarda al registrarse y se edita en Ajustes → Información de empresa). Room es local: si se reinstala la app se pierde y se vuelve a llenar en esa pantalla.

@@ -14,7 +14,7 @@ Inicio → Compra → Inventario → Secado → Gastos → Venta → Resultado f
 - Kotlin + Jetpack Compose
 - Navigation Compose
 - Arquitectura MVVM (ViewModel + StateFlow)
-- Room (almacenamiento local) — por incorporar
+- Room (almacenamiento local) — ya tiene `Negocio` (`AppDatabase`, versión 1); Productor, Compra y Sublote están por incorporar
 - Firebase Authentication (inicio de sesión y registro con correo y contraseña)
 - JUnit (pruebas unitarias)
 
@@ -24,14 +24,14 @@ app/src/main/java/com/cafesmart/app/
 ├── navigation/  # Routes.kt (nombres de ruta) y AppNavHost.kt (grafo)
 ├── ui/          # Pantallas, tema y componentes (Compose); Compras vive en ui/screens/purchase
 ├── viewmodel/   # Estado y reglas puras por módulo: drying, finance, gastos, inventory, purchase, settings
-└── data/        # Modelos, repositorios (auth, gastos, session) y datos de ejemplo
+└── data/        # Modelos, repositorios (auth, gastos, negocio, session), Room (`local/`) y datos de ejemplo
 ```
 
 Modelo de datos: [`docs/modelo-de-datos.md`](docs/modelo-de-datos.md).
 
 ## Navegación (Navigation Compose)
 Todo el grafo vive en `navigation/AppNavHost.kt` y los nombres de ruta en `navigation/Routes.kt`.
-Cada ruta corresponde a una pantalla del Figma (pestaña "Flujos"). Ya son reales: cuenta (inicio de sesión y registro con Firebase), `home`, Compras (pasos 1 a 3 y `purchase_done`), el resumen de `inventory`, los tres de Gastos y `settings`.
+Cada ruta corresponde a una pantalla del Figma (pestaña "Flujos"). Ya son reales: cuenta (inicio de sesión y registro con Firebase), `home`, Compras (pasos 1 a 3 y `purchase_done`), el resumen de `inventory`, los tres de Gastos, `settings` y `settings_business`.
 El resto (lo demás de Inventario, Ventas y Secado) son *placeholders* (`NavPlaceholder`) que se reemplazan por la pantalla real dentro de su `composable(...)`.
 
 **Flujo base:** `splash` → `login` → `home` → `inventory`
@@ -40,7 +40,7 @@ El resto (lo demás de Inventario, Ventas y Secado) son *placeholders* (`NavPlac
 **Orden de pantallas (igual que el prototipo del Figma):**
 - Inventario: `inventory` (resumen) → `inventory_type/{tipo}` (calidades de un tipo: VERDE, SECO, TRILLADO o PASILLA) → `inventory_list` (sublotes del grupo) → `inventory_detail/{batchId}` → `inventory_batch_expenses/{batchId}` o `sale_batch_step1/{batchId}` → `sale_batch_step2/{batchId}` → `sale_done`.
 - Secado: `drying_step1` → `2` → `3` → `4` → `5` → `drying_step6` (sin gastos) **o** `5` → `drying_step7` (gastos) → `drying_step6`. El paso 6 siempre es el final.
-- Se entra a Secado desde `inventory_type` (botón "Iniciar secado"); a "Registrar gasto" (`expense_new`) desde `home`. `settings` ya es la pantalla real (perfil y "Cerrar sesión"): sus filas "Proceso de secado" y "Gastos operativos" del Figma aún no existen, así que la lista de gastos (`expenses`) no tiene entrada por ahora.
+- Se entra a Secado desde `inventory_type` (botón "Iniciar secado"); a "Registrar gasto" (`expense_new`) desde `home`. `settings` ya es la pantalla real del Figma (perfil, filas por sección, resumen financiero y "Cerrar sesión"): "Gastos operativos" abre `expenses` e "Información de empresa" abre `settings_business`; las demás filas muestran el aviso "Esta opción estará disponible próximamente." (el botón "Editar" del perfil no está).
 - `home` y `settings` tienen "Salir" / "Cerrar sesión", que vuelve a `login` y borra la pila.
 
 | Módulo | Ruta | Pantalla |
@@ -77,6 +77,7 @@ El resto (lo demás de Inventario, Ventas y Secado) son *placeholders* (`NavPlac
 | Gastos | `expense_new` | Registrar gasto |
 | Gastos | `expense_link_batches` | Asociar a sublotes |
 | Ajustes | `settings` | Ajustes |
+| Ajustes | `settings_business` | Información de empresa (nombre, tipo y teléfono) |
 
 Reglas: nombres en `snake_case`; los argumentos van entre llaves (`{batchId}`) y se arman con los
 helpers de `Routes` (p. ej. `Routes.inventoryDetail("12")`). Los modales y diálogos no son rutas.
@@ -138,11 +139,14 @@ En cada pull request el workflow `CI` corre las pruebas y guarda el reporte:
 | `viewmodel/inventory/WarehouseCapacityTest.kt` | Ocupación de la bodega y sus estados (normal, advertencia, crítica, sin capacidad) | 36 |
 | `viewmodel/finance/ProfitCalculatorTest.kt` | Utilidad de una venta (ingresos − costo de compra − gastos) | 25 |
 | `viewmodel/finance/ExpenseRulesTest.kt` | Validaciones de un gasto (concepto, tipo, valor, fecha, descripción) | 45 |
-| `viewmodel/settings/ProfileRulesTest.kt` | Perfil de Ajustes (nombre, respaldo con el correo y tipo de negocio) | 15 |
-| `viewmodel/settings/SettingsViewModelTest.kt` | Estado de Ajustes y cierre de sesión (confirmar y cancelar) | 9 |
+| `data/negocio/NegocioRulesTest.kt` | Negocio que se guarda al registrarse (recorta nombre y teléfono) | 4 |
+| `viewmodel/settings/ProfileRulesTest.kt` | Perfil de Ajustes ("Sin nombre", correo y tipo de negocio) | 11 |
+| `viewmodel/settings/SettingsViewModelTest.kt` | Estado de Ajustes y cierre de sesión (confirmar y cancelar) | 10 |
+| `viewmodel/settings/NegocioInfoRulesTest.kt` | Validación y guardado de Información de empresa (conserva capacidad y bulto) | 10 |
+| `viewmodel/settings/NegocioInfoViewModelTest.kt` | Estado de la pantalla Información de empresa | 6 |
 | `ExampleUnitTest.kt` | Prueba de ejemplo de Android Studio | 1 |
 
-Total: 293 pruebas (19 archivos). Al agregar un archivo de prueba, añade su fila a esta tabla. Las clases de `androidTest` (pantallas de Gastos y selector de fecha) compilan pero no corren en el CI: necesitan emulador.
+Total: 310 pruebas (22 archivos). Al agregar un archivo de prueba, añade su fila a esta tabla. Las clases de `androidTest` (pantallas de Gastos y selector de fecha) compilan pero no corren en el CI: necesitan emulador.
 
 ## Flujo de trabajo en Git (trunk-based)
 - Un solo tronco: `main`, siempre compilable.
