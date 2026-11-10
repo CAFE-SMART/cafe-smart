@@ -5,13 +5,16 @@ import com.google.firebase.auth.FirebaseAuth
 // Acceso a la sesión del usuario. Es una interfaz para que la lógica de Ajustes se pueda probar con
 // JUnit sin Firebase (en las pruebas se usa una versión falsa).
 
-/** Datos del usuario con sesión iniciada. Cada campo puede venir vacío. */
+/**
+ * Datos de la cuenta con sesión iniciada (Firebase Auth). Cada campo puede venir vacío.
+ * Los datos del negocio (nombre, tipo, teléfono) no van aquí: están en la entidad Negocio de Room.
+ */
 data class UsuarioSesion(
+    // uid de Firebase; es el id del Negocio en Room.
+    val uid: String?,
+    // Nombres y apellidos (displayName de Firebase).
     val nombre: String?,
     val correo: String?,
-    // Firebase Authentication no guarda el tipo de negocio (solo nombre y correo). Mientras no se
-    // decida dónde guardarlo (Room, Firestore...), llega null y la pantalla no muestra la etiqueta.
-    val tipoNegocio: String? = null,
 )
 
 interface SessionGateway {
@@ -25,7 +28,9 @@ interface SessionGateway {
 /** Versión real, sobre Firebase Authentication. */
 object FirebaseSessionGateway : SessionGateway {
     override fun usuarioActual(): UsuarioSesion? =
-        FirebaseAuth.getInstance().currentUser?.let { UsuarioSesion(nombre = it.displayName, correo = it.email) }
+        FirebaseAuth.getInstance().currentUser?.let {
+            UsuarioSesion(uid = it.uid, nombre = it.displayName, correo = it.email)
+        }
 
     override fun cerrarSesion() = FirebaseAuth.getInstance().signOut()
 }

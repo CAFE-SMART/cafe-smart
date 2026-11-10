@@ -57,6 +57,7 @@ object Routes {
 
     // ── Ajustes ─────────────────────────────────────────────
     const val SETTINGS = "settings"                // Cuenta · Ajustes
+    const val SETTINGS_BUSINESS = "settings_business" // Ajustes · Información de empresa
 
     // ── Helpers para rutas con argumentos ───────────────────
     fun inventoryType(tipo: String) = "inventory_type/$tipo"
