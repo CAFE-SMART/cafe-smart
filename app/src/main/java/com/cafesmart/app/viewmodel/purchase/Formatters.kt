@@ -11,14 +11,18 @@ import java.util.TimeZone
 // y luego se cambian los separadores al estilo colombiano.
 
 // 25.0 -> "25 kg"   25.5 -> "25,5 kg"   25.125 -> "25,125 kg" (hasta 3 decimales, sin ceros de sobra)
-fun formatoKg(kg: Double): String =
+fun formatoKg(kg: Double): String {
+    // Al sumar varios pesos con decimales puede quedar 3.0000000000000004 y se escribiria "3, kg".
+    // Se redondea a 3 decimales (1 g) antes de decidir si el numero es entero.
+    val redondeado = Math.round(kg * 1000.0) / 1000.0
     // % 1.0 da la parte decimal: si es 0 el numero es entero y no lleva decimales.
-    if (kg % 1.0 == 0.0) {
-        "${formatoMiles(kg.toLong())} kg"
+    return if (redondeado % 1.0 == 0.0) {
+        "${formatoMiles(redondeado.toLong())} kg"
     } else {
         // %.3f deja 3 decimales; trimEnd quita los ceros de sobra; replace pone la coma.
-        String.format(Locale.US, "%.3f", kg).trimEnd('0').replace('.', ',') + " kg"
+        String.format(Locale.US, "%.3f", redondeado).trimEnd('0').replace('.', ',') + " kg"
     }
+}
 
 // 14000 -> "14.000" (separador de miles con punto, como en Colombia)
 // %,d agrega separador de miles (coma en Locale.US) y luego se cambia por punto.
