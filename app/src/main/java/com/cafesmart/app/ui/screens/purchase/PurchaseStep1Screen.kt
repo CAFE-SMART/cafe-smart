@@ -27,6 +27,8 @@ import com.cafesmart.app.data.model.TipoDocumento
 import com.cafesmart.app.ui.components.AppBottomSheet
 import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.ContinueButton
+import com.cafesmart.app.ui.components.AvisoCapacidadCard
+import com.cafesmart.app.ui.components.EstiloAviso
 import com.cafesmart.app.ui.components.OptionCard
 import com.cafesmart.app.ui.theme.AppShapes
 import com.cafesmart.app.ui.theme.AppTypography
@@ -63,7 +65,9 @@ fun PurchaseStep1Screen(
     onTelefonoChange: (String) -> Unit,
     onContinuar: () -> Unit,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // "Configurar ahora" del aviso de capacidad sin configurar: abre Ajustes → Capacidad de bodega.
+    onConfigurarCapacidad: () -> Unit = {}
 ) {
     // Estado visual: si la hoja "Productores" esta abierta
     var mostrarLista by remember { mutableStateOf(false) }
@@ -130,6 +134,17 @@ fun PurchaseStep1Screen(
                     selected = false,
                     onClick = { mostrarNuevo = true }
                 )
+
+                // Informativo: la capacidad de la bodega aun no esta configurada. No bloquea nada.
+                if (estado.avisoSinConfigurar) {
+                    AvisoCapacidadCard(
+                        titulo = "Falta configurar la capacidad de tu bodega",
+                        mensaje = "Así te avisamos cuando se esté llenando. Es solo un aviso: puedes seguir con tu compra.",
+                        estilo = EstiloAviso.SIN_CONFIGURAR,
+                        textoAccion = "Configurar ahora ›",
+                        onAccion = onConfigurarCapacidad
+                    )
+                }
             }
         }
 

@@ -502,6 +502,19 @@ fun AppNavHost(
             val purchaseViewModel: PurchaseViewModel = viewModel()
             val estado by purchaseViewModel.uiState.collectAsState()
 
+            // La capacidad y la ocupacion de la bodega alimentan los avisos de capacidad; se actualizan solas.
+            val uidActual = FirebaseSessionGateway.usuarioActual()?.uid
+            LaunchedEffect(uidActual) {
+                val kgOcupados = OcupacionDeEjemplo.kgOcupados()
+                if (uidActual == null) {
+                    purchaseViewModel.actualizarBodega(0.0, kgOcupados)
+                } else {
+                    negocios.observar(uidActual).collect {
+                        purchaseViewModel.actualizarBodega(it?.capacidadBodegaKg ?: 0.0, kgOcupados)
+                    }
+                }
+            }
+
             // "Atrás" del sistema en la pantalla final lleva al inicio, no al paso 3.
             BackHandler(enabled = estado.compraRegistrada) {
                 purchaseViewModel.reiniciarCompra()
@@ -510,6 +523,7 @@ fun AppNavHost(
 
             PurchaseFlow(
                 viewModel = purchaseViewModel,
+                onConfigurarCapacidad = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
                 onSalir = { navController.popBackStack() },
                 onIrAInventario = {
                     navController.navigate(Routes.INVENTORY) {

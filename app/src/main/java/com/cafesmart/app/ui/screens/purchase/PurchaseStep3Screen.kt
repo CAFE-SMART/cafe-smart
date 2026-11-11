@@ -37,6 +37,8 @@ import com.cafesmart.app.data.purchase.productorSinRegistrar
 import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.ConfirmSheet
 import com.cafesmart.app.ui.components.ContinueButton
+import com.cafesmart.app.ui.components.AvisoCapacidadCard
+import com.cafesmart.app.ui.components.EstiloAviso
 import com.cafesmart.app.ui.theme.AppShapes
 import com.cafesmart.app.ui.theme.AppTypography
 import com.cafesmart.app.ui.theme.BorderDefault
@@ -115,6 +117,14 @@ fun PurchaseStep3Screen(
                 // Una tarjeta por cada cafe de la compra.
                 estado.cafesEnResumen.forEachIndexed { indice, cafe ->
                     TarjetaCafeResumen(cafe = cafe, onEditar = { onEditarCafe(indice) })
+                }
+
+                // Informativo: la compra deja la bodega casi llena o la supera. El boton Confirmar sigue activo.
+                estado.avisoCapacidad?.let {
+                    AvisoCapacidadCard(
+                        titulo = it.titulo, mensaje = it.mensajePaso3, estilo = EstiloAviso.ALERTA,
+                        porcentaje = it.porcentajeDespues
+                    )
                 }
 
                 ResumenPago(totalKg = estado.totalKgTexto, totalPagar = estado.totalEstimadoTexto)
