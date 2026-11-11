@@ -228,6 +228,13 @@ class PurchaseRulesTest {
     }
 
     @Test
+    fun formatoKg_noDejaRuidoDeLaSumaDeDecimales() {
+        // 0.1 + 2.7 + 0.2 da 3.0000000000000004 en Double: debe verse "3 kg", no "3, kg".
+        assertEquals("3 kg", formatoKg(0.1 + 2.7 + 0.2))
+        assertEquals("25,5 kg", formatoKg(25.5000000000001))
+    }
+
+    @Test
     fun fechaLarga_diceHoySiEsHoy() {
         val fecha = Fecha(dia = 2, mes = 6, anio = 2026)
         assertEquals("2 de junio de 2026", formatoFecha(fecha))
