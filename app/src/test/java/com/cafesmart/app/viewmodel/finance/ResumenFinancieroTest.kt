@@ -1,8 +1,12 @@
 package com.cafesmart.app.viewmodel.finance
 
 import com.cafesmart.app.data.finanzas.FinanzasLocal
-import com.cafesmart.app.data.finanzas.OrigenVentas
-import com.cafesmart.app.data.finanzas.SinVentasRegistradas
+import com.cafesmart.app.data.finanzas.CompraRegistrada
+import com.cafesmart.app.data.finanzas.GastoRegistrado
+import com.cafesmart.app.data.finanzas.MermaRegistrada
+import com.cafesmart.app.data.finanzas.OrigenFinanciero
+import com.cafesmart.app.data.finanzas.resumirPeriodo
+import com.cafesmart.app.data.finanzas.SinDatosFinancieros
 import com.cafesmart.app.data.finanzas.FinanzasRepository
 import com.cafesmart.app.data.finanzas.PeriodoFinanciero
 import com.cafesmart.app.data.finanzas.ResumenFinanciero
@@ -67,13 +71,13 @@ class ResumenFinancieroTest {
 
     @Test
     fun laUtilidadEsIngresosMenosCostoMenosGastos() {
-        val ventas = listOf(VentaRegistrada(hoy, 200.0, 12_000.0, 9_000.0, 45_000.0, mermaKg = 12.0))
-        val r = resumirVentas(ventas, PeriodoFinanciero.HOY, hoy)
+        val ventas = listOf(VentaRegistrada(hoy, 200.0, 12_000.0, 9_000.0, 45_000.0))
+        val r = resumirPeriodo(PeriodoFinanciero.HOY, hoy, ventas = ventas, mermas = listOf(MermaRegistrada(hoy, 12.0)))
         assertEquals(2_400_000, r.ingresos)
         assertEquals(1_800_000, r.costoCafe)
         assertEquals(45_000, r.gastos)
         assertEquals(555_000, r.utilidad)
-        assertEquals(1_845_000, r.salio)
+        assertEquals(1_845_000, r.costoVenta)
         assertEquals(12.0, r.mermaKg, 0.0)
     }
 
@@ -101,8 +105,8 @@ class ResumenFinancieroTest {
     }
 
     @Test
-    fun sinVentasRegistradasLasMetricasSonCeroNoInventadas() = kotlinx.coroutines.test.runTest {
-        val repo = FinanzasLocal(SinVentasRegistradas) { hoy }
+    fun sinDatosFinancierosLasMetricasSonCeroNoInventadas() = kotlinx.coroutines.test.runTest {
+        val repo = FinanzasLocal(SinDatosFinancieros) { hoy }
         PeriodoFinanciero.entries.forEach {
             assertEquals(ResumenFinanciero(0, 0, 0, 0, 0.0, ventas = 0), repo.resumen(it))
         }
@@ -110,11 +114,45 @@ class ResumenFinancieroTest {
 
     @Test
     fun elRepositorioCalculaSobreLasVentasQueEntregaElOrigen() = kotlinx.coroutines.test.runTest {
-        val origen = OrigenVentas { listOf(VentaRegistrada(hoy, 10.0, 12_000.0, 9_000.0, 5_000.0, mermaKg = 1.0)) }
+        val origen = object : OrigenFinanciero {
+            override suspend fun ventas() = listOf(VentaRegistrada(hoy, 10.0, 12_000.0, 9_000.0, 5_000.0))
+        }
         val r = FinanzasLocal(origen) { hoy }.resumen(PeriodoFinanciero.HOY)
         assertEquals(1, r.ventas)
         assertEquals(120_000, r.ingresos)
         assertEquals(25_000, r.utilidad)
+    }
+
+    @Test
+    fun lasComprasGastosYMermasDelPeriodoSeSumanAparteDeLaUtilidad() {
+        val r = resumirPeriodo(
+            PeriodoFinanciero.SEMANA, hoy,
+            ventas = listOf(VentaRegistrada(hoy, 10.0, 12_000.0, 9_000.0, 5_000.0)),
+            compras = listOf(
+                CompraRegistrada(hoy, 900_000),
+                CompraRegistrada(restarDias(hoy, 3), 600_000),
+                CompraRegistrada(restarDias(hoy, 8), 5_000_000),
+            ),
+            gastos = listOf(GastoRegistrado(hoy, 30_000), GastoRegistrado(restarDias(hoy, 20), 99_000)),
+            mermas = listOf(MermaRegistrada(restarDias(hoy, 1), 2.5), MermaRegistrada(restarDias(hoy, 30), 9.0)),
+        )
+        assertEquals(1_500_000, r.comprasPesos)
+        assertEquals(2, r.compras)
+        assertEquals(30_000, r.gastosPeriodo)
+        assertEquals(2.5, r.mermaKg, 0.0)
+        // La utilidad sigue saliendo solo de lo vendido: 120.000 - 90.000 - 5.000.
+        assertEquals(25_000, r.utilidad)
+        // Costo de venta = lo que costó el café vendido + sus gastos asociados.
+        assertEquals(95_000, r.costoVenta)
+    }
+
+    @Test
+    fun soloConComprasYaHayDatosAunqueNoHayaVentas() {
+        val r = resumirPeriodo(PeriodoFinanciero.HOY, hoy, compras = listOf(CompraRegistrada(hoy, 400_000)))
+        assertEquals(0, r.ventas)
+        assertEquals(400_000, r.comprasPesos)
+        assertTrue(r.hayDatos)
+        assertFalse(resumirPeriodo(PeriodoFinanciero.HOY, hoy).hayDatos)
     }
 
     @Test

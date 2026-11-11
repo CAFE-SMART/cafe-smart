@@ -10,7 +10,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import com.cafesmart.app.data.finanzas.AlmacenClaveFinancieraLocal
 import com.cafesmart.app.data.finanzas.FinanzasLocal
-import com.cafesmart.app.data.finanzas.SinVentasRegistradas
+import com.cafesmart.app.data.finanzas.SinDatosFinancieros
 import com.cafesmart.app.data.finanzas.FirebaseConfirmacionCuenta
 import com.cafesmart.app.data.finanzas.fechaDeHoy
 import com.cafesmart.app.ui.finance.AccesoFinancieroScreen
@@ -647,7 +647,7 @@ fun AppNavHost(
             val acceso by accesoViewModel.estado.collectAsState()
             if (acceso.autorizado) {
                 val resumenViewModel: ResumenFinancieroViewModel = viewModel {
-                    ResumenFinancieroViewModel(FinanzasLocal(SinVentasRegistradas, ::fechaDeHoy))
+                    ResumenFinancieroViewModel(FinanzasLocal(SinDatosFinancieros, ::fechaDeHoy))
                 }
                 val resumen by resumenViewModel.estado.collectAsState()
                 ResumenFinancieroScreen(

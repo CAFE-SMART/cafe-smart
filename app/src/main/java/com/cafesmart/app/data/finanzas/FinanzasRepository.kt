@@ -16,7 +16,9 @@ enum class PeriodoFinanciero(val etiqueta: String) {
 
 /**
  * Resumen de un periodo, en pesos enteros.
- * utilidad = ingresos - costo del café vendido - gastos (RN-G-28; los gastos restan).
+ * utilidad = ingresos - costo del café vendido - gastos asociados a lo vendido (RN-G-28; los gastos restan).
+ * costoVenta = lo que costó el café vendido (su compra) más los gastos asociados (secado, transporte, generales).
+ * comprasPesos y gastosPeriodo son aparte: todo lo comprado y todo lo gastado en el periodo, se haya vendido o no.
  */
 data class ResumenFinanciero(
     val ingresos: Long,
@@ -24,26 +26,47 @@ data class ResumenFinanciero(
     val gastos: Long,
     val utilidad: Long,
     val mermaKg: Double,
-    // Cuántas ventas hay en el periodo. Con 0 no hay nada que mostrar todavía y todo vale 0.
+    // Cuántas ventas hay en el periodo.
     val ventas: Int = 0,
+    // Total pagado por las compras del periodo y cuántas fueron.
+    val comprasPesos: Long = 0,
+    val compras: Int = 0,
+    // Todos los gastos registrados en el periodo.
+    val gastosPeriodo: Long = 0,
 ) {
-    /** Lo que salió: el costo del café vendido más los gastos. */
-    val salio: Long get() = costoCafe + gastos
+    /** Costo de venta: el costo de comprar el café vendido más sus gastos asociados. */
+    val costoVenta: Long get() = costoCafe + gastos
+
+    /** false cuando no hay ninguna venta, compra, gasto ni merma: todo vale 0 y se muestra el aviso vacío. */
+    val hayDatos: Boolean get() = ventas > 0 || compras > 0 || gastosPeriodo > 0 || mermaKg > 0.0
 }
 
 interface FinanzasRepository {
     suspend fun resumen(periodo: PeriodoFinanciero): ResumenFinanciero
 }
 
-/** Una venta ya registrada, con lo necesario para calcular su utilidad (gastos = los que le tocan a esa venta). */
+/**
+ * Una venta ya registrada, con lo necesario para calcular su utilidad.
+ * [precioCompraKg] es lo que costó comprar cada kg vendido (el costo del sublote del que salió).
+ * [gastos] son los gastos asociados a esa venta, en pesos: los del sublote (transporte, cargue), los de su secado
+ * y la parte que le toque de los generales.
+ */
 data class VentaRegistrada(
     val fecha: Fecha,
     val kgVendidos: Double,
     val precioVentaKg: Double,
     val precioCompraKg: Double,
     val gastos: Double,
-    val mermaKg: Double = 0.0,
 )
+
+/** Una compra confirmada: cuánto se pagó en total (en pesos) el día [fecha]. */
+data class CompraRegistrada(val fecha: Fecha, val totalPesos: Long)
+
+/** Un gasto registrado (de cualquier tipo: general, de sublotes o de secado) por [montoPesos] el día [fecha]. */
+data class GastoRegistrado(val fecha: Fecha, val montoPesos: Long)
+
+/** Café perdido al secar: [kg] de merma de un secado terminado el día [fecha]. */
+data class MermaRegistrada(val fecha: Fecha, val kg: Double)
 
 /** Resumen de las ventas dadas en el periodo. Cada venta se calcula con calcularUtilidad y se suman. */
 fun resumirVentas(ventas: List<VentaRegistrada>, periodo: PeriodoFinanciero, hoy: Fecha): ResumenFinanciero {
@@ -56,8 +79,26 @@ fun resumirVentas(ventas: List<VentaRegistrada>, periodo: PeriodoFinanciero, hoy
         costoCafe = calculos.sumOf { it.costoCompraPesos },
         gastos = calculos.sumOf { it.gastosPesos },
         utilidad = calculos.sumOf { it.utilidadPesos },
-        mermaKg = enPeriodo.sumOf { it.mermaKg },
+        mermaKg = 0.0,
         ventas = enPeriodo.size,
+    )
+}
+
+/** Resumen completo del periodo: las ventas (utilidad), las compras, todos los gastos y la merma de secado. */
+fun resumirPeriodo(
+    periodo: PeriodoFinanciero,
+    hoy: Fecha,
+    ventas: List<VentaRegistrada> = emptyList(),
+    compras: List<CompraRegistrada> = emptyList(),
+    gastos: List<GastoRegistrado> = emptyList(),
+    mermas: List<MermaRegistrada> = emptyList(),
+): ResumenFinanciero {
+    val comprasEnPeriodo = compras.filter { enElPeriodo(it.fecha, periodo, hoy) }
+    return resumirVentas(ventas, periodo, hoy).copy(
+        mermaKg = mermas.filter { enElPeriodo(it.fecha, periodo, hoy) }.sumOf { it.kg },
+        comprasPesos = comprasEnPeriodo.sumOf { it.totalPesos },
+        compras = comprasEnPeriodo.size,
+        gastosPeriodo = gastos.filter { enElPeriodo(it.fecha, periodo, hoy) }.sumOf { it.montoPesos },
     )
 }
 
@@ -84,27 +125,31 @@ fun restarDias(fecha: Fecha, dias: Int): Fecha {
 }
 
 /**
- * De dónde salen las ventas registradas. Hoy la app todavía no guarda ventas (las compras, ventas y gastos pasan a
- * Room en otras tareas), así que [SinVentasRegistradas] devuelve una lista vacía y las métricas valen 0, que es lo
- * real. Cuando existan en Room solo hay que escribir otra implementación de esta interfaz: ni el repositorio ni las
- * pantallas cambian.
+ * De dónde salen los datos del Resumen financiero (y luego del Historial y las Gráficas). Cada función es de quien
+ * tiene esa parte en Room; las que aún no existen devuelven lista vacía y el Resumen las muestra en 0:
+ * - [ventas]: ventas guardadas, con el costo por kg de su sublote y sus gastos asociados (Carlos, Ventas a Room).
+ * - [compras]: compras confirmadas (Carlos, Compras a Room).
+ * - [gastos]: todos los gastos registrados (Amelia, Gastos en Room).
+ * - [mermas]: merma de cada secado terminado (Katherine, Secado en Room).
+ * Para conectarlo basta escribir otra implementación y cambiarla en AppNavHost: ni el repositorio ni las pantallas cambian.
  */
-fun interface OrigenVentas {
-    suspend fun ventas(): List<VentaRegistrada>
+interface OrigenFinanciero {
+    suspend fun ventas(): List<VentaRegistrada> = emptyList()
+    suspend fun compras(): List<CompraRegistrada> = emptyList()
+    suspend fun gastos(): List<GastoRegistrado> = emptyList()
+    suspend fun mermas(): List<MermaRegistrada> = emptyList()
 }
 
-/** Todavía no hay ventas guardadas: no se inventa ninguna. */
-object SinVentasRegistradas : OrigenVentas {
-    override suspend fun ventas(): List<VentaRegistrada> = emptyList()
-}
+/** Todavía no hay nada guardado: no se inventa ningún dato. */
+object SinDatosFinancieros : OrigenFinanciero
 
-/** Calcula el resumen sobre las ventas que entregue el [origen]. [hoy] se inyecta para poder probarlo. */
+/** Calcula el resumen sobre lo que entregue el [origen]. [hoy] se inyecta para poder probarlo. */
 class FinanzasLocal(
-    private val origen: OrigenVentas,
+    private val origen: OrigenFinanciero,
     private val hoy: () -> Fecha,
 ) : FinanzasRepository {
     override suspend fun resumen(periodo: PeriodoFinanciero): ResumenFinanciero =
-        resumirVentas(origen.ventas(), periodo, hoy())
+        resumirPeriodo(periodo, hoy(), origen.ventas(), origen.compras(), origen.gastos(), origen.mermas())
 }
 
 /** La fecha de hoy según el reloj del celular. */

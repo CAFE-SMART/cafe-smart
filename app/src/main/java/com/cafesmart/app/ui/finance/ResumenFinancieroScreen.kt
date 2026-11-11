@@ -153,9 +153,9 @@ private fun Contenido(resumen: ResumenFinanciero, periodo: PeriodoFinanciero) {
         resumen.utilidad < 0 -> ErrorText
         else -> TextPrimary
     }
-    if (resumen.ventas == 0) {
+    if (!resumen.hayDatos) {
         Text(
-            text = "Cuando registres una venta, aquí verás cuánto ganaste y de dónde sale. Por ahora todo está en cero.",
+            text = "Cuando registres una compra o una venta, aquí verás cuánto ganaste y de dónde sale. Por ahora todo está en cero.",
             style = AppTypography.bodyMd,
             modifier = Modifier
                 .fillMaxWidth()
@@ -184,11 +184,11 @@ private fun Contenido(resumen: ResumenFinanciero, periodo: PeriodoFinanciero) {
         )
         HorizontalDivider(color = BorderDefault)
         Bloque(
-            titulo = "Lo que salió de tu bolsillo",
-            valor = pesos(resumen.salio),
+            titulo = "Lo que te costó lo que vendiste",
+            valor = pesos(resumen.costoVenta),
             colorValor = WarningText,
             grande = false,
-            explicacion = "El costo del café que vendiste más tus gastos."
+            explicacion = "Lo que pagaste por el café que vendiste más los gastos de ese café (secado, transporte y otros)."
         )
     }
 
@@ -205,9 +205,30 @@ private fun Contenido(resumen: ResumenFinanciero, periodo: PeriodoFinanciero) {
             HorizontalDivider(color = BorderDefault)
             FilaDetalle(AppIcons.Package, "Costo del café", "Lo que pagaste por el café que vendiste", "− " + pesos(resumen.costoCafe), WarningText)
             HorizontalDivider(color = BorderDefault)
-            FilaDetalle(IconoRecibo, "Gastos", "Transporte, cargue y otros pagos", "− " + pesos(resumen.gastos), WarningText)
+            FilaDetalle(IconoRecibo, "Gastos", "Secado, transporte, cargue y otros de ese café", "− " + pesos(resumen.gastos), WarningText)
         }
         Text("Ganancia = ventas − costo del café − gastos", style = AppTypography.bodyMd.copy(color = TextSecondary))
+    }
+
+    // Lo comprado y lo gastado en el periodo, se haya vendido o no (no entra en la ganancia de arriba).
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.s12)) {
+        Text("Lo que compraste y gastaste ${periodo.etiqueta.lowercase()}", style = AppTypography.labelSection.copy(color = TextMuted))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(AppShapes.medium)
+                .background(SurfaceCard)
+                .border(BorderStroke(1.dp, BorderDefault), AppShapes.medium)
+        ) {
+            FilaDetalle(
+                AppIcons.Package, "Compras de café",
+                if (resumen.compras == 1) "1 compra" else "${resumen.compras} compras",
+                pesos(resumen.comprasPesos), TextPrimary
+            )
+            HorizontalDivider(color = BorderDefault)
+            FilaDetalle(IconoRecibo, "Gastos registrados", "Todos los gastos, del café que sea", pesos(resumen.gastosPeriodo), TextPrimary)
+        }
+        Text("Esto es dinero que ya salió, aunque el café todavía no se haya vendido.", style = AppTypography.bodyMd.copy(color = TextSecondary))
     }
 
     Row(
