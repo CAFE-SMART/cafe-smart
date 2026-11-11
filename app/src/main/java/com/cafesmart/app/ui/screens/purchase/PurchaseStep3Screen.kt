@@ -35,7 +35,7 @@ import com.cafesmart.app.data.purchase.CafeFormulario
 import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.purchase.productorSinRegistrar
 import com.cafesmart.app.ui.components.AppIcons
-import com.cafesmart.app.ui.components.ConfirmSheet
+import com.cafesmart.app.ui.components.CancelarSheet
 import com.cafesmart.app.ui.components.ContinueButton
 import com.cafesmart.app.ui.components.AvisoCapacidadCard
 import com.cafesmart.app.ui.components.EstiloAviso
@@ -45,9 +45,6 @@ import com.cafesmart.app.ui.theme.BorderDefault
 import com.cafesmart.app.ui.theme.BorderField
 import com.cafesmart.app.ui.theme.BorderSelectedSoft
 import com.cafesmart.app.ui.theme.CafesmartTheme
-import com.cafesmart.app.ui.theme.ErrorBg
-import com.cafesmart.app.ui.theme.ErrorIcon
-import com.cafesmart.app.ui.theme.ErrorText
 import com.cafesmart.app.ui.theme.PrimaryDark
 import com.cafesmart.app.ui.theme.Spacing
 import com.cafesmart.app.ui.theme.SuccessBg
@@ -153,20 +150,11 @@ fun PurchaseStep3Screen(
     }
 
     if (mostrarCancelar) {
-        // Hoja inferior comun; aqui se le pasan los textos y colores de cancelar.
-        ConfirmSheet(
-            icon = AppIcons.Warning,
-            iconBackground = ErrorBg,
-            iconTint = ErrorIcon,
-            title = "¿Cancelar compra?",
-            message = "Se perderán los datos ingresados y tendrás que iniciar el proceso nuevamente.",
-            actionText = "Sí, cancelar",
-            onAction = onCancelarCompra,
-            linkText = "Seguir editando",
+        CancelarSheet(
+            titulo = "¿Cancelar compra?",
+            onCancelar = onCancelarCompra,
             // "Seguir editando" solo cierra la hoja.
-            onLink = { mostrarCancelar = false },
-            actionContainerColor = ErrorBg,
-            actionContentColor = ErrorText
+            onSeguir = { mostrarCancelar = false }
         )
     }
 }
