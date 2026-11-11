@@ -488,10 +488,14 @@ fun RegisterStep2Screen(
 
                     hint = "********",
 
-                    // Requisitos de la contraseña
+                    // Requisitos de la contraseña: texto fijo si no hay nada escrito; luego, la lista en vivo.
                     help =
-                        "Mínimo 8 caracteres, con mayúscula, " +
-                                "minúscula y número.",
+                        if (state.password.isEmpty()) {
+                            "Mínimo 8 caracteres, con mayúscula, " +
+                                    "minúscula y número."
+                        } else {
+                            ""
+                        },
 
                     error = state.errors["password"],
 
@@ -539,6 +543,14 @@ fun RegisterStep2Screen(
                     }
                 )
 
+                // Aviso en vivo de si la contraseña está buena o no (barra y requisitos que se marcan).
+                if (state.password.isNotEmpty()) {
+                    RequisitosContrasena(
+                        password = state.password,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+
                 Spacer(Modifier.height(17.dp))
             }
 
@@ -575,7 +587,8 @@ fun RegisterStep2Screen(
 
                     hint = "Repite tu contraseña",
 
-                    help = "Debe coincidir con la anterior.",
+                    // Con algo escrito, el aviso de coincidencia de abajo reemplaza esta ayuda.
+                    help = if (state.passwordConfirmation.isEmpty()) "Debe coincidir con la anterior." else "",
 
                     error =
                         state.errors["passwordConfirmation"],
@@ -615,6 +628,11 @@ fun RegisterStep2Screen(
                         )
                     }
                 )
+
+                // "Las contraseñas coinciden." (verde) o "no coinciden." (rojo), mientras se escribe.
+                if (state.errors["passwordConfirmation"] == null) {
+                    MensajeCoincidencia(state.password, state.passwordConfirmation)
+                }
 
                 Spacer(Modifier.height(22.dp))
             }
