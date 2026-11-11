@@ -51,7 +51,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.auth)
-    // Room: base de datos local (por ahora solo la entidad Negocio).
+    // Room: base de datos local (Negocio, Productor, Compra, Lote y Sublote).
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
