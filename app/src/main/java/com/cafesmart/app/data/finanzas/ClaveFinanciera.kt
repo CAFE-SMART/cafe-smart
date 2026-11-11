@@ -12,6 +12,8 @@ import javax.crypto.spec.PBEKeySpec
 
 /** Mínimo de caracteres de la clave financiera (propuesta del diseño; el equipo puede cambiarlo). */
 const val CLAVE_MIN_CARACTERES = 6
+// Tope de escritura (no se puede escribir más); se dice en la ayuda del campo.
+const val CLAVE_MAX_CARACTERES = 32
 
 const val ERROR_CLAVE_VACIA = "Escribe tu clave."
 const val ERROR_CLAVE_CORTA = "La clave debe tener mínimo $CLAVE_MIN_CARACTERES caracteres."

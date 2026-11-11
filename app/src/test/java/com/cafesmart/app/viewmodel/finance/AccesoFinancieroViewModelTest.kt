@@ -347,4 +347,14 @@ class AccesoFinancieroViewModelTest {
         fallar(v, 1)
         assertEquals(mensajeDeIntento(2), v.estado.value.errorClave)
     }
+
+    @Test fun laClaveNoPasaDe32CaracteresYLaContrasenaDeLaCuentaDe64() {
+        val m = vm()
+        m.cambiarClave("a".repeat(40))
+        m.cambiarConfirmacion("b".repeat(40))
+        m.cambiarContrasenaCuenta("c".repeat(100))
+        assertEquals(com.cafesmart.app.data.finanzas.CLAVE_MAX_CARACTERES, m.estado.value.clave.length)
+        assertEquals(com.cafesmart.app.data.finanzas.CLAVE_MAX_CARACTERES, m.estado.value.confirmacion.length)
+        assertEquals(com.cafesmart.app.ui.auth.MAX_CONTRASENA, m.estado.value.contrasenaCuenta.length)
+    }
 }

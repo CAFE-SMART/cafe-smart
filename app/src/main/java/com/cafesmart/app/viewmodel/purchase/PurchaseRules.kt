@@ -69,10 +69,16 @@ fun normalizarEspacios(texto: String): String =
     // split parte el texto por espacios, filter quita los pedazos vacios y joinToString los une.
     texto.trim().split(" ").filter { it.isNotEmpty() }.joinToString(" ")
 
-// RF-COM-05: solo letras y espacios
-fun limpiarNombre(texto: String): String =
-    // Deja solo letras y espacios, y corta a NOMBRE_MAX caracteres.
-    texto.filter { it.isLetter() || it == ' ' }.take(NOMBRE_MAX)
+// RF-COM-05: una persona (cédula) se escribe solo con letras y espacios. Una empresa (NIT) también puede llevar
+// números, punto y "&" ("Café 2000 S.A.S.", "Hermanos López & Cía"). Siempre hasta NOMBRE_MAX caracteres.
+fun limpiarNombre(texto: String, tipo: TipoDocumento = TipoDocumento.CC): String =
+    texto.filter {
+        it.isLetter() || it == ' ' || (tipo == TipoDocumento.NIT && (it.isDigit() || it == '.' || it == '&'))
+    }.take(NOMBRE_MAX)
+
+// Ayuda visible del nombre, con el máximo y lo que se lleva escrito ("Solo letras. 12/30").
+fun ayudaNombre(nombre: String, tipo: TipoDocumento): String =
+    (if (tipo == TipoDocumento.NIT) "Letras, números, punto y &." else "Solo letras.") + " ${nombre.length}/$NOMBRE_MAX"
 
 // RF-COM-04: solo digitos, sin puntos ni espacios; cedula y NIT hasta 10 digitos
 // Deja solo digitos, maximo 10.
@@ -157,22 +163,34 @@ const val SIN_RESULTADOS = "Lo siento, no pudimos encontrarlo. Prueba con otro n
 const val MENSAJE_PESO = "Escribe un peso mayor a 0 y hasta 99.999 kg."
 const val MENSAJE_PRECIO = "Escribe un valor entre $1.000 y $100.000 pesos colombianos."
 
-// RF-COM-09: solo digitos y un separador decimal (acepta coma o punto), maximo 3 decimales
-// Primero cambia la coma por punto y deja solo digitos y puntos.
+// RF-COM-09 (ajustado el 11 nov con Andrés): se escribe como en Colombia, con el punto para los miles y la coma
+// para los decimales. "12.500" y "12500" son lo mismo (doce mil quinientos kg); "12,5" tiene decimales.
+// Antes el punto también era decimal y "1.500" se registraba como 1,5 kg: un error grave para una compra.
+// Hasta 5 enteros (99.999 kg) y 3 decimales. Devuelve el peso con punto decimal ("12500.5") para poder
+// convertirlo con toDoubleOrNull; la vista lo muestra con pesoEnPantalla.
 fun limpiarPeso(texto: String): String {
-    val normalizado = texto.replace(',', '.').filter { it.isDigit() || it == '.' }
-    // indexOf devuelve la posicion del primer punto, o -1 si no hay.
-    val punto = normalizado.indexOf('.')
-    return if (punto == -1) {
-        normalizado.take(5)
-    } else {
-        // Parte entera: hasta 5 digitos (99.999 kg como maximo).
-        val entero = normalizado.substring(0, punto).take(5)
-        // Parte decimal: quita otros puntos y deja maximo 3 decimales.
-        val decimales = normalizado.substring(punto + 1).replace(".", "").take(3)
-        "$entero.$decimales"
-    }
+    // Los puntos son de miles: se quitan.
+    val sinMiles = texto.replace(".", "")
+    // indexOf devuelve la posicion de la primera coma, o -1 si no hay.
+    val coma = sinMiles.indexOf(',')
+    val entero = (if (coma == -1) sinMiles else sinMiles.substring(0, coma)).filter { it.isDigit() }.take(5)
+    if (coma == -1) return entero
+    // Parte decimal: solo digitos (se ignoran otras comas) y maximo 3.
+    val decimales = sinMiles.substring(coma + 1).filter { it.isDigit() }.take(3)
+    return "$entero.$decimales"
 }
+
+// El peso guardado ("12500.5") como se ve en el campo: "12.500,5". Igual que el precio, con punto de miles.
+fun pesoEnPantalla(peso: String): String {
+    if (peso.isEmpty()) return ""
+    val punto = peso.indexOf('.')
+    val entero = if (punto == -1) peso else peso.substring(0, punto)
+    val enteroTexto = if (entero.isEmpty()) "" else formatoMiles(entero.toLong())
+    return if (punto == -1) enteroTexto else "$enteroTexto,${peso.substring(punto + 1)}"
+}
+
+// Ayuda del campo Peso: el limite y como se escriben los decimales, siempre visible.
+const val AYUDA_PESO = "Hasta 99.999 kg. Decimales con coma: 12,5"
 
 // RF-COM-10: precio por kg en pesos enteros, solo digitos
 fun limpiarPrecio(texto: String): String = texto.filter { it.isDigit() }.take(6)

@@ -105,7 +105,8 @@ class PurchaseViewModelTest {
         val estado = viewModel.uiState.value
         assertTrue(estado.esEmpresa)
         assertEquals("12345678", estado.nuevoProductor.documento)
-        assertEquals("Ana Gómez", estado.nuevoProductor.nombre)
+        // Con NIT (empresa) el nombre puede llevar números; los demás signos se quitan (decisión del 11 nov).
+        assertEquals("Ana2 Gómez", estado.nuevoProductor.nombre)
         assertEquals("300123", estado.nuevoProductor.telefono)
     }
 

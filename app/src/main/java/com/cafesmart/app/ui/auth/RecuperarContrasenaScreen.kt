@@ -120,6 +120,7 @@ private fun FormularioCorreo(
                 help = "Es el correo con el que creaste tu cuenta.",
                 error = estado.error,
                 keyboardType = KeyboardType.Email,
+                maxChars = MAX_CORREO,
                 modifier = Modifier.fillMaxWidth()
             )
         }

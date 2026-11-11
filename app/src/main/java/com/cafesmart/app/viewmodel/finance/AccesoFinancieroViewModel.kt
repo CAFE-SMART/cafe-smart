@@ -1,6 +1,8 @@
 package com.cafesmart.app.viewmodel.finance
 
 import androidx.lifecycle.ViewModel
+import com.cafesmart.app.data.finanzas.CLAVE_MAX_CARACTERES
+import com.cafesmart.app.ui.auth.MAX_CONTRASENA
 import androidx.lifecycle.viewModelScope
 import com.cafesmart.app.data.auth.AuthError
 import com.cafesmart.app.data.finanzas.AlmacenClaveFinanciera
@@ -71,11 +73,11 @@ class AccesoFinancieroViewModel(
         return AccesoUiState(paso = PasoAcceso.PEDIR, errorClave = if (espera > 0) mensajeDeBloqueo(espera) else null)
     }
 
-    fun cambiarClave(valor: String) = _estado.update { it.copy(clave = valor, errorClave = null) }
+    fun cambiarClave(valor: String) = _estado.update { it.copy(clave = valor.take(CLAVE_MAX_CARACTERES), errorClave = null) }
 
-    fun cambiarConfirmacion(valor: String) = _estado.update { it.copy(confirmacion = valor, errorConfirmacion = null) }
+    fun cambiarConfirmacion(valor: String) = _estado.update { it.copy(confirmacion = valor.take(CLAVE_MAX_CARACTERES), errorConfirmacion = null) }
 
-    fun cambiarContrasenaCuenta(valor: String) = _estado.update { it.copy(contrasenaCuenta = valor, errorCuenta = null) }
+    fun cambiarContrasenaCuenta(valor: String) = _estado.update { it.copy(contrasenaCuenta = valor.take(MAX_CONTRASENA), errorCuenta = null) }
 
     /** Primer acceso o clave nueva tras olvidarla: valida, guarda el hash y entra. */
     fun guardarClave() {

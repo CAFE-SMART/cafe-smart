@@ -1,5 +1,7 @@
 package com.cafesmart.app.ui.screens.purchase
 
+import com.cafesmart.app.viewmodel.purchase.ayudaNombre
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -91,6 +93,8 @@ fun NewProducerForm(
             value = nombre,
             onValueChange = onNombreChange,
             placeholder = if (esEmpresa) "Ej. Café Los Alpes" else "Ej. Pepito Pérez",
+            // El máximo se ve mientras se escribe ("Solo letras. 12/30").
+            helper = ayudaNombre(nombre, if (esEmpresa) TipoDocumento.NIT else TipoDocumento.CC),
             error = nombreError
         )
         AppTextField(
@@ -98,6 +102,7 @@ fun NewProducerForm(
             value = telefono,
             onValueChange = onTelefonoChange,
             placeholder = "Ej. 3001234567",
+            helper = "10 números, empieza por 3.",
             // Abre el teclado de telefono.
             keyboardType = KeyboardType.Phone,
             error = telefonoError
