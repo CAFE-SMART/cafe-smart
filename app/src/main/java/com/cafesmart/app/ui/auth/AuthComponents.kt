@@ -16,6 +16,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
@@ -484,34 +489,64 @@ internal fun GoogleDivider() {
 // ============================================================
 
 /**
- * Permite cambiar la visibilidad de una contraseña.
+ * Ojo para mostrar u ocultar una contraseña (igual que "Campo de clave" del Figma).
  *
- * Si visible es true, muestra "Ocultar".
- * Si visible es false, muestra "Ver".
- *
- * El estado de visibilidad se administra
- * desde la pantalla que utiliza este componente.
+ * Si visible es true muestra el ojo tachado ("Ocultar"); si es false, el ojo ("Ver").
+ * La zona táctil es de 44 dp. El estado de visibilidad lo administra la pantalla que lo usa.
  */
 @Composable
 internal fun PasswordEye(
     visible: Boolean,
     onClick: () -> Unit
 ) {
-
-    // Botón de texto para cambiar la visibilidad
-    TextButton(
-        onClick = onClick
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.size(44.dp)
     ) {
-
-        // Cambia el texto dependiendo del estado
-        Text(
-            text = if (visible) {
-                "Ocultar"
-            } else {
-                "Ver"
-            },
-
-            fontSize = 12.sp
+        Icon(
+            imageVector = if (visible) IconoOjoTachado else IconoOjo,
+            contentDescription = if (visible) "Ocultar contraseña" else "Mostrar contraseña",
+            tint = TextMuted,
+            modifier = Modifier.size(22.dp)
         )
     }
+}
+
+// Ojo y ojo tachado (Lucide "eye" y "eye-off"), privados para no editar AppIcons.kt, que comparte todo el equipo.
+private fun iconoOjo(nombre: String, vararg trazos: String): ImageVector =
+    ImageVector.Builder(
+        name = nombre,
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        trazos.forEach {
+            addPath(
+                pathData = addPathNodes(it),
+                fill = null,
+                stroke = SolidColor(Color.Black),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round
+            )
+        }
+    }.build()
+
+private val IconoOjo: ImageVector by lazy {
+    iconoOjo(
+        "Ojo",
+        "M2.06 12.35a1 1 0 0 1 0-.7C3.42 7.51 7.36 4.5 12 4.5s8.58 3.01 9.94 7.15a1 1 0 0 1 0 .7C20.58 16.49 16.64 19.5 12 19.5s-8.58-3.01-9.94-7.15Z",
+        "M12 9a3 3 0 1 1 0 6a3 3 0 1 1 0-6Z"
+    )
+}
+
+private val IconoOjoTachado: ImageVector by lazy {
+    iconoOjo(
+        "OjoTachado",
+        "M10.73 5.08A10.43 10.43 0 0 1 12 5c4.64 0 8.58 3.01 9.94 7.15a1 1 0 0 1 0 .7 10.75 10.75 0 0 1-1.44 2.62",
+        "M14.08 14.16a3 3 0 0 1-4.24-4.24",
+        "M17.48 17.5A10.75 10.75 0 0 1 12 19c-4.64 0-8.58-3.01-9.94-7.15a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 4.45-5.14",
+        "M2 2l20 20"
+    )
 }

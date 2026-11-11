@@ -38,4 +38,17 @@ class AuthErrorTest {
     fun todosLosErroresTienenMensajeEnEspanolNoVacio() {
         AuthError.entries.forEach { assert(it.mensaje.isNotBlank()) }
     }
+
+    @Test
+    fun alRecuperarContrasenaUnCorreoInexistenteSeDiceClaro() {
+        assertEquals(AuthError.CORREO_NO_REGISTRADO, authErrorRecuperacionDesdeCodigo("ERROR_USER_NOT_FOUND"))
+        assertEquals(AuthError.CORREO_INVALIDO, authErrorRecuperacionDesdeCodigo("ERROR_INVALID_EMAIL"))
+        assertEquals(AuthError.SIN_CONEXION, authErrorRecuperacionDesdeCodigo("ERROR_NETWORK_REQUEST_FAILED"))
+        assertEquals(AuthError.DESCONOCIDO, authErrorRecuperacionDesdeCodigo(null))
+    }
+
+    @Test
+    fun alIniciarSesionUnCorreoInexistenteSigueSinDelatarse() {
+        assertEquals(AuthError.CREDENCIALES_INCORRECTAS, authErrorDesdeCodigo("ERROR_USER_NOT_FOUND"))
+    }
 }

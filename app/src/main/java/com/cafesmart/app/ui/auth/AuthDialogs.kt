@@ -34,7 +34,6 @@ const val SIMULAR_ERROR_REGISTRO = false
 const val CORREO_SOPORTE = ""
 
 enum class AuthAuxDialog {
-    RECOVERY,
     SUPPORT
 }
 
@@ -77,7 +76,9 @@ fun AuthDialogs(
     state: AuthDialogsState,
     onRetryRegistration: () -> Unit,
     // Ejecuta lo que pide un botón del diálogo de error (reintentar, ir al login, etc.).
-    onAuthErrorAction: (AuthErrorAction, AuthOrigin) -> Unit
+    onAuthErrorAction: (AuthErrorAction, AuthOrigin) -> Unit,
+    // Abre la pantalla "Recuperar contraseña" (antes era un diálogo).
+    onRecovery: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -87,24 +88,11 @@ fun AuthDialogs(
             onDismiss = { state.help = null },
             onRecovery = {
                 state.help = null
-                state.active = AuthAuxDialog.RECOVERY
+                onRecovery()
             },
             onSupport = {
                 state.help = null
                 state.active = AuthAuxDialog.SUPPORT
-            }
-        )
-    }
-
-    if (state.active == AuthAuxDialog.RECOVERY) {
-        RecoveryPasswordDialog(
-            onDismiss = { state.active = null },
-            onRequest = { correo: String ->
-                state.active = null
-                state.info =
-                    "El correo $correo tiene un formato válido.\n\n" +
-                            "El envío del enlace de recuperación todavía no está integrado.\n\n" +
-                            "No se ha enviado ningún correo."
             }
         )
     }

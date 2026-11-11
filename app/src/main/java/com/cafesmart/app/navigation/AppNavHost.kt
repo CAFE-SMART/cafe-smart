@@ -11,6 +11,9 @@ import kotlinx.coroutines.launch
 import com.cafesmart.app.data.negocio.NegocioRepository
 import com.cafesmart.app.data.negocio.negocioDesdeRegistro
 import com.cafesmart.app.data.session.FirebaseSessionGateway
+import com.cafesmart.app.data.session.DestinoInicial
+import com.cafesmart.app.data.session.PreferenciaSesionLocal
+import com.cafesmart.app.data.session.decidirInicio
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -35,6 +38,8 @@ import com.cafesmart.app.ui.auth.AuthViewModel
 import com.cafesmart.app.ui.auth.ConfirmDestructiveDialog
 import com.cafesmart.app.ui.auth.LoginScreen
 import com.cafesmart.app.ui.auth.MODO_DEMOSTRACION
+import com.cafesmart.app.ui.auth.RecuperarContrasenaScreen
+import com.cafesmart.app.ui.auth.RecuperarContrasenaViewModel
 import com.cafesmart.app.ui.auth.RegisterStep1Screen
 import com.cafesmart.app.ui.auth.RegisterStep2Screen
 import com.cafesmart.app.ui.auth.RegistrationData
@@ -69,6 +74,8 @@ fun AppNavHost(
     val authViewModel: AuthViewModel = viewModel()
     val authState by authViewModel.state.collectAsState()
     val dialogs = remember { AuthDialogsState() }
+    // "Recordar mi cuenta": se guarda al iniciar sesión y el Splash la consulta al abrir la app.
+    val preferenciaSesion = remember { PreferenciaSesionLocal(context) }
 
     var registrationSuccess by remember { mutableStateOf<RegistrationData?>(null) }
     var pendingRegistration by remember { mutableStateOf<RegistrationData?>(null) }
@@ -101,6 +108,7 @@ fun AppNavHost(
     // Cierra sesión: limpia el estado de auth y deja solo LOGIN en la pila.
     val cerrarSesion: () -> Unit = {
         authViewModel.signOut()
+        preferenciaSesion.olvidar()
         registrationSuccess = null
         pendingRegistration = null
         dialogs.clear()
@@ -156,6 +164,8 @@ fun AppNavHost(
         authViewModel.events.collect { evento ->
             when (evento) {
                 AuthEvent.LoggedIn -> {
+                    // Guarda la casilla antes de que reset() limpie el formulario.
+                    preferenciaSesion.guardarRecordar(authViewModel.uiState.rememberMe)
                     authViewModel.reset()
                     navController.navigate(Routes.HOME) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
@@ -163,6 +173,8 @@ fun AppNavHost(
                 }
 
                 is AuthEvent.Registered -> {
+                    // Firebase ya dejó la sesión abierta al crear la cuenta; se conserva como en el login.
+                    preferenciaSesion.guardarRecordar(true)
                     // La cuenta ya existe en Firebase; los datos del negocio se guardan en Room con el uid.
                     guardarNegocio(evento.data)
                     dialogs.registrationError = null
@@ -187,10 +199,20 @@ fun AppNavHost(
     ) {
         // ── Cuenta ──────────────────────────────────────────
         composable(Routes.SPLASH) {
-            // Al terminar el splash pasa al login y lo saca de la pila.
+            // Al terminar el splash decide según la sesión de Firebase y la casilla "Recordar mi cuenta":
+            // con sesión y "recordar" entra a Inicio; con sesión sin "recordar" la cierra y pide el login.
             SplashScreen(
                 onSplashFinished = {
-                    navController.navigate(Routes.LOGIN) {
+                    val decision = decidirInicio(
+                        hayUsuario = FirebaseSessionGateway.usuarioActual() != null,
+                        recordar = preferenciaSesion.recordar()
+                    )
+                    if (decision.cerrarSesion) {
+                        FirebaseSessionGateway.cerrarSesion()
+                        preferenciaSesion.olvidar()
+                    }
+                    val ruta = if (decision.destino == DestinoInicial.INICIO) Routes.HOME else Routes.LOGIN
+                    navController.navigate(ruta) {
                         popUpTo(Routes.SPLASH) { inclusive = true }
                     }
                 }
@@ -223,7 +245,7 @@ fun AppNavHost(
                 onGoogle = {
                     dialogs.info = "El inicio de sesión con Google está pendiente de integración."
                 },
-                onForgotPassword = { dialogs.active = AuthAuxDialog.RECOVERY },
+                onForgotPassword = { navController.navigateTo(Routes.FORGOT_PASSWORD) },
                 onHelp = { dialogs.help = AuthHelpContext.LOGIN },
                 onSupport = { dialogs.active = AuthAuxDialog.SUPPORT },
                 onExit = { showExitConfirmation = true }
@@ -240,6 +262,18 @@ fun AppNavHost(
                     onDismiss = { showExitConfirmation = false }
                 )
             }
+        }
+        composable(Routes.FORGOT_PASSWORD) {
+            val recuperarViewModel: RecuperarContrasenaViewModel = viewModel()
+            val recuperarState by recuperarViewModel.state.collectAsState()
+            RecuperarContrasenaScreen(
+                estado = recuperarState,
+                onBack = { navController.popBackStack() },
+                onCorreoChange = recuperarViewModel::cambiarCorreo,
+                onEnviar = recuperarViewModel::enviar,
+                onReenviar = recuperarViewModel::reenviar,
+                onVolverAlLogin = { navController.popBackStack(Routes.LOGIN, inclusive = false) }
+            )
         }
         composable(Routes.REGISTER_STEP1) {
             // "Atrás" del sistema también retrocede el estado del ViewModel.
@@ -593,7 +627,8 @@ fun AppNavHost(
     AuthDialogs(
         state = dialogs,
         onRetryRegistration = { pendingRegistration?.let(processRegistration) },
-        onAuthErrorAction = onAuthErrorAction
+        onAuthErrorAction = onAuthErrorAction,
+        onRecovery = { navController.navigateTo(Routes.FORGOT_PASSWORD) }
     )
 }
 

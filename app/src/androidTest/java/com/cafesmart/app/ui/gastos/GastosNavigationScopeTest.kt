@@ -55,6 +55,9 @@ class GastosNavigationScopeTest {
             override suspend fun register(email: String, password: String, displayName: String): AuthResult =
                 error("Esta prueba no debe registrar cuentas")
 
+            override suspend fun sendPasswordReset(email: String): AuthResult =
+                error("Esta prueba no debe pedir enlaces de recuperación")
+
             override fun signOut() { salidas++ }
         }
         val authFactory = viewModelFactory { initializer { AuthViewModel(repoAuth) } }

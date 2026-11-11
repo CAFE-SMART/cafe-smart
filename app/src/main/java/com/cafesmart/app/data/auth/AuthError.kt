@@ -10,6 +10,7 @@ enum class AuthError(val mensaje: String) {
     CUENTA_DESHABILITADA("Esta cuenta está deshabilitada. Comunícate con soporte."),
     DEMASIADOS_INTENTOS("Hiciste demasiados intentos. Espera unos minutos e inténtalo de nuevo."),
     SIN_CONEXION("No hay conexión a Internet. Revisa tu red e inténtalo de nuevo."),
+    CORREO_NO_REGISTRADO("No encontramos una cuenta con ese correo. Revísalo o crea una cuenta nueva."),
     METODO_NO_HABILITADO("El ingreso con correo y contraseña no está habilitado en Firebase. Avisa al equipo."),
     DESCONOCIDO("Algo salió mal. Inténtalo de nuevo.")
 }
@@ -26,4 +27,14 @@ fun authErrorDesdeCodigo(codigo: String?): AuthError = when (codigo) {
     "ERROR_NETWORK_REQUEST_FAILED" -> AuthError.SIN_CONEXION
     "ERROR_OPERATION_NOT_ALLOWED" -> AuthError.METODO_NO_HABILITADO
     else -> AuthError.DESCONOCIDO
+}
+
+/**
+ * Igual que [authErrorDesdeCodigo], pero para pedir el enlace de recuperación: aquí un correo
+ * inexistente sí se dice claro (no se está adivinando una contraseña). Si Firebase tiene activada
+ * la protección contra enumeración de correos, no devuelve este código y se verá la confirmación.
+ */
+fun authErrorRecuperacionDesdeCodigo(codigo: String?): AuthError = when (codigo) {
+    "ERROR_USER_NOT_FOUND" -> AuthError.CORREO_NO_REGISTRADO
+    else -> authErrorDesdeCodigo(codigo)
 }
