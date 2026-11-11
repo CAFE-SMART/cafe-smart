@@ -12,6 +12,7 @@ import com.cafesmart.app.data.negocio.NegocioRepository
 import com.cafesmart.app.data.negocio.negocioDesdeRegistro
 import com.cafesmart.app.data.session.FirebaseSessionGateway
 import com.cafesmart.app.data.session.DestinoInicial
+import com.cafesmart.app.data.session.PreferenciaNotificacionesLocal
 import com.cafesmart.app.data.session.PreferenciaSesionLocal
 import com.cafesmart.app.data.session.decidirInicio
 import androidx.compose.runtime.setValue
@@ -585,7 +586,7 @@ fun AppNavHost(
         // ── Ajustes ─────────────────────────────────────────
         composable(Routes.SETTINGS) { entrada ->
             val settingsViewModel: SettingsViewModel = viewModel {
-                SettingsViewModel(FirebaseSessionGateway, negocios)
+                SettingsViewModel(FirebaseSessionGateway, negocios, PreferenciaNotificacionesLocal(context))
             }
             val settingsState by settingsViewModel.uiState.collectAsState()
             // Avisos que dejan otras pantallas al volver a Ajustes (por ejemplo "Información de empresa"):
@@ -607,6 +608,10 @@ fun AppNavHost(
                 onInformacionEmpresa = { navController.navigateTo(Routes.SETTINGS_BUSINESS) },
                 aviso = settingsState.aviso,
                 onAvisoOculto = settingsViewModel::ocultarAviso,
+                pestana = settingsState.pestana,
+                onPestana = settingsViewModel::seleccionarPestana,
+                notificaciones = settingsState.notificaciones,
+                onNotificaciones = settingsViewModel::cambiarNotificaciones,
                 edicion = settingsState.edicion,
                 onEditarPerfil = settingsViewModel::abrirEditarPerfil,
                 onNombreChange = settingsViewModel::cambiarNombre,

@@ -6,11 +6,21 @@ import com.cafesmart.app.data.local.NegocioEntity
 import com.cafesmart.app.data.negocio.NegocioRepository
 import com.cafesmart.app.ui.components.AvisoUi
 import com.cafesmart.app.ui.components.TipoAviso
+import com.cafesmart.app.data.session.PreferenciaNotificaciones
+import com.cafesmart.app.data.session.PreferenciaNotificacionesEnMemoria
 import com.cafesmart.app.data.session.SessionGateway
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+/** Las 4 agrupaciones de Ajustes (Figma): cada una muestra sus opciones. */
+enum class PestanaAjustes(val etiqueta: String) {
+    NEGOCIO("Negocio"),
+    BODEGA("Bodega"),
+    CALIDADES("Calidades"),
+    USUARIOS("Usuarios"),
+}
 
 /** Hoja "Editar perfil" abierta: lo escrito, el error (si lo hay) y si se está guardando. */
 data class EdicionPerfil(
@@ -26,6 +36,10 @@ data class SettingsUiState(
     val mostrarConfirmacion: Boolean = false,
     // null = la hoja "Editar perfil" está cerrada.
     val edicion: EdicionPerfil? = null,
+    // Agrupación que se está viendo.
+    val pestana: PestanaAjustes = PestanaAjustes.NEGOCIO,
+    // Interruptor "Notificaciones" de Ajustes > Negocio.
+    val notificaciones: Boolean = true,
     // Mensaje de éxito que se ve arriba un momento ("Nombre actualizado"); null = no hay aviso.
     val aviso: AvisoUi? = null,
 )
@@ -41,13 +55,16 @@ const val AVISO_NOMBRE_ERROR = "No se pudo guardar el nombre"
 class SettingsViewModel(
     private val sesion: SessionGateway,
     private val negocios: NegocioRepository,
+    private val preferenciaNotificaciones: PreferenciaNotificaciones = PreferenciaNotificacionesEnMemoria(),
 ) : ViewModel() {
 
     // var: al cambiar el nombre se actualiza aquí para que el perfil lo muestre sin volver a leer Firebase.
     private var usuario = sesion.usuarioActual()
     private var negocioActual: NegocioEntity? = null
 
-    private val _uiState = MutableStateFlow(SettingsUiState(perfil = construirPerfil(usuario)))
+    private val _uiState = MutableStateFlow(
+        SettingsUiState(perfil = construirPerfil(usuario), notificaciones = preferenciaNotificaciones.activas())
+    )
     val uiState: StateFlow<SettingsUiState> = _uiState
 
     init {
@@ -73,6 +90,15 @@ class SettingsViewModel(
      * cerrarSesion() de AppNavHost, para que exista un único lugar que cierra la sesión.
      */
     fun confirmarCierre() = _uiState.update { it.copy(mostrarConfirmacion = false) }
+
+    /** El usuario tocó una de las 4 agrupaciones (Negocio, Bodega, Calidades, Usuarios). */
+    fun seleccionarPestana(pestana: PestanaAjustes) = _uiState.update { it.copy(pestana = pestana) }
+
+    /** El usuario movió el interruptor de notificaciones: se guarda la elección. */
+    fun cambiarNotificaciones(activas: Boolean) {
+        preferenciaNotificaciones.guardar(activas)
+        _uiState.update { it.copy(notificaciones = activas) }
+    }
 
     /** El usuario tocó la tarjeta de perfil: se abre la hoja con su nombre actual. Sin sesión no hay nada que editar. */
     fun abrirEditarPerfil() {

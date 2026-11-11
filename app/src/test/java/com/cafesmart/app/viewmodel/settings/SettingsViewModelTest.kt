@@ -5,6 +5,7 @@ import com.cafesmart.app.data.local.NegocioEntity
 import com.cafesmart.app.ui.components.AvisoUi
 import com.cafesmart.app.ui.components.TipoAviso
 import com.cafesmart.app.data.negocio.NegocioRepository
+import com.cafesmart.app.data.session.PreferenciaNotificacionesEnMemoria
 import com.cafesmart.app.data.session.SessionGateway
 import com.cafesmart.app.data.session.UsuarioSesion
 import kotlinx.coroutines.Dispatchers
@@ -266,5 +267,49 @@ class SettingsViewModelTest {
         assertEquals(AvisoUi("Datos del negocio guardados", TipoAviso.EXITO), vm.uiState.value.aviso)
         vm.ocultarAviso()
         assertNull(vm.uiState.value.aviso)
+    }
+
+    // ── Las 4 agrupaciones y el interruptor ────────────────
+
+    @Test
+    fun empiezaEnNegocioYCambiaDeAgrupacion() {
+        val vm = SettingsViewModel(SesionFalsa(andres), NegociosFalsos())
+        assertEquals(PestanaAjustes.NEGOCIO, vm.uiState.value.pestana)
+        PestanaAjustes.entries.forEach {
+            vm.seleccionarPestana(it)
+            assertEquals(it, vm.uiState.value.pestana)
+        }
+    }
+
+    @Test
+    fun lasCuatroAgrupacionesSonLasDelFigmaEnOrden() {
+        assertEquals(
+            listOf("Negocio", "Bodega", "Calidades", "Usuarios"),
+            PestanaAjustes.entries.map { it.etiqueta }
+        )
+    }
+
+    @Test
+    fun lasNotificacionesEmpiezanActivasYElCambioSeGuarda() {
+        val pref = PreferenciaNotificacionesEnMemoria()
+        val vm = SettingsViewModel(SesionFalsa(andres), NegociosFalsos(), pref)
+        assertTrue(vm.uiState.value.notificaciones)
+        vm.cambiarNotificaciones(false)
+        assertFalse(vm.uiState.value.notificaciones)
+        assertFalse(pref.activas())
+    }
+
+    @Test
+    fun alAbrirAjustesLeeLaPreferenciaGuardada() {
+        val vm = SettingsViewModel(SesionFalsa(andres), NegociosFalsos(), PreferenciaNotificacionesEnMemoria(valor = false))
+        assertFalse(vm.uiState.value.notificaciones)
+    }
+
+    @Test
+    fun cambiarDeAgrupacionNoCierraLaHojaDeEditarPerfil() {
+        val vm = SettingsViewModel(SesionFalsa(andres), NegociosFalsos())
+        vm.abrirEditarPerfil()
+        vm.seleccionarPestana(PestanaAjustes.BODEGA)
+        assertEquals("Andrés Peña", vm.uiState.value.edicion?.nombre)
     }
 }

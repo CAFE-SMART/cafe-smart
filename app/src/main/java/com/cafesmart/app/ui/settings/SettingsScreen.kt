@@ -79,15 +79,20 @@ import com.cafesmart.app.ui.theme.SurfaceSoft
 import com.cafesmart.app.viewmodel.settings.EdicionPerfil
 import com.cafesmart.app.viewmodel.settings.NOMBRE_PERFIL_MAX
 import com.cafesmart.app.viewmodel.settings.inicialesDe
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.ui.draw.clip
+import com.cafesmart.app.ui.theme.BorderField
+import com.cafesmart.app.ui.theme.ButtonSoft
+import com.cafesmart.app.viewmodel.settings.PestanaAjustes
 import kotlinx.coroutines.launch
 
-// Pantalla "Cuenta · Ajustes" (Figma, página Flujos, marco 275:50): perfil de la cuenta, las filas de
-// procesos, configuración y personas, la tarjeta "Ver resumen financiero" y "Cerrar sesión".
-// Sin estado propio: recibe todo y avisa con callbacks. Las filas que aún no tienen pantalla muestran
-// el aviso "próximamente" (onProximamente). El botón "Editar" del Figma no se incluye todavía.
-
-// Borde rojo claro del botón "Cerrar sesión" (Figma).
-private val BordeCerrarSesion = Color(0xFFFECACA)
+// Pantalla "Cuenta · Ajustes" (Figma, sección NUEVAS de Flujos): tarjeta de perfil, las 4 agrupaciones
+// (Negocio, Bodega, Calidades, Usuarios) con sus opciones, la tarjeta "Ver resumen financiero" y "Cerrar sesión".
+// Sin estado propio: recibe todo y avisa con callbacks. Las opciones que aún no tienen pantalla muestran
+// el aviso "próximamente"; las marcadas "Próximamente" en el Figma se ven apagadas.
 
 /** Mensaje de las opciones que todavía no tienen pantalla. */
 const val MENSAJE_PROXIMAMENTE = "Esta opción estará disponible próximamente."
@@ -110,6 +115,11 @@ fun SettingsScreen(
     // Mensaje de éxito arriba (barra verde); null = sin aviso.
     aviso: AvisoUi? = null,
     onAvisoOculto: () -> Unit = {},
+    // Agrupación visible (Negocio, Bodega, Calidades, Usuarios) y el interruptor de notificaciones.
+    pestana: PestanaAjustes = PestanaAjustes.NEGOCIO,
+    onPestana: (PestanaAjustes) -> Unit = {},
+    notificaciones: Boolean = true,
+    onNotificaciones: (Boolean) -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -128,40 +138,29 @@ fun SettingsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = Spacing.s16),
-                verticalArrangement = Arrangement.spacedBy(Spacing.s12)
+                    .padding(horizontal = Spacing.s20),
+                verticalArrangement = Arrangement.spacedBy(Spacing.s16)
             ) {
-                Spacer(Modifier.height(Spacing.s4))
                 TarjetaPerfil(perfil, onClick = onEditarPerfil)
+                PestanasAjustes(actual = pestana, onSeleccion = onPestana)
 
-                TituloSeccion("Procesos operativos")
-                FilaAjuste(IconoSecado, "Proceso de secado", "Tiempo y humedad", proximamente)
-                FilaAjuste(IconoGastos, "Gastos operativos", "Listado y registro", onGastosOperativos)
+                when (pestana) {
+                    PestanaAjustes.NEGOCIO -> OpcionesNegocio(
+                        nombreNegocio = perfil.nombreNegocio,
+                        notificaciones = notificaciones,
+                        onNotificaciones = onNotificaciones,
+                        onInformacionEmpresa = onInformacionEmpresa,
+                        onGastosOperativos = onGastosOperativos,
+                        proximamente = proximamente
+                    )
+                    PestanaAjustes.BODEGA -> OpcionesBodega(proximamente)
+                    PestanaAjustes.CALIDADES -> OpcionesCalidades(proximamente)
+                    PestanaAjustes.USUARIOS -> OpcionesUsuarios(proximamente)
+                }
 
-                TituloSeccion("Configuración del negocio")
-                FilaAjuste(
-                    IconoEmpresa,
-                    "Información de empresa",
-                    // Si ya hay negocio guardado, se muestra su nombre; si no, se invita a completarlo.
-                    perfil.nombreNegocio ?: "Completa los datos de tu negocio",
-                    onInformacionEmpresa
-                )
-                FilaAjuste(AppIcons.Coffee, "Tipos de café", "Variedades registradas", proximamente)
-                FilaAjuste(IconoCalidad, "Calidades de café", "Estándares de calidad", proximamente)
-                FilaAjuste(AppIcons.Package, "Capacidad de bodega", "Límites de almacenamiento", proximamente)
-                FilaAjuste(IconoLimites, "Límites de entrada", "Peso y precio máximo", proximamente)
-                FilaAjuste(IconoGestionUsuarios, "Gestión de usuarios", "Próximamente", proximamente)
-
-                TituloSeccion("Gestión de personas")
-                FilaAjuste(IconoClientes, "Clientes registrados", "Base de datos de clientes", proximamente)
-                FilaAjuste(IconoUsuariosSistema, "Usuarios del sistema", "Roles y permisos", proximamente)
-
-                Spacer(Modifier.height(Spacing.s8))
                 TarjetaResumenFinanciero(onAcceder = proximamente)
-
-                Spacer(Modifier.height(Spacing.s8))
                 BotonCerrarSesion(onClick = onPedirCerrarSesion)
-                Spacer(Modifier.height(Spacing.s20))
+                Spacer(Modifier.height(Spacing.s12))
             }
         }
 
@@ -209,27 +208,95 @@ fun SettingsScreen(
     }
 }
 
-// Barra blanca con la flecha atrás (en círculo blanco con borde) y el título centrado.
+// Encabezado del Figma (guía "Encabezado de pantalla"): flecha atrás a la izquierda y título centrado, sobre el fondo.
 @Composable
 private fun EncabezadoAjustes(onBack: () -> Unit) {
-    Column(Modifier.fillMaxWidth().background(SurfaceCard)) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Spacing.s16, vertical = Spacing.s8),
-            contentAlignment = Alignment.Center
-        ) {
-            BackArrow(
-                onClick = onBack,
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .background(SurfaceCard, CircleShape)
-                    .border(BorderStroke(1.dp, BorderDefault), CircleShape)
-            )
-            Text(text = "Ajustes", style = AppTypography.titleScreen)
-        }
-        HorizontalDivider(color = BorderDefault)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.s16, vertical = Spacing.s8),
+        contentAlignment = Alignment.Center
+    ) {
+        BackArrow(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart))
+        Text(text = "Ajustes", style = AppTypography.titleScreen)
     }
+}
+
+// Las 4 agrupaciones (Figma "Ajustes / Pestañas"): Negocio, Bodega, Calidades y Usuarios. La activa va en azul.
+@Composable
+private fun PestanasAjustes(actual: PestanaAjustes, onSeleccion: (PestanaAjustes) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.s8)) {
+        PestanaAjustes.entries.forEach { pestana ->
+            val activa = pestana == actual
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(percent = 50))
+                    .background(if (activa) Primary else SurfaceCard)
+                    .border(BorderStroke(1.dp, if (activa) Primary else BorderField), RoundedCornerShape(percent = 50))
+                    .selectable(selected = activa, role = Role.Tab, onClick = { onSeleccion(pestana) }),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = pestana.etiqueta,
+                    style = AppTypography.labelField.copy(color = if (activa) OnPrimary else TextMuted),
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
+        }
+    }
+}
+
+// ── Opciones de cada agrupación (textos y orden del Figma) ──
+
+@Composable
+private fun OpcionesNegocio(
+    nombreNegocio: String?,
+    notificaciones: Boolean,
+    onNotificaciones: (Boolean) -> Unit,
+    onInformacionEmpresa: () -> Unit,
+    onGastosOperativos: () -> Unit,
+    proximamente: () -> Unit,
+) {
+    TituloSeccion("Configuración del negocio")
+    // Si ya hay negocio guardado, se muestra su nombre; si no, se invita a completarlo.
+    FilaAjuste(
+        IconoEmpresa, "Información de empresa",
+        nombreNegocio ?: "Nombre, tipo y teléfono de tu negocio",
+        onInformacionEmpresa
+    )
+    FilaAjuste(IconoGota, "Proceso de secado", "Registra el secado de tu café", proximamente)
+    FilaAjuste(IconoAjustes, "Límites de entrada", "Lo mínimo y lo máximo al registrar", proximamente)
+    FilaAjuste(IconoGastos, "Gastos operativos", "Mira y registra tus gastos", onGastosOperativos)
+    FilaAjuste(
+        IconoCampana, "Notificaciones", "Avisos cuando un sublote lleva mucho tiempo en bodega", {},
+        modo = ModoFila.INTERRUPTOR, interruptor = notificaciones, onInterruptor = onNotificaciones
+    )
+}
+
+@Composable
+private fun OpcionesBodega(proximamente: () -> Unit) {
+    TituloSeccion("Tu bodega")
+    FilaAjuste(IconoArchivo, "Capacidad de bodega", "Cuántos kilos caben y cuánto pesa un bulto", proximamente)
+    FilaAjuste(IconoEtiqueta, "Zonas de bodega", "Organiza tu espacio", proximamente, modo = ModoFila.PROXIMAMENTE)
+}
+
+@Composable
+private fun OpcionesCalidades(proximamente: () -> Unit) {
+    TituloSeccion("Más adelante podrás cambiar")
+    FilaAjuste(AppIcons.Coffee, "Tipos de café", "Elige los tipos de café que manejas", proximamente, modo = ModoFila.PROXIMAMENTE)
+    FilaAjuste(IconoEstrella, "Calidades del café", "Define los niveles de calidad", proximamente, modo = ModoFila.PROXIMAMENTE)
+}
+
+@Composable
+private fun OpcionesUsuarios(proximamente: () -> Unit) {
+    TituloSeccion("Gestión de personas")
+    FilaAjuste(IconoClientes, "Permisos y roles", "Qué puede hacer cada trabajador", proximamente, modo = ModoFila.PROXIMAMENTE)
+    FilaAjuste(AppIcons.User, "Personal", "Tus trabajadores", proximamente, modo = ModoFila.PROXIMAMENTE)
+    // Contactos todavía no tiene pantalla: por ahora muestra el aviso de "próximamente".
+    FilaAjuste(IconoClientes, "Clientes y productores", "Directorio de tus contactos", proximamente)
 }
 
 // Tarjeta de perfil (Figma, sección NUEVAS de Flujos): avatar con iniciales y lápiz, nombre, correo completo
@@ -406,33 +473,79 @@ private fun AvisoProximamente(mensaje: String) {
 
 @Composable
 private fun TituloSeccion(texto: String) {
-    Text(text = texto, style = AppTypography.labelSection, modifier = Modifier.padding(top = Spacing.s8))
+    Text(text = texto, style = AppTypography.labelSection.copy(color = TextMuted))
 }
 
-// Fila blanca: ícono en cuadro azul claro, título y subtítulo. Toda la fila es tocable.
+/** Cómo se ve una fila de opción: normal (con flecha), "Próximamente" (apagada) o con interruptor. */
+private enum class ModoFila { NORMAL, PROXIMAMENTE, INTERRUPTOR }
+
+// Fila de opción (Figma "Ajustes / Fila de opción"): mosaico con ícono, título, descripción (puede ocupar dos
+// líneas) y al final una flecha, la etiqueta "Próximamente" o un interruptor. Toda la fila se toca.
 @Composable
-private fun FilaAjuste(icono: ImageVector, titulo: String, subtitulo: String, onClick: () -> Unit) {
+private fun FilaAjuste(
+    icono: ImageVector,
+    titulo: String,
+    subtitulo: String,
+    onClick: () -> Unit,
+    modo: ModoFila = ModoFila.NORMAL,
+    interruptor: Boolean = false,
+    onInterruptor: (Boolean) -> Unit = {},
+) {
+    val apagada = modo == ModoFila.PROXIMAMENTE
+    val forma = AppShapes.medium
+    val gestos = if (modo == ModoFila.INTERRUPTOR) {
+        Modifier.toggleable(value = interruptor, role = Role.Switch, onValueChange = onInterruptor)
+    } else {
+        Modifier.clickable(role = Role.Button, onClick = onClick)
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(SurfaceCard, AppShapes.medium)
-            .border(BorderStroke(1.dp, BorderDefault), AppShapes.medium)
-            .clickable(role = Role.Button, onClick = onClick)
+            .background(if (apagada) SurfaceSoft else SurfaceCard, forma)
+            .border(BorderStroke(1.dp, BorderDefault), forma)
+            .then(gestos)
             .padding(Spacing.s16),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.s16)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s12)
     ) {
         Box(
             modifier = Modifier
                 .size(40.dp)
-                .background(SurfaceSelected, RoundedCornerShape(10.dp)),
+                .background(if (apagada) SurfaceCard else SurfaceSoft, forma),
             contentAlignment = Alignment.Center
         ) {
-            Icon(imageVector = icono, contentDescription = null, tint = Primary, modifier = Modifier.size(22.dp))
+            Icon(
+                imageVector = icono,
+                contentDescription = null,
+                tint = if (apagada) TextMuted else Primary,
+                modifier = Modifier.size(20.dp)
+            )
         }
-        Column(verticalArrangement = Arrangement.spacedBy(Spacing.s4)) {
-            Text(text = titulo, style = AppTypography.valueStrong)
-            Text(text = subtitulo, style = AppTypography.helper, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.s4)) {
+            Text(text = titulo, style = AppTypography.labelField.copy(color = if (apagada) TextMuted else TextPrimary))
+            Text(text = subtitulo, style = AppTypography.helper.copy(color = TextMuted))
+        }
+        when (modo) {
+            ModoFila.NORMAL -> Icon(AppIcons.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(20.dp))
+            ModoFila.PROXIMAMENTE -> Text(
+                text = "Próximamente",
+                style = AppTypography.pill.copy(color = TextMuted),
+                modifier = Modifier
+                    .background(BorderDefault, RoundedCornerShape(percent = 50))
+                    .padding(horizontal = Spacing.s8 + Spacing.s4 / 2, vertical = Spacing.s4)
+            )
+            ModoFila.INTERRUPTOR -> Switch(
+                checked = interruptor,
+                onCheckedChange = null,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = SurfaceCard,
+                    checkedTrackColor = Primary,
+                    checkedBorderColor = Primary,
+                    uncheckedThumbColor = SurfaceCard,
+                    uncheckedTrackColor = BorderField,
+                    uncheckedBorderColor = BorderField
+                )
+            )
         }
     }
 }
@@ -443,8 +556,8 @@ private fun TarjetaResumenFinanciero(onAcceder: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(SurfaceSelected, AppShapes.medium)
-            .border(BorderStroke(1.dp, BorderSelectedSoft), AppShapes.medium)
+            .background(SurfaceSelected, AppShapes.large)
+            .border(BorderStroke(1.dp, BorderSelectedSoft), AppShapes.large)
             .padding(Spacing.s20),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Spacing.s8)
@@ -452,14 +565,14 @@ private fun TarjetaResumenFinanciero(onAcceder: () -> Unit) {
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .background(SurfaceCard, CircleShape),
+                .background(ButtonSoft, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(imageVector = IconoCandado, contentDescription = null, tint = Primary, modifier = Modifier.size(22.dp))
         }
         Text(text = "Ver resumen financiero", style = AppTypography.titleCard)
         Text(
-            text = "Consulta ventas, compras y gastos con contraseña de administrador.",
+            text = "Consulta ventas, compras y gastos con tu clave financiera.",
             style = AppTypography.bodyMd,
             textAlign = TextAlign.Center
         )
@@ -477,19 +590,18 @@ private fun TarjetaResumenFinanciero(onAcceder: () -> Unit) {
     }
 }
 
-// Botón blanco con borde y texto rojos: "Cerrar sesión".
+// Botón rojo suave (guía: ícono rojo y botón rojo suave): "Cerrar sesión".
 @Composable
 private fun BotonCerrarSesion(onClick: () -> Unit) {
     Button(
         onClick = onClick,
         shape = AppShapes.medium,
-        border = BorderStroke(1.dp, BordeCerrarSesion),
-        colors = ButtonDefaults.buttonColors(containerColor = SurfaceCard, contentColor = ErrorText),
+        colors = ButtonDefaults.buttonColors(containerColor = ErrorBg, contentColor = ErrorText),
         modifier = Modifier
             .fillMaxWidth()
             .height(54.dp)
     ) {
-        Icon(imageVector = IconoSalir, contentDescription = null, modifier = Modifier.size(20.dp))
+        Icon(imageVector = IconoSalir, contentDescription = null, tint = ErrorIcon, modifier = Modifier.size(20.dp))
         Spacer(Modifier.size(Spacing.s8))
         Text(text = "Cerrar sesión", style = AppTypography.buttonPrimary.copy(color = ErrorText), textAlign = TextAlign.Center)
     }
@@ -523,16 +635,6 @@ private val IconoSalir by lazy {
     iconoLinea("Salir", "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4", "M16 17l5-5-5-5", "M21 12H9")
 }
 
-// Viento (secado).
-private val IconoSecado by lazy {
-    iconoLinea(
-        "Secado",
-        "M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2",
-        "M9.6 4.6A2 2 0 1 1 11 8H2",
-        "M12.6 19.4A2 2 0 1 0 14 16H2"
-    )
-}
-
 // Recibo (gastos).
 private val IconoGastos by lazy {
     iconoLinea(
@@ -549,27 +651,6 @@ private val IconoEmpresa by lazy {
     iconoLinea("Empresa", "M3 9l1.5-5h15L21 9", "M3 9h18", "M5 9v11h14V9", "M10 20v-5h4v5")
 }
 
-// Círculo con visto (calidades).
-private val IconoCalidad by lazy {
-    iconoLinea("Calidad", "M12 2a10 10 0 1 1 0 20a10 10 0 1 1 0-20Z", "M8.5 12l2.5 2.5 4.5-5")
-}
-
-// Líneas con una X (límites de entrada).
-private val IconoLimites by lazy {
-    iconoLinea("Limites", "M3 7h10", "M3 12h10", "M3 17h10", "M16 9l5 5", "M21 9l-5 5")
-}
-
-// Persona con engranaje (gestión de usuarios).
-private val IconoGestionUsuarios by lazy {
-    iconoLinea(
-        "GestionUsuarios",
-        "M10 3a4 4 0 1 1 0 8a4 4 0 1 1 0-8Z",
-        "M2 21v-1a6 6 0 0 1 9-5.2",
-        "M18 15a3 3 0 1 1 0 6a3 3 0 1 1 0-6Z",
-        "M18 13v1", "M18 22v1", "M14 18h1", "M21 18h1"
-    )
-}
-
 // Dos personas (clientes).
 private val IconoClientes by lazy {
     iconoLinea(
@@ -581,17 +662,36 @@ private val IconoClientes by lazy {
     )
 }
 
-// Carné (usuarios del sistema).
-private val IconoUsuariosSistema by lazy {
+// Círculo con "i" (aviso).
+// Íconos de las filas nuevas (Lucide): gota, ajustes (controles), caja de archivo, etiqueta, estrella y campana.
+private val IconoGota by lazy {
+    iconoLinea("Gota", "M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z")
+}
+
+private val IconoAjustes by lazy {
+    iconoLinea("Ajustes", "M21 4h-7", "M10 4H3", "M21 12h-9", "M8 12H3", "M21 20h-5", "M12 20H3", "M14 2v4", "M8 10v4", "M16 18v4")
+}
+
+private val IconoArchivo by lazy {
+    iconoLinea("Archivo", "M21 8v13H3V8", "M1 3h22v5H1z", "M10 12h4")
+}
+
+private val IconoEtiqueta by lazy {
     iconoLinea(
-        "UsuariosSistema",
-        "M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z",
-        "M12 8a2 2 0 1 1 0 4a2 2 0 1 1 0-4Z",
-        "M8 17a4 4 0 0 1 8 0"
+        "Etiqueta",
+        "M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z",
+        "M7.5 7.5h.01"
     )
 }
 
-// Círculo con "i" (aviso).
+private val IconoEstrella by lazy {
+    iconoLinea("Estrella", "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z")
+}
+
+private val IconoCampana by lazy {
+    iconoLinea("Campana", "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9", "M10.3 21a1.94 1.94 0 0 0 3.4 0")
+}
+
 private val IconoInfo by lazy {
     iconoLinea("Info", "M12 2a10 10 0 1 1 0 20a10 10 0 1 1 0-20Z", "M12 16v-4", "M12 8h.01")
 }
