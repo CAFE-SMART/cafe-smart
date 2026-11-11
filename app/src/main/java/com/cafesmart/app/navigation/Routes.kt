@@ -17,6 +17,8 @@ object Routes {
     // ── Inicio ──────────────────────────────────────────────
     const val HOME = "home"                        // Inicio · Panel principal
 
+    const val FINANCE_SUMMARY = "finance_summary"  // Finanzas · Acceso con clave y Resumen financiero
+
     // ── Compras ─────────────────────────────────────────────
     const val PURCHASE_STEP1 = "purchase_step1"    // Paso 1 · Productor
     const val PURCHASE_STEP2 = "purchase_step2"    // Paso 2 · Café

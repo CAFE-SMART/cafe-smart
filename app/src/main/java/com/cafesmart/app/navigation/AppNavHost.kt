@@ -8,6 +8,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import com.cafesmart.app.data.finanzas.AlmacenClaveFinancieraLocal
+import com.cafesmart.app.data.finanzas.FinanzasLocal
+import com.cafesmart.app.data.finanzas.SinVentasRegistradas
+import com.cafesmart.app.data.finanzas.FirebaseConfirmacionCuenta
+import com.cafesmart.app.data.finanzas.fechaDeHoy
+import com.cafesmart.app.ui.finance.AccesoFinancieroScreen
+import com.cafesmart.app.ui.finance.ResumenFinancieroScreen
+import com.cafesmart.app.viewmodel.finance.AccesoFinancieroViewModel
+import com.cafesmart.app.viewmodel.finance.ResumenFinancieroViewModel
 import com.cafesmart.app.data.negocio.NegocioRepository
 import com.cafesmart.app.data.negocio.negocioDesdeRegistro
 import com.cafesmart.app.data.session.FirebaseSessionGateway
@@ -606,6 +615,7 @@ fun AppNavHost(
                 onBack = { navController.popBackStack() },
                 onGastosOperativos = { navController.navigateTo(Routes.EXPENSES) },
                 onInformacionEmpresa = { navController.navigateTo(Routes.SETTINGS_BUSINESS) },
+                onResumenFinanciero = { navController.navigateTo(Routes.FINANCE_SUMMARY) },
                 aviso = settingsState.aviso,
                 onAvisoOculto = settingsViewModel::ocultarAviso,
                 pestana = settingsState.pestana,
@@ -625,6 +635,43 @@ fun AppNavHost(
                     cerrarSesion()
                 }
             )
+        }
+
+        // Finanzas · Resumen financiero: pide la clave propia (o la crea en el primer acceso) y solo con ella
+        // muestra el resumen. El estado del acceso vive en esta entrada: al salir se pierde y se vuelve a pedir la clave.
+        composable(Routes.FINANCE_SUMMARY) {
+            val uid = FirebaseSessionGateway.usuarioActual()?.uid ?: "demo"
+            val accesoViewModel: AccesoFinancieroViewModel = viewModel {
+                AccesoFinancieroViewModel(uid, AlmacenClaveFinancieraLocal(context), FirebaseConfirmacionCuenta)
+            }
+            val acceso by accesoViewModel.estado.collectAsState()
+            if (acceso.autorizado) {
+                val resumenViewModel: ResumenFinancieroViewModel = viewModel {
+                    ResumenFinancieroViewModel(FinanzasLocal(SinVentasRegistradas, ::fechaDeHoy))
+                }
+                val resumen by resumenViewModel.estado.collectAsState()
+                ResumenFinancieroScreen(
+                    estado = resumen,
+                    onBack = { navController.popBackStack() },
+                    onPeriodo = resumenViewModel::cambiarPeriodo,
+                    onRecargar = resumenViewModel::recargar,
+                    onAvisoOculto = resumenViewModel::ocultarAviso
+                )
+            } else {
+                AccesoFinancieroScreen(
+                    estado = acceso,
+                    onBack = { navController.popBackStack() },
+                    onClave = accesoViewModel::cambiarClave,
+                    onConfirmacion = accesoViewModel::cambiarConfirmacion,
+                    onContrasenaCuenta = accesoViewModel::cambiarContrasenaCuenta,
+                    onGuardarClave = accesoViewModel::guardarClave,
+                    onIngresar = accesoViewModel::ingresar,
+                    onOlvide = accesoViewModel::olvideMiClave,
+                    onCancelarOlvido = accesoViewModel::cancelarOlvido,
+                    onConfirmarContrasena = accesoViewModel::confirmarConContrasena,
+                    onConfirmarGoogle = accesoViewModel::confirmarConGoogle
+                )
+            }
         }
 
         // Ajustes · Información de empresa: completa o edita el Negocio (Room). Al guardar vuelve a Ajustes,

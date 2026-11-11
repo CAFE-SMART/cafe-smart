@@ -2,9 +2,11 @@ package com.cafesmart.app.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +31,9 @@ fun ContinueButton(
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
     // Contenido opcional antes del texto; conserva todas las llamadas de otros módulos.
-    leadingIcon: (@Composable () -> Unit)? = null
+    leadingIcon: (@Composable () -> Unit)? = null,
+    // true mientras se procesa algo: muestra una ruedita en el botón (y conviene pasar enabled = false).
+    cargando: Boolean = false
 ) {
     Button(
         onClick = onClick,
@@ -57,7 +61,10 @@ fun ContinueButton(
                 }
             }
     ) {
-        if (leadingIcon != null) {
+        if (cargando) {
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = if (enabled) OnPrimary else TextMuted)
+            Spacer(Modifier.width(8.dp))
+        } else if (leadingIcon != null) {
             leadingIcon()
             Spacer(Modifier.width(8.dp))
         }

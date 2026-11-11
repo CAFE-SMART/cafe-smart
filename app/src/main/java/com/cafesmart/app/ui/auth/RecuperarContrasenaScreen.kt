@@ -34,7 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.BackArrow
-import com.cafesmart.app.ui.components.ContinueButton
+import com.cafesmart.app.ui.components.PieDeAccion
 import com.cafesmart.app.ui.theme.AppShapes
 import com.cafesmart.app.ui.theme.AppTypography
 import com.cafesmart.app.ui.theme.BorderDefault
@@ -126,6 +126,7 @@ private fun FormularioCorreo(
         PieDeAccion(
             textoBoton = if (estado.enviando) "Enviando…" else "Enviar enlace",
             botonActivo = !estado.enviando,
+            cargando = estado.enviando,
             onBoton = onEnviar,
             textoEnlace = "Volver a iniciar sesión",
             onEnlace = onVolverAlLogin
@@ -190,30 +191,6 @@ private fun EnlaceEnviado(
             textoEnlace = if (estado.enviando) "Enviando…" else "Reenviar enlace",
             onEnlace = { if (!estado.enviando) onReenviar() }
         )
-    }
-}
-
-// Pie con línea superior, botón principal y un enlace debajo. Relleno 16 / 20 / 28 / 20 (guía del Figma).
-@Composable
-private fun PieDeAccion(
-    textoBoton: String,
-    botonActivo: Boolean,
-    onBoton: () -> Unit,
-    textoEnlace: String,
-    onEnlace: () -> Unit,
-) {
-    Column(Modifier.fillMaxWidth().background(SurfaceCard)) {
-        HorizontalDivider(color = BorderDefault)
-        Column(
-            modifier = Modifier.padding(start = Spacing.s20, top = Spacing.s16, end = Spacing.s20, bottom = Spacing.s28),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(Spacing.s8)
-        ) {
-            ContinueButton(text = textoBoton, onClick = onBoton, enabled = botonActivo)
-            TextButton(onClick = onEnlace, modifier = Modifier.height(44.dp)) {
-                Text(text = textoEnlace, style = AppTypography.buttonLink.copy(color = Primary))
-            }
-        }
     }
 }
 

@@ -682,6 +682,8 @@ fun RegisterStep2Screen(
                     enabled = !isSubmitting,
 
                     // Ejecuta la acción de registro
+                    cargando = isSubmitting,
+
                     onClick = onCreateAccount
                 )
 

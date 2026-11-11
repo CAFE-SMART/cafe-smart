@@ -104,6 +104,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onGastosOperativos: () -> Unit,
     onInformacionEmpresa: () -> Unit,
+    onResumenFinanciero: () -> Unit,
     onPedirCerrarSesion: () -> Unit,
     onCancelarCierre: () -> Unit,
     onConfirmarCierre: () -> Unit,
@@ -158,7 +159,7 @@ fun SettingsScreen(
                     PestanaAjustes.USUARIOS -> OpcionesUsuarios(proximamente)
                 }
 
-                TarjetaResumenFinanciero(onAcceder = proximamente)
+                TarjetaResumenFinanciero(onAcceder = onResumenFinanciero)
                 BotonCerrarSesion(onClick = onPedirCerrarSesion)
                 Spacer(Modifier.height(Spacing.s12))
             }
@@ -431,7 +432,8 @@ private fun HojaEditarPerfil(
             ContinueButton(
                 text = if (edicion.guardando) "Guardando…" else "Guardar perfil",
                 onClick = onGuardar,
-                enabled = !edicion.guardando
+                enabled = !edicion.guardando,
+                cargando = edicion.guardando
             )
             TextButton(onClick = onCancelar, modifier = Modifier.fillMaxWidth().height(44.dp)) {
                 Text(text = "Cancelar", style = AppTypography.buttonLink.copy(color = Primary))
@@ -713,6 +715,7 @@ private fun SettingsScreenPreview() {
             onBack = {},
             onGastosOperativos = {},
             onInformacionEmpresa = {},
+            onResumenFinanciero = {},
             onPedirCerrarSesion = {},
             onCancelarCierre = {},
             onConfirmarCierre = {}
@@ -730,6 +733,7 @@ private fun SettingsScreenSinNombrePreview() {
             onBack = {},
             onGastosOperativos = {},
             onInformacionEmpresa = {},
+            onResumenFinanciero = {},
             onPedirCerrarSesion = {},
             onCancelarCierre = {},
             onConfirmarCierre = {}
@@ -747,6 +751,7 @@ private fun SettingsScreenConfirmacionPreview() {
             onBack = {},
             onGastosOperativos = {},
             onInformacionEmpresa = {},
+            onResumenFinanciero = {},
             onPedirCerrarSesion = {},
             onCancelarCierre = {},
             onConfirmarCierre = {}

@@ -662,6 +662,9 @@ fun LoginScreen(
 
                     enabled = !isSubmitting,
 
+                    // Ruedita dentro del botón: se ve aunque el indicador de abajo quede fuera de la pantalla.
+                    cargando = isSubmitting,
+
                     onClick = onSubmit
                 )
 

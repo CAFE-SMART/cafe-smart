@@ -11,6 +11,7 @@ enum class AuthError(val mensaje: String) {
     DEMASIADOS_INTENTOS("Hiciste demasiados intentos. Espera unos minutos e inténtalo de nuevo."),
     SIN_CONEXION("No hay conexión a Internet. Revisa tu red e inténtalo de nuevo."),
     CORREO_NO_REGISTRADO("No encontramos una cuenta con ese correo. Revísalo o crea una cuenta nueva."),
+    GOOGLE_NO_DISPONIBLE("Confirmar con Google estará disponible pronto. Por ahora usa una cuenta de correo."),
     METODO_NO_HABILITADO("El ingreso con correo y contraseña no está habilitado en Firebase. Avisa al equipo."),
     DESCONOCIDO("Algo salió mal. Inténtalo de nuevo.")
 }
