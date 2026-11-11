@@ -14,7 +14,10 @@ import com.cafesmart.app.data.finanzas.SinDatosFinancieros
 import com.cafesmart.app.data.finanzas.FirebaseConfirmacionCuenta
 import com.cafesmart.app.data.finanzas.fechaDeHoy
 import com.cafesmart.app.ui.finance.AccesoFinancieroScreen
+import com.cafesmart.app.data.inventario.OcupacionDeEjemplo
 import com.cafesmart.app.ui.finance.HistorialFinancieroScreen
+import com.cafesmart.app.ui.settings.CapacidadBodegaScreen
+import com.cafesmart.app.viewmodel.settings.CapacidadBodegaViewModel
 import com.cafesmart.app.ui.finance.ResumenFinancieroScreen
 import com.cafesmart.app.viewmodel.finance.AccesoFinancieroViewModel
 import com.cafesmart.app.viewmodel.finance.HistorialFinancieroViewModel
@@ -374,7 +377,7 @@ fun AppNavHost(
                     }
                 },
                 onActualizar = { /* TODO ciclo 2 */ },
-                onAjustarBodega = { /* TODO ciclo 2 */ },
+                onAjustarBodega = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
                 onAbrirSublote = { /* TODO ciclo 2 */ }
             )
 
@@ -394,7 +397,9 @@ fun AppNavHost(
         // ── Inventario ──────────────────────────────────────
         composable(Routes.INVENTORY) {
             // viewModel() ligado a esta entrada del NavHost (por ahora lee datos de ejemplo; luego, Room).
-            val inventoryViewModel: InventoryViewModel = viewModel()
+            val inventoryViewModel: InventoryViewModel = viewModel {
+                InventoryViewModel(negocios = negocios, uid = FirebaseSessionGateway.usuarioActual()?.uid)
+            }
             val inventoryState by inventoryViewModel.uiState.collectAsState()
 
             InventoryScreen(
@@ -402,7 +407,7 @@ fun AppNavHost(
                 // Figma: cada tipo abre su lista por calidad. Esa pantalla aún es placeholder.
                 onTipoClick = { tipo -> navController.navigateTo(Routes.inventoryType(tipo.name)) },
                 onOrdenChange = inventoryViewModel::cambiarOrden,
-                onAjustarBodega = { /* TODO ciclo 2: capacidad de bodega en Ajustes (igual que en Inicio) */ },
+                onAjustarBodega = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
                 onRegistrarCompra = { navController.navigateTo(Routes.PURCHASE_STEP1) },
                 // La barra inferior manda el nombre de la pestaña.
                 onNavegar = { destino ->
@@ -618,6 +623,7 @@ fun AppNavHost(
                 onGastosOperativos = { navController.navigateTo(Routes.EXPENSES) },
                 onInformacionEmpresa = { navController.navigateTo(Routes.SETTINGS_BUSINESS) },
                 onResumenFinanciero = { navController.navigateTo(Routes.FINANCE_SUMMARY) },
+                onCapacidadBodega = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
                 aviso = settingsState.aviso,
                 onAvisoOculto = settingsViewModel::ocultarAviso,
                 pestana = settingsState.pestana,
@@ -693,6 +699,28 @@ fun AppNavHost(
             )
         }
 
+        // Ajustes · Capacidad de bodega: kilos que caben y peso del bulto (Negocio). Se abre desde Ajustes, Inicio e Inventario;
+        // al guardar vuelve a donde estaba. Los kilos ocupados hoy son de ejemplo hasta que Compras esté en Room.
+        composable(Routes.SETTINGS_WAREHOUSE) {
+            val capacidadViewModel: CapacidadBodegaViewModel = viewModel {
+                CapacidadBodegaViewModel(FirebaseSessionGateway, negocios, OcupacionDeEjemplo)
+            }
+            val capacidadState by capacidadViewModel.uiState.collectAsState()
+            LaunchedEffect(capacidadState.guardado) {
+                if (capacidadState.guardado) {
+                    navController.previousBackStackEntry?.savedStateHandle?.set(CLAVE_AVISO_AJUSTES, AVISO_CAPACIDAD_GUARDADA)
+                    navController.popBackStack()
+                }
+            }
+            CapacidadBodegaScreen(
+                estado = capacidadState,
+                onBack = { navController.popBackStack() },
+                onEditar = capacidadViewModel::editar,
+                onGuardar = capacidadViewModel::guardar,
+                onAvisoOculto = capacidadViewModel::ocultarAviso
+            )
+        }
+
         // Ajustes · Información de empresa: completa o edita el Negocio (Room). Al guardar vuelve a Ajustes,
         // que se actualiza solo porque observa el Negocio.
         composable(Routes.SETTINGS_BUSINESS) {
@@ -729,6 +757,7 @@ fun AppNavHost(
 // Aviso de éxito que otra pantalla deja a Ajustes (se lee en su SavedStateHandle).
 private const val CLAVE_AVISO_AJUSTES = "aviso_ajustes"
 private const val AVISO_NEGOCIO_GUARDADO = "Datos del negocio guardados"
+private const val AVISO_CAPACIDAD_GUARDADA = "Capacidad de bodega guardada"
 
 /** Navega a una ruta sin duplicarla en la cima de la pila. */
 private fun NavHostController.navigateTo(route: String) =

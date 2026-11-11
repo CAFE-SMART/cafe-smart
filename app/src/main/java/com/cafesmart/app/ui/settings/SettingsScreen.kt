@@ -105,6 +105,7 @@ fun SettingsScreen(
     onGastosOperativos: () -> Unit,
     onInformacionEmpresa: () -> Unit,
     onResumenFinanciero: () -> Unit,
+    onCapacidadBodega: () -> Unit = {},
     onPedirCerrarSesion: () -> Unit,
     onCancelarCierre: () -> Unit,
     onConfirmarCierre: () -> Unit,
@@ -154,7 +155,7 @@ fun SettingsScreen(
                         onGastosOperativos = onGastosOperativos,
                         proximamente = proximamente
                     )
-                    PestanaAjustes.BODEGA -> OpcionesBodega(proximamente)
+                    PestanaAjustes.BODEGA -> OpcionesBodega(onCapacidadBodega, proximamente)
                     PestanaAjustes.CALIDADES -> OpcionesCalidades(proximamente)
                     PestanaAjustes.USUARIOS -> OpcionesUsuarios(proximamente)
                 }
@@ -278,9 +279,9 @@ private fun OpcionesNegocio(
 }
 
 @Composable
-private fun OpcionesBodega(proximamente: () -> Unit) {
+private fun OpcionesBodega(onCapacidadBodega: () -> Unit, proximamente: () -> Unit) {
     TituloSeccion("Tu bodega")
-    FilaAjuste(IconoArchivo, "Capacidad de bodega", "Cuántos kilos caben y cuánto pesa un bulto", proximamente)
+    FilaAjuste(IconoArchivo, "Capacidad de bodega", "Cuántos kilos caben y cuánto pesa un bulto", onCapacidadBodega)
     FilaAjuste(IconoEtiqueta, "Zonas de bodega", "Organiza tu espacio", proximamente, modo = ModoFila.PROXIMAMENTE)
 }
 
