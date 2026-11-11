@@ -66,6 +66,19 @@ import com.cafesmart.app.ui.theme.TextPrimary
 import com.cafesmart.app.ui.theme.TextSecondary
 import com.cafesmart.app.viewmodel.settings.NOMBRE_FALTANTE
 import com.cafesmart.app.viewmodel.settings.PerfilUsuario
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.draw.shadow
+import com.cafesmart.app.ui.auth.AuthField
+import com.cafesmart.app.ui.components.AppBottomSheet
+import com.cafesmart.app.ui.components.AvisoSuperior
+import com.cafesmart.app.ui.components.AvisoUi
+import com.cafesmart.app.ui.components.ContinueButton
+import com.cafesmart.app.ui.theme.SheetShadow
+import com.cafesmart.app.ui.theme.SurfaceSoft
+import com.cafesmart.app.viewmodel.settings.EdicionPerfil
+import com.cafesmart.app.viewmodel.settings.NOMBRE_PERFIL_MAX
+import com.cafesmart.app.viewmodel.settings.inicialesDe
 import kotlinx.coroutines.launch
 
 // Pantalla "Cuenta · Ajustes" (Figma, página Flujos, marco 275:50): perfil de la cuenta, las filas de
@@ -89,6 +102,14 @@ fun SettingsScreen(
     onPedirCerrarSesion: () -> Unit,
     onCancelarCierre: () -> Unit,
     onConfirmarCierre: () -> Unit,
+    edicion: EdicionPerfil? = null,
+    onEditarPerfil: () -> Unit = {},
+    onNombreChange: (String) -> Unit = {},
+    onGuardarNombre: () -> Unit = {},
+    onCancelarEdicion: () -> Unit = {},
+    // Mensaje de éxito arriba (barra verde); null = sin aviso.
+    aviso: AvisoUi? = null,
+    onAvisoOculto: () -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -111,7 +132,7 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(Spacing.s12)
             ) {
                 Spacer(Modifier.height(Spacing.s4))
-                TarjetaPerfil(perfil)
+                TarjetaPerfil(perfil, onClick = onEditarPerfil)
 
                 TituloSeccion("Procesos operativos")
                 FilaAjuste(IconoSecado, "Proceso de secado", "Tiempo y humedad", proximamente)
@@ -144,12 +165,31 @@ fun SettingsScreen(
             }
         }
 
+        // Con la hoja "Editar perfil" abierta el aviso va dentro de la hoja (una hoja oscurece lo que tiene detrás).
+        AvisoSuperior(
+            aviso = if (edicion == null) aviso else null,
+            onOculto = onAvisoOculto,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+
         SnackbarHost(
             hostState = snackbar,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(Spacing.s16)
         ) { datos -> AvisoProximamente(datos.visuals.message) }
+    }
+
+    if (edicion != null) {
+        HojaEditarPerfil(
+            edicion = edicion,
+            aviso = aviso,
+            onAvisoOculto = onAvisoOculto,
+            correo = perfil.correo,
+            onNombreChange = onNombreChange,
+            onGuardar = onGuardarNombre,
+            onCancelar = onCancelarEdicion
+        )
     }
 
     if (mostrarConfirmacion) {
@@ -192,61 +232,142 @@ private fun EncabezadoAjustes(onBack: () -> Unit) {
     }
 }
 
-// Tarjeta de perfil en dos filas para no apilar todo en una columna:
-//   [ícono] Usuario de la cuenta ........ correo
-//           Nombre
-//           ............................ [Compraventa]
-// El correo se recorta por la mitad si no cabe ("usuariop…@correo.com") para que el dominio se siga viendo.
+// Tarjeta de perfil (Figma, sección NUEVAS de Flujos): avatar con iniciales y lápiz, nombre, correo completo
+// (se ajusta en varias líneas, nunca se corta) y tipo de negocio. Toda la tarjeta se toca para abrir
+// "Editar perfil"; la flecha ">" de la derecha lo indica.
 @Composable
-private fun TarjetaPerfil(perfil: PerfilUsuario) {
+private fun TarjetaPerfil(perfil: PerfilUsuario, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(SurfaceCard, AppShapes.medium)
-            .border(BorderStroke(1.dp, BorderDefault), AppShapes.medium)
-            .padding(Spacing.s16),
+            .shadow(elevation = 4.dp, shape = AppShapes.large, ambientColor = SheetShadow, spotColor = SheetShadow)
+            .background(SurfaceCard, AppShapes.large)
+            .clickable(role = Role.Button, onClickLabel = "Editar perfil", onClick = onClick)
+            .padding(start = Spacing.s20, top = Spacing.s20, end = Spacing.s16, bottom = Spacing.s20),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.s12)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s16)
     ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .background(SurfaceSelected, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = AppIcons.User,
-                contentDescription = null,
-                tint = Primary,
-                modifier = Modifier.size(26.dp)
-            )
-        }
+        AvatarConLapiz(inicialesDe(perfil.nombre))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.s4)) {
-            // Fila superior: rótulo a la izquierda y correo a la derecha.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Usuario de la cuenta", style = AppTypography.caption)
-                Spacer(Modifier.width(Spacing.s8))
-                Text(
-                    text = perfil.correo.orEmpty(),
-                    style = AppTypography.caption.copy(color = TextSecondary),
-                    maxLines = 1,
-                    overflow = TextOverflow.MiddleEllipsis,
-                    textAlign = TextAlign.End,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            // Nombre debajo del rótulo; sin nombre se ve en gris para que no parezca un nombre real.
+            // Sin nombre se ve en gris para que no parezca un nombre real.
             Text(
                 text = perfil.nombre ?: NOMBRE_FALTANTE,
-                style = AppTypography.titleCard.copy(color = if (perfil.nombre == null) TextMuted else TextPrimary),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                style = AppTypography.titleCard.copy(color = if (perfil.nombre == null) TextMuted else TextPrimary)
             )
-            // Tipo de negocio abajo a la derecha. Sin tipo no se muestra.
+            perfil.correo?.let { Text(text = it, style = AppTypography.bodyMd.copy(color = TextSecondary)) }
             perfil.tipoNegocio?.let {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    EtiquetaTipoNegocio(it)
+                Spacer(Modifier.height(Spacing.s4))
+                EtiquetaTipoNegocio(it)
+            }
+        }
+        Icon(
+            imageVector = AppIcons.ChevronRight,
+            contentDescription = null,
+            tint = TextMuted,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+// Círculo azul claro con las iniciales (o el ícono de persona si no hay nombre) y una insignia con lápiz.
+@Composable
+private fun AvatarConLapiz(iniciales: String?) {
+    Box(Modifier.size(68.dp)) {
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .background(SurfaceSelected, CircleShape)
+                .border(BorderStroke(2.dp, BorderSelectedSoft), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (iniciales != null) {
+                Text(text = iniciales, style = AppTypography.titleExito.copy(color = Primary))
+            } else {
+                Icon(AppIcons.User, contentDescription = null, tint = Primary, modifier = Modifier.size(28.dp))
+            }
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .size(26.dp)
+                .background(Primary, CircleShape)
+                .border(BorderStroke(2.dp, SurfaceCard), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(AppIcons.Pencil, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(12.dp))
+        }
+    }
+}
+
+// Hoja "Editar perfil": solo el nombre se cambia. El correo se muestra en una caja gris con candado
+// (no se toca) y el teléfono se edita en "Información de empresa".
+@Composable
+private fun HojaEditarPerfil(
+    edicion: EdicionPerfil,
+    aviso: AvisoUi?,
+    onAvisoOculto: () -> Unit,
+    correo: String?,
+    onNombreChange: (String) -> Unit,
+    onGuardar: () -> Unit,
+    onCancelar: () -> Unit,
+) {
+    AppBottomSheet(onDismiss = onCancelar, skipPartiallyExpanded = true) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(start = Spacing.s20, end = Spacing.s20, bottom = Spacing.s28),
+            verticalArrangement = Arrangement.spacedBy(Spacing.s16)
+        ) {
+            // Aviso rojo (o verde) dentro de la hoja, sin la barra de estado.
+            AvisoSuperior(aviso = aviso, onOculto = onAvisoOculto, bajoBarraDeEstado = false)
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.s8)) {
+                Text(text = "Editar perfil", style = AppTypography.titleModal)
+                Text(
+                    text = "Cambia el nombre con el que apareces en la app.",
+                    style = AppTypography.bodyMd.copy(color = TextSecondary)
+                )
+            }
+            AuthField(
+                title = "Nombre completo",
+                value = edicion.nombre,
+                onValueChange = onNombreChange,
+                hint = "Ej: Juan Pérez",
+                help = "Máximo $NOMBRE_PERFIL_MAX caracteres.",
+                error = edicion.error,
+                maxChars = NOMBRE_PERFIL_MAX,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.s6)) {
+                Text(text = "Correo electrónico", style = AppTypography.labelField.copy(color = TextMuted))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .background(SurfaceSoft, AppShapes.medium)
+                        .padding(horizontal = Spacing.s16),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.s12)
+                ) {
+                    Text(
+                        text = correo.orEmpty(),
+                        style = AppTypography.bodyLg.copy(color = TextMuted),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(IconoCandado, contentDescription = "No se puede cambiar", tint = TextMuted, modifier = Modifier.size(18.dp))
                 }
+                Text(text = "Este dato no se puede cambiar.", style = AppTypography.helper.copy(color = TextMuted))
+            }
+            ContinueButton(
+                text = if (edicion.guardando) "Guardando…" else "Guardar perfil",
+                onClick = onGuardar,
+                enabled = !edicion.guardando
+            )
+            TextButton(onClick = onCancelar, modifier = Modifier.fillMaxWidth().height(44.dp)) {
+                Text(text = "Cancelar", style = AppTypography.buttonLink.copy(color = Primary))
             }
         }
     }

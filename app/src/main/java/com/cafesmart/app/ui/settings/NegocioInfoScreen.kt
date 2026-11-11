@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.cafesmart.app.ui.auth.AuthField
 import com.cafesmart.app.ui.auth.BusinessChoice
 import com.cafesmart.app.ui.auth.BusinessType
+import com.cafesmart.app.ui.components.AvisoSuperior
 import com.cafesmart.app.ui.components.BackArrow
 import com.cafesmart.app.ui.theme.AppShapes
 import com.cafesmart.app.ui.theme.AppTypography
@@ -55,17 +56,22 @@ fun NegocioInfoScreen(
     onBack: () -> Unit,
     onEditar: ((NegocioFormulario) -> NegocioFormulario) -> Unit,
     onGuardar: () -> Unit,
+    onAvisoOculto: () -> Unit = {},
 ) {
-    Column(Modifier.fillMaxSize().background(SurfaceScreen).imePadding()) {
-        EncabezadoNegocio(onBack)
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().background(SurfaceScreen).imePadding()) {
+            EncabezadoNegocio(onBack)
 
-        when {
-            estado.sinSesion -> Mensaje("Inicia sesión para guardar los datos de tu negocio.")
-            estado.cargando -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Primary)
+            when {
+                estado.sinSesion -> Mensaje("Inicia sesión para guardar los datos de tu negocio.")
+                estado.cargando -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Primary)
+                }
+                else -> Formulario(estado, onEditar, onGuardar)
             }
-            else -> Formulario(estado, onEditar, onGuardar)
         }
+        // Aviso rojo si no se pudo guardar (el verde de "guardado" sale en Ajustes, a donde se vuelve).
+        AvisoSuperior(aviso = estado.aviso, onOculto = onAvisoOculto, modifier = Modifier.align(Alignment.TopCenter))
     }
 }
 

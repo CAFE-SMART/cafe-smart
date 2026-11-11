@@ -5,11 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.cafesmart.app.data.local.NegocioEntity
 import com.cafesmart.app.data.negocio.NegocioRepository
 import com.cafesmart.app.data.session.SessionGateway
+import com.cafesmart.app.ui.components.AvisoUi
+import com.cafesmart.app.ui.components.TipoAviso
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 /** Estado de "Información de empresa". */
 data class NegocioInfoUiState(
@@ -24,7 +27,12 @@ data class NegocioInfoUiState(
     val guardado: Boolean = false,
     // true si no hay sesión: no hay a quién asociar el negocio.
     val sinSesion: Boolean = false,
+    // Aviso rojo arriba si no se pudo guardar; null = sin aviso. (El verde de "guardado" lo muestra Ajustes.)
+    val aviso: AvisoUi? = null,
 )
+
+/** Texto del aviso rojo cuando no se pudo guardar el negocio. */
+const val AVISO_NEGOCIO_ERROR = "No se pudo guardar. Inténtalo de nuevo."
 
 // Completa o edita el nombre, el tipo y el teléfono del negocio de la cuenta (entidad Negocio en Room).
 // Sirve también para las cuentas que quedaron sin Negocio (creadas antes de Room o tras reinstalar).
@@ -67,8 +75,17 @@ class NegocioInfoViewModel(
         }
         _uiState.update { it.copy(errores = emptyMap(), guardando = true) }
         viewModelScope.launch {
-            negocios.guardar(negocioAGuardar(id, estado.form, actual, reloj()))
-            _uiState.update { it.copy(guardando = false, guardado = true) }
+            try {
+                negocios.guardar(negocioAGuardar(id, estado.form, actual, reloj()))
+                _uiState.update { it.copy(guardando = false, guardado = true) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(guardando = false, aviso = AvisoUi(AVISO_NEGOCIO_ERROR, TipoAviso.ERROR)) }
+            }
         }
     }
+
+    /** El aviso ya se mostró: se borra. */
+    fun ocultarAviso() = _uiState.update { it.copy(aviso = null) }
 }

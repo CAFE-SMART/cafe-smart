@@ -3,6 +3,8 @@ package com.cafesmart.app.viewmodel.settings
 import com.cafesmart.app.data.local.NegocioEntity
 import com.cafesmart.app.data.negocio.NegocioRepository
 import com.cafesmart.app.data.session.SessionGateway
+import com.cafesmart.app.ui.components.AvisoUi
+import com.cafesmart.app.ui.components.TipoAviso
 import com.cafesmart.app.data.session.UsuarioSesion
 import com.cafesmart.app.ui.auth.BusinessType
 import kotlinx.coroutines.Dispatchers
@@ -24,12 +26,16 @@ import org.junit.Test
 private class Sesion(private val u: UsuarioSesion?) : SessionGateway {
     override fun usuarioActual() = u
     override fun cerrarSesion() = Unit
+    override suspend fun actualizarNombre(nombre: String): com.cafesmart.app.data.auth.AuthError? = null
 }
 
 private class Negocios(inicial: NegocioEntity? = null) : NegocioRepository {
     val datos = MutableStateFlow(listOfNotNull(inicial).associateBy { it.uid })
     var guardados = 0
+    // true = guardar falla (por ejemplo, la base de datos no responde).
+    var fallar = false
     override suspend fun guardar(negocio: NegocioEntity) {
+        if (fallar) throw IllegalStateException("fallo simulado")
         guardados++
         datos.value = datos.value + (negocio.uid to negocio)
     }
@@ -101,5 +107,17 @@ class NegocioInfoViewModelTest {
         vm.guardar()
         assertEquals(0, negocios.guardados)
         assertNull(negocios.datos.value["u1"])
+    }
+
+    @Test fun siGuardarFallaMuestraElAvisoRojoYNoMarcaGuardado() {
+        val negocios = Negocios().apply { fallar = true }
+        val vm = NegocioInfoViewModel(Sesion(andres), negocios)
+        vm.editar { NegocioFormulario("Café La Esperanza", BusinessType.COMPRAVENTA, "3001234567") }
+        vm.guardar()
+        assertFalse(vm.uiState.value.guardado)
+        assertFalse(vm.uiState.value.guardando)
+        assertEquals(AvisoUi(AVISO_NEGOCIO_ERROR, TipoAviso.ERROR), vm.uiState.value.aviso)
+        vm.ocultarAviso()
+        assertEquals(null, vm.uiState.value.aviso)
     }
 }

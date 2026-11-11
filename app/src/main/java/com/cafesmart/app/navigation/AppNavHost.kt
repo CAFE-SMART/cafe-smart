@@ -35,6 +35,7 @@ import com.cafesmart.app.ui.auth.AuthDialogsState
 import com.cafesmart.app.ui.auth.AuthHelpContext
 import com.cafesmart.app.ui.auth.AuthPage
 import com.cafesmart.app.ui.auth.AuthViewModel
+import com.cafesmart.app.ui.components.AvisoUi
 import com.cafesmart.app.ui.auth.ConfirmDestructiveDialog
 import com.cafesmart.app.ui.auth.LoginScreen
 import com.cafesmart.app.ui.auth.MODO_DEMOSTRACION
@@ -582,11 +583,21 @@ fun AppNavHost(
         }
 
         // ── Ajustes ─────────────────────────────────────────
-        composable(Routes.SETTINGS) {
+        composable(Routes.SETTINGS) { entrada ->
             val settingsViewModel: SettingsViewModel = viewModel {
                 SettingsViewModel(FirebaseSessionGateway, negocios)
             }
             val settingsState by settingsViewModel.uiState.collectAsState()
+            // Avisos que dejan otras pantallas al volver a Ajustes (por ejemplo "Información de empresa"):
+            // se pasan al ViewModel y se borran del handle enseguida para que no reaparezcan.
+            val avisoDeOtraPantalla by entrada.savedStateHandle
+                .getStateFlow<String?>(CLAVE_AVISO_AJUSTES, null).collectAsState()
+            LaunchedEffect(avisoDeOtraPantalla) {
+                avisoDeOtraPantalla?.let {
+                    settingsViewModel.mostrarAviso(AvisoUi(it))
+                    entrada.savedStateHandle[CLAVE_AVISO_AJUSTES] = null
+                }
+            }
 
             SettingsScreen(
                 perfil = settingsState.perfil,
@@ -594,6 +605,13 @@ fun AppNavHost(
                 onBack = { navController.popBackStack() },
                 onGastosOperativos = { navController.navigateTo(Routes.EXPENSES) },
                 onInformacionEmpresa = { navController.navigateTo(Routes.SETTINGS_BUSINESS) },
+                aviso = settingsState.aviso,
+                onAvisoOculto = settingsViewModel::ocultarAviso,
+                edicion = settingsState.edicion,
+                onEditarPerfil = settingsViewModel::abrirEditarPerfil,
+                onNombreChange = settingsViewModel::cambiarNombre,
+                onGuardarNombre = settingsViewModel::guardarNombre,
+                onCancelarEdicion = settingsViewModel::cancelarEdicion,
                 onPedirCerrarSesion = settingsViewModel::pedirCerrarSesion,
                 onCancelarCierre = settingsViewModel::cancelarCierre,
                 onConfirmarCierre = {
@@ -612,13 +630,18 @@ fun AppNavHost(
             }
             val negocioState by negocioViewModel.uiState.collectAsState()
             LaunchedEffect(negocioState.guardado) {
-                if (negocioState.guardado) navController.popBackStack()
+                if (negocioState.guardado) {
+                    // Deja el aviso para Ajustes, que lo muestra al aparecer.
+                    navController.previousBackStackEntry?.savedStateHandle?.set(CLAVE_AVISO_AJUSTES, AVISO_NEGOCIO_GUARDADO)
+                    navController.popBackStack()
+                }
             }
             NegocioInfoScreen(
                 estado = negocioState,
                 onBack = { navController.popBackStack() },
                 onEditar = negocioViewModel::editar,
-                onGuardar = negocioViewModel::guardar
+                onGuardar = negocioViewModel::guardar,
+                onAvisoOculto = negocioViewModel::ocultarAviso
             )
         }
     }
@@ -631,6 +654,10 @@ fun AppNavHost(
         onRecovery = { navController.navigateTo(Routes.FORGOT_PASSWORD) }
     )
 }
+
+// Aviso de éxito que otra pantalla deja a Ajustes (se lee en su SavedStateHandle).
+private const val CLAVE_AVISO_AJUSTES = "aviso_ajustes"
+private const val AVISO_NEGOCIO_GUARDADO = "Datos del negocio guardados"
 
 /** Navega a una ruta sin duplicarla en la cima de la pila. */
 private fun NavHostController.navigateTo(route: String) =
