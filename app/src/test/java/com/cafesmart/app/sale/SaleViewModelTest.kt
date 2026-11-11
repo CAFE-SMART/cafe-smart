@@ -133,4 +133,90 @@ class SaleViewModelTest {
         )
         assertNull(viewModel.uiState.value.errorDePrecio(Calidad.REGULAR))
     }
+
+    // ---------- Cantidad escrita en el campo ----------
+
+    @Test
+    fun alEscribirUnaCantidadValida_laTomaYElCampoMuestraLoEscrito() {
+        val viewModel = SaleViewModel()
+        viewModel.alternarSublote(sublote5)
+        // Sin tocar el campo, muestra lo elegido (todo lo disponible).
+        assertEquals("200", viewModel.uiState.value.textoCantidad(5))
+        viewModel.escribirCantidad(5, "150")
+        val estado = viewModel.uiState.value
+        assertEquals(150.0, estado.elegidos[0].cantidadKg, 0.001)
+        assertEquals("150", estado.textoCantidad(5))
+        assertNull(estado.errorDeCantidad(5))
+    }
+
+    @Test
+    fun alPasarseDeLoDisponible_guardaElTextoMuestraElErrorYBloqueaContinuar() {
+        val viewModel = SaleViewModel()
+        viewModel.alternarSublote(sublote5)
+        viewModel.cambiarPrecio(Calidad.BUENA, "20000")
+        assertTrue(viewModel.uiState.value.puedeContinuar)
+        viewModel.escribirCantidad(5, "250")
+        val estado = viewModel.uiState.value
+        // El campo conserva lo que se escribio para poder mostrarlo con su error...
+        assertEquals("250", estado.textoCantidad(5))
+        assertEquals("Debe ser menor o igual a 200 kg.", estado.errorDeCantidad(5))
+        // ...la cantidad elegida sigue en la ultima valida y no se puede continuar.
+        assertEquals(200.0, estado.elegidos[0].cantidadKg, 0.001)
+        assertFalse(estado.puedeContinuar)
+        // Al corregirla, el error se va y se puede continuar.
+        viewModel.escribirCantidad(5, "180")
+        assertNull(viewModel.uiState.value.errorDeCantidad(5))
+        assertTrue(viewModel.uiState.value.puedeContinuar)
+    }
+
+    @Test
+    fun conElCampoVacioOEnCero_noHayErrorPeroNoSePuedeContinuar() {
+        val viewModel = SaleViewModel()
+        viewModel.alternarSublote(sublote5)
+        viewModel.cambiarPrecio(Calidad.BUENA, "20000")
+        viewModel.escribirCantidad(5, "")
+        assertNull(viewModel.uiState.value.errorDeCantidad(5))
+        assertFalse(viewModel.uiState.value.puedeContinuar)
+        viewModel.escribirCantidad(5, "0")
+        assertNull(viewModel.uiState.value.errorDeCantidad(5))
+        assertFalse(viewModel.uiState.value.puedeContinuar)
+    }
+
+    @Test
+    fun laCantidadAceptaComaOPuntoDecimal() {
+        val viewModel = SaleViewModel()
+        viewModel.alternarSublote(sublote5)
+        viewModel.escribirCantidad(5, "25,5")
+        assertEquals(25.5, viewModel.uiState.value.elegidos[0].cantidadKg, 0.001)
+        assertEquals("25.5", viewModel.uiState.value.textoCantidad(5))
+    }
+
+    @Test
+    fun alQuitarYVolverAMarcarElSublote_elCampoVuelveAMostrarLoElegido() {
+        val viewModel = SaleViewModel()
+        viewModel.alternarSublote(sublote5)
+        viewModel.escribirCantidad(5, "250")
+        viewModel.alternarSublote(sublote5)
+        viewModel.alternarSublote(sublote5)
+        assertEquals("200", viewModel.uiState.value.textoCantidad(5))
+        assertNull(viewModel.uiState.value.errorDeCantidad(5))
+    }
+
+    // ---------- Reiniciar ----------
+
+    @Test
+    fun reiniciarVenta_dejaElEstadoComoAlEmpezar() {
+        val viewModel = SaleViewModel()
+        viewModel.elegirCliente(Cliente(nombre = "Carlos Mejía", documento = "16780012"))
+        viewModel.alternarSublote(sublote5)
+        viewModel.escribirCantidad(5, "150")
+        viewModel.cambiarPrecio(Calidad.BUENA, "20000")
+        viewModel.reiniciarVenta()
+        val estado = viewModel.uiState.value
+        assertNull(estado.cliente)
+        assertTrue(estado.elegidos.isEmpty())
+        assertTrue(estado.precios.isEmpty())
+        assertTrue(estado.textosCantidad.isEmpty())
+        assertFalse(estado.puedeContinuar)
+    }
 }

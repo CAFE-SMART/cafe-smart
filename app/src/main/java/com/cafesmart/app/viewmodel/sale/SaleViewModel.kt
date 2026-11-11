@@ -8,6 +8,7 @@ import com.cafesmart.app.data.sale.SubloteElegido
 import com.cafesmart.app.viewmodel.purchase.errorPrecio
 import com.cafesmart.app.viewmodel.purchase.formatoDinero
 import com.cafesmart.app.viewmodel.purchase.formatoKg
+import com.cafesmart.app.viewmodel.purchase.limpiarPeso
 import com.cafesmart.app.viewmodel.purchase.limpiarPrecio
 import com.cafesmart.app.viewmodel.purchase.precioKg
 import com.cafesmart.app.viewmodel.purchase.precioValido
@@ -22,7 +23,10 @@ data class SaleUiState(
     val cliente: Cliente? = null,
     val elegidos: List<SubloteElegido> = emptyList(),
     // Precio por kg de cada calidad, solo con digitos ("20000"); la vista lo muestra como "20.000"
-    val precios: Map<Calidad, String> = emptyMap()
+    val precios: Map<Calidad, String> = emptyMap(),
+    // Lo que se escribio en el campo "Cantidad a vender" de cada sublote (por id). Se guarda aunque sea invalido,
+    // para que la vista muestre lo escrito y su error; sin texto, el campo muestra la cantidad elegida.
+    val textosCantidad: Map<Long, String> = emptyMap()
 ) {
     // Cada calidad que hay entre los sublotes elegidos pide su propio precio por kg.
     val calidadesElegidas: List<Calidad>
@@ -32,6 +36,23 @@ data class SaleUiState(
     private fun textoPrecio(calidad: Calidad): String = precios[calidad].orEmpty()
 
     fun errorDePrecio(calidad: Calidad): String? = errorPrecio(textoPrecio(calidad))
+
+    // Texto del campo "Cantidad a vender" de un sublote: lo escrito, o la cantidad elegida si no se ha tocado.
+    fun textoCantidad(subloteId: Long): String =
+        textosCantidad[subloteId] ?: elegidos.firstOrNull { it.id == subloteId }?.cantidadKg?.let(::formatoKgCampo).orEmpty()
+
+    // Error de la cantidad escrita: solo aparece cuando pasa de lo disponible (con el campo vacio o en 0 no hay error).
+    fun errorDeCantidad(subloteId: Long): String? {
+        val elegido = elegidos.firstOrNull { it.id == subloteId } ?: return null
+        val escrito = textosCantidad[subloteId] ?: return null
+        return errorCantidad(cantidadDesdeTexto(escrito), elegido.disponibleKg)
+    }
+
+    // Cada cantidad escrita debe ser valida (mayor a 0 y sin pasar de lo disponible); lo no escrito ya es valido.
+    private val cantidadesValidas: Boolean
+        get() = elegidos.all { elegido ->
+            textosCantidad[elegido.id]?.let { cantidadValida(cantidadDesdeTexto(it), elegido.disponibleKg) } ?: true
+        }
 
     val totalKg: Double
         get() = elegidos.sumOf { it.cantidadKg }
@@ -46,9 +67,10 @@ data class SaleUiState(
     val totalARecibirTexto: String
         get() = formatoDinero(totalARecibir.toDouble())
 
-    // "Continuar" del paso 2: hay al menos un sublote y cada calidad elegida tiene un precio valido.
+    // "Continuar" del paso 2: hay al menos un sublote, cada cantidad escrita es valida y cada calidad elegida
+    // tiene un precio valido.
     val puedeContinuar: Boolean
-        get() = elegidos.isNotEmpty() && calidadesElegidas.all { precioValido(textoPrecio(it)) }
+        get() = elegidos.isNotEmpty() && cantidadesValidas && calidadesElegidas.all { precioValido(textoPrecio(it)) }
 }
 
 // ViewModel (MVVM): aqui esta la logica del registro de venta.
@@ -74,7 +96,22 @@ class SaleViewModel : ViewModel() {
         } else {
             elegidos + SubloteElegido(sublote, sublote.sublote.pesoDisponibleKg)
         }
-        _uiState.value = _uiState.value.copy(elegidos = nuevos)
+        // Al marcar o desmarcar, el campo vuelve a mostrar la cantidad elegida (se borra lo escrito antes).
+        _uiState.value = _uiState.value.copy(elegidos = nuevos, textosCantidad = _uiState.value.textosCantidad - id)
+    }
+
+    // Lo que la persona escribe en "Cantidad a vender". Se guarda el texto tal cual (limpiado como el peso de
+    // Compras) para mostrarlo con su error; la cantidad elegida solo cambia cuando el valor es valido.
+    fun escribirCantidad(subloteId: Long, texto: String) {
+        val limpio = limpiarPeso(texto)
+        val cantidad = cantidadDesdeTexto(limpio)
+        val nuevos = _uiState.value.elegidos.map {
+            if (it.id == subloteId && cantidadValida(cantidad, it.disponibleKg)) it.copy(cantidadKg = cantidad!!) else it
+        }
+        _uiState.value = _uiState.value.copy(
+            elegidos = nuevos,
+            textosCantidad = _uiState.value.textosCantidad + (subloteId to limpio)
+        )
     }
 
     // Cambia cuantos kg se venden de un sublote. Si la cantidad no es valida no cambia nada.
@@ -82,7 +119,13 @@ class SaleViewModel : ViewModel() {
         val nuevos = _uiState.value.elegidos.map {
             if (it.id == subloteId && cantidadValida(cantidadKg, it.disponibleKg)) it.copy(cantidadKg = cantidadKg) else it
         }
-        _uiState.value = _uiState.value.copy(elegidos = nuevos)
+        // Un cambio por codigo (no por el campo) deja la cantidad elegida como texto del campo.
+        _uiState.value = _uiState.value.copy(elegidos = nuevos, textosCantidad = _uiState.value.textosCantidad - subloteId)
+    }
+
+    // Empieza una venta desde cero (al cancelarla o despues de registrarla): sin cliente, sublotes ni precios.
+    fun reiniciarVenta() {
+        _uiState.value = SaleUiState()
     }
 
     // Se guarda solo con digitos ("20000"); la vista recibe "20.000"
@@ -91,3 +134,7 @@ class SaleViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(precios = precios)
     }
 }
+
+// Cantidad como se escribe en el campo: sin ".0" si es entera ("150") y con punto decimal si no ("25.5").
+private fun formatoKgCampo(kg: Double): String =
+    if (kg % 1.0 == 0.0) kg.toLong().toString() else kg.toString()

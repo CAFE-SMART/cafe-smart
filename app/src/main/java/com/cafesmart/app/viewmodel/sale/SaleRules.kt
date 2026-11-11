@@ -19,6 +19,10 @@ fun mensajeCantidad(disponibleKg: Double): String =
 fun cantidadValida(cantidadKg: Double?, disponibleKg: Double): Boolean =
     cantidadKg != null && cantidadKg > 0 && cantidadKg <= disponibleKg
 
+// Pasa el texto del campo a numero. Acepta coma o punto como separador decimal; devuelve null si esta vacio
+// o no es un numero.
+fun cantidadDesdeTexto(texto: String): Double? = texto.replace(',', '.').toDoubleOrNull()
+
 // El error aparece solo cuando la cantidad pasa de lo disponible.
 // Con el campo vacio o en 0 no hay error: simplemente "Confirmar" sigue deshabilitado.
 fun errorCantidad(cantidadKg: Double?, disponibleKg: Double): String? =

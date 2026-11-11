@@ -2,6 +2,7 @@ package com.cafesmart.app.sale
 
 import com.cafesmart.app.viewmodel.purchase.errorPrecio
 import com.cafesmart.app.viewmodel.purchase.precioValido
+import com.cafesmart.app.viewmodel.sale.cantidadDesdeTexto
 import com.cafesmart.app.viewmodel.sale.cantidadValida
 import com.cafesmart.app.viewmodel.sale.errorCantidad
 import com.cafesmart.app.viewmodel.sale.mensajeCantidad
@@ -52,6 +53,16 @@ class SaleRulesTest {
         assertNull(errorCantidad(0.0, disponibleKg))
         assertNull(errorCantidad(null, disponibleKg))
         assertEquals("Debe ser menor o igual a 200 kg.", errorCantidad(200.5, disponibleKg))
+    }
+
+    @Test
+    fun cantidadDesdeTexto_aceptaComaPuntoYRechazaLoQueNoEsNumero() {
+        assertEquals(25.5, cantidadDesdeTexto("25,5")!!, 0.0)
+        assertEquals(25.5, cantidadDesdeTexto("25.5")!!, 0.0)
+        assertEquals(150.0, cantidadDesdeTexto("150")!!, 0.0)
+        assertNull(cantidadDesdeTexto(""))
+        assertNull(cantidadDesdeTexto("."))
+        assertNull(cantidadDesdeTexto("abc"))
     }
 
     // ---------- Precio por kg (mismas reglas de Compras: de $1.000 a $100.000) ----------
