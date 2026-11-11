@@ -68,7 +68,7 @@ erDiagram
 5. **"Sin registrar" = FK nula**, no un productor ficticio (Tony Café no registra nombre ni cédula, RN-V-01).
 6. **Dinero en `Long` (pesos enteros), kg en `Double`.** La app ya fuerza precios enteros; con `Long` los totales no pierden centavos.
 7. **Fechas con la clase `Fecha` existente** (minSdk 24, sin `LocalDate`). Para Room: convertir con `fechaAMilis` / `milisAFecha`, que ya están en `Formatters.kt`.
-8. **Sin anotaciones de Room todavía (salvo `Negocio`).** Los ids (`Long = 0`) y las relaciones por FK están listos para `@PrimaryKey(autoGenerate = true)`, `@ForeignKey` y `@Relation` el 19 nov. Las clases `*ConSublotes` / `*ConDetalle` son las vistas de lectura que Room llenará con `@Relation`.
+8. **Room ya tiene `Negocio`, `Productor`, `Compra`, `Lote` y `Sublote`** (ver sección 5). Los ids (`Long = 0`) son `@PrimaryKey(autoGenerate = true)` y las relaciones son `@ForeignKey` con `RESTRICT`. Faltan las entidades de Gasto, Secado y Venta (con sus tablas intermedias) y las `@Relation`: las clases `*ConSublotes` / `*ConDetalle` siguen siendo vistas de lectura que Room llenará con `@Relation` cuando se conecten las pantallas.
 
 ## 4. Reglas que el modelo valida
 
