@@ -14,7 +14,7 @@ Inicio → Compra → Inventario → Secado → Gastos → Venta → Resultado f
 - Kotlin + Jetpack Compose
 - Navigation Compose
 - Arquitectura MVVM (ViewModel + StateFlow)
-- Room (almacenamiento local) — ya tiene `Negocio` (`AppDatabase`, versión 1); Productor, Compra y Sublote están por incorporar
+- Room (almacenamiento local) — `AppDatabase` (versión 2) con `Negocio`, `Productor`, `Compra`, `Lote` y `Sublote`; Gasto, Secado y Venta se agregan después
 - Firebase Authentication (inicio de sesión y registro con correo y contraseña)
 - JUnit (pruebas unitarias)
 
@@ -146,7 +146,7 @@ En cada pull request el workflow `CI` corre las pruebas y guarda el reporte:
 | `viewmodel/settings/NegocioInfoViewModelTest.kt` | Estado de la pantalla Información de empresa | 6 |
 | `ExampleUnitTest.kt` | Prueba de ejemplo de Android Studio | 1 |
 
-Total: 310 pruebas (22 archivos). Al agregar un archivo de prueba, añade su fila a esta tabla. Las clases de `androidTest` (pantallas de Gastos y selector de fecha) compilan pero no corren en el CI: necesitan emulador.
+Total: 310 pruebas (22 archivos). Al agregar un archivo de prueba, añade su fila a esta tabla. Las clases de `androidTest` (pantallas de Gastos, selector de fecha y `AppDatabaseTest` con Room real) compilan pero no corren en el CI: necesitan emulador.
 
 ## Flujo de trabajo en Git (trunk-based)
 - Un solo tronco: `main`, siempre compilable.

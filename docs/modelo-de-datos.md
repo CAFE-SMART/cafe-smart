@@ -115,4 +115,8 @@ Los archivos del paquete `data/model` compilan con la versión de Kotlin del pro
 
 - Firebase Auth solo guarda correo, contraseña y nombre; nombres y apellidos **no** se copian a Room y la contraseña nunca.
 - Se crea al terminar el registro (`AuthEvent.Registered`). Si una cuenta no lo tiene (o se reinstaló la app), se crea desde Ajustes → Información de empresa, que conserva capacidad, bulto y fecha de creación al editar.
-- `AppDatabase` (archivo `cafesmart.db`, versión 1, sin esquema exportado) es la base única: Carlos agrega Productor, Compra y Sublote y sube la versión a 2.
+- `AppDatabase` (archivo `cafesmart.db`, versión 2, sin esquema exportado) es la base única. La versión 2 agrega `ProductorEntity`, `CompraEntity`, `LoteEntity` y `SubloteEntity` (en `data/local/`, cada una con su DAO: `insertar`, `listar`, `buscarPorId`).
+- Las entidades de Room son clases aparte de las data classes de `data/model` (que siguen validando las reglas). Enums como texto (nombre del enum), fechas en milisegundos UTC (`fechaAMilis`), dinero en `Long`.
+- Llaves foráneas con `RESTRICT`: `compra.productor_id`, `sublote.lote_id` y `sublote.compra_id`. `sublote.secado_id` queda sin llave foránea hasta que exista la tabla de Secado.
+- Índices únicos: `productor.documento` y `lote(tipo_cafe, calidad)`.
+- Si cambias el esquema mientras la app no esté publicada, desinstálala del emulador (borra también el Negocio: se vuelve a llenar en Ajustes → Información de empresa).
