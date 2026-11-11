@@ -1,6 +1,9 @@
 
 package com.cafesmart.app.ui.auth
 
+import com.cafesmart.app.viewmodel.purchase.NOMBRE_MAX
+import com.cafesmart.app.viewmodel.purchase.limpiarNombre
+
 // ============================================================
 // IMPORTACIONES NECESARIAS
 // ============================================================
@@ -306,14 +309,15 @@ fun RegisterStep2Screen(
                             onChange {
 
                                 it.copy(
-                                    firstName = value
+                                    // Solo letras y espacios, hasta 30 (como el nombre en Compras).
+                            firstName = limpiarNombre(value)
                                 )
                             }
                         },
 
                         // Instrucciones del campo
                         hint = "Ingresa tu nombre",
-                        help = "Tu nombre.",
+                        help = "Solo letras. ${state.firstName.length}/$NOMBRE_MAX",
 
                         // Muestra el error si existe
                         error = state.errors["firstName"],
@@ -339,13 +343,13 @@ fun RegisterStep2Screen(
                             onChange {
 
                                 it.copy(
-                                    lastName = value
+                                    lastName = limpiarNombre(value)
                                 )
                             }
                         },
 
                         hint = "Ingresa tus apellidos",
-                        help = "Tus dos apellidos.",
+                        help = "Tus dos apellidos, solo letras. ${state.lastName.length}/$NOMBRE_MAX",
 
                         error = state.errors["lastName"],
 
@@ -441,6 +445,8 @@ fun RegisterStep2Screen(
 
                     hint = "admin@empresa.com",
 
+                    maxChars = MAX_CORREO,
+
                     help =
                         "Con este correo entrarás a la aplicación.",
 
@@ -492,7 +498,7 @@ fun RegisterStep2Screen(
                     help =
                         if (state.password.isEmpty()) {
                             "Mínimo 8 caracteres, con mayúscula, " +
-                                    "minúscula y número."
+                                    "minúscula y número. Máximo $MAX_CONTRASENA."
                         } else {
                             ""
                         },
@@ -501,6 +507,8 @@ fun RegisterStep2Screen(
 
                     // Teclado adecuado para contraseñas
                     keyboardType = KeyboardType.Password,
+
+                    maxChars = MAX_CONTRASENA,
 
 
                     // =========================================
@@ -594,6 +602,8 @@ fun RegisterStep2Screen(
                         state.errors["passwordConfirmation"],
 
                     keyboardType = KeyboardType.Password,
+
+                    maxChars = MAX_CONTRASENA,
 
 
                     // =========================================

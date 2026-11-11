@@ -10,6 +10,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.KeyboardType
@@ -56,11 +62,19 @@ fun AppTextField(
         verticalArrangement = Arrangement.spacedBy(Spacing.s8)
     ) {
         Text(text = label, style = AppTypography.labelField)
+        // El campo guarda lo escrito con la posición del cursor. Si el ViewModel devuelve otro texto (por ejemplo,
+        // agrega el punto de miles: "1234" -> "1.234"), el cursor pasa al final; sin esto quedaba atrás y lo que se
+        // escribía después entraba en otro lugar ("1.234,567" terminaba en "123,456").
+        var campo by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+        val mostrado = if (campo.text == value) campo else TextFieldValue(value, TextRange(value.length))
         // Campo de texto de Material con borde.
         OutlinedTextField(
-            value = value,
-            // Avisa cada letra escrita; el ViewModel limpia y devuelve el valor.
-            onValueChange = onValueChange,
+            value = mostrado,
+            // Avisa cada letra escrita; el ViewModel limpia y devuelve el valor. Mover el cursor no avisa nada.
+            onValueChange = { nuevo ->
+                campo = nuevo
+                if (nuevo.text != value) onValueChange(nuevo.text)
+            },
             singleLine = singleLine,
             minLines = minLines,
             enabled = enabled,

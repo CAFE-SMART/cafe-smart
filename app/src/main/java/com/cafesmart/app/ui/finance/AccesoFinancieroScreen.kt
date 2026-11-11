@@ -40,6 +40,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.cafesmart.app.data.finanzas.CLAVE_MAX_CARACTERES
 import com.cafesmart.app.data.finanzas.CLAVE_MIN_CARACTERES
 import com.cafesmart.app.data.finanzas.ProveedorCuenta
 import com.cafesmart.app.ui.auth.AuthField
@@ -132,7 +133,7 @@ private fun ContenidoCrear(estado: AccesoUiState, onClave: (String) -> Unit, onC
         titulo = "Crea tu clave financiera",
         descripcion = "Es una clave solo para ver tus finanzas. Te la pediremos cada vez que entres."
     )
-    CampoClave("Clave nueva", estado.clave, onClave, "Escribe tu clave", "Mínimo $CLAVE_MIN_CARACTERES caracteres.", estado.errorClave)
+    CampoClave("Clave nueva", estado.clave, onClave, "Escribe tu clave", "De $CLAVE_MIN_CARACTERES a $CLAVE_MAX_CARACTERES caracteres.", estado.errorClave)
     CampoClave("Confirmar clave", estado.confirmacion, onConfirmacion, "Repite tu clave", "", estado.errorConfirmacion)
     Nota("Si la olvidas, podrás crear otra confirmando con la contraseña de tu cuenta.")
 }
@@ -181,7 +182,7 @@ private fun ContenidoNuevaClave(estado: AccesoUiState, onClave: (String) -> Unit
     PasoDe(2)
     Candado()
     Textos("Crea tu clave nueva", "Será la que uses para ver tu resumen financiero.")
-    CampoClave("Clave nueva", estado.clave, onClave, "Escribe tu clave", "Mínimo $CLAVE_MIN_CARACTERES caracteres. Anótala en un lugar seguro.", estado.errorClave)
+    CampoClave("Clave nueva", estado.clave, onClave, "Escribe tu clave", "De $CLAVE_MIN_CARACTERES a $CLAVE_MAX_CARACTERES caracteres. Anótala en un lugar seguro.", estado.errorClave)
     CampoClave("Repite la clave", estado.confirmacion, onConfirmacion, "Escribe tu clave otra vez", "", estado.errorConfirmacion)
 }
 

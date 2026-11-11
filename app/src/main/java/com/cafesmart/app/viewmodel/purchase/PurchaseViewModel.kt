@@ -188,7 +188,8 @@ data class PurchaseUiState(
                 numero = indice + 1,
                 tipoCafe = cafe.tipoCafe,
                 calidad = cafe.calidad,
-                peso = cafe.peso,
+                // Con punto de miles y coma decimal, como el precio ("12.500,5").
+                peso = pesoEnPantalla(cafe.peso),
                 precio = precioEnPantalla(cafe.precio),
                 errorPeso = errorPeso(cafe),
                 errorPrecio = errorPrecio(cafe.precio),
@@ -287,7 +288,9 @@ class PurchaseViewModel : ViewModel() {
 
     fun cambiarTipoDocumento(tipo: TipoDocumento) {
         // Primero se copia el formulario y luego el estado con ese formulario.
-        val nuevo = _uiState.value.nuevoProductor.copy(tipo = tipo)
+        // Al pasar de NIT a cédula, el nombre se vuelve a limpiar (una persona no lleva números ni puntos).
+        val actual = _uiState.value.nuevoProductor
+        val nuevo = actual.copy(tipo = tipo, nombre = normalizarEspacios(limpiarNombre(actual.nombre, tipo)))
         _uiState.value = _uiState.value.copy(nuevoProductor = nuevo)
     }
 
@@ -299,7 +302,7 @@ class PurchaseViewModel : ViewModel() {
 
     // Solo letras y espacios
     fun cambiarNombre(texto: String) {
-        val nuevo = _uiState.value.nuevoProductor.copy(nombre = limpiarNombre(texto))
+        val nuevo = _uiState.value.nuevoProductor.let { it.copy(nombre = limpiarNombre(texto, it.tipo)) }
         _uiState.value = _uiState.value.copy(nuevoProductor = nuevo)
     }
 
@@ -355,7 +358,8 @@ class PurchaseViewModel : ViewModel() {
     }
 
     fun cambiarTipoEdicion(tipo: TipoDocumento) {
-        val datos = _uiState.value.datosEdicion.copy(tipo = tipo)
+        val actual = _uiState.value.datosEdicion
+        val datos = actual.copy(tipo = tipo, nombre = normalizarEspacios(limpiarNombre(actual.nombre, tipo)))
         _uiState.value = _uiState.value.copy(datosEdicion = datos)
     }
 
@@ -365,7 +369,7 @@ class PurchaseViewModel : ViewModel() {
     }
 
     fun cambiarNombreEdicion(texto: String) {
-        val datos = _uiState.value.datosEdicion.copy(nombre = limpiarNombre(texto))
+        val datos = _uiState.value.datosEdicion.let { it.copy(nombre = limpiarNombre(texto, it.tipo)) }
         _uiState.value = _uiState.value.copy(datosEdicion = datos)
     }
 

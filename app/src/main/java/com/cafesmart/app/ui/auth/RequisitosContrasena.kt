@@ -36,6 +36,10 @@ import com.cafesmart.app.ui.theme.WarningDot
 
 const val MIN_CARACTERES_CONTRASENA = 8
 
+// Topes de escritura de la cuenta (no se puede escribir más): correo y contraseña.
+const val MAX_CORREO = 100
+const val MAX_CONTRASENA = 64
+
 data class RequisitoContrasena(val texto: String, val cumplido: Boolean)
 
 /** Los cuatro requisitos y si la contraseña escrita cumple cada uno. */

@@ -66,6 +66,7 @@ import com.cafesmart.app.ui.theme.TextMuted
 import com.cafesmart.app.ui.theme.WarningBg
 import com.cafesmart.app.ui.theme.WarningText
 import com.cafesmart.app.viewmodel.purchase.CafeEnPantalla
+import com.cafesmart.app.viewmodel.purchase.AYUDA_PESO
 import com.cafesmart.app.viewmodel.purchase.PurchaseUiState
 
 // Paso 2: ¿Que cafe compras?
@@ -272,9 +273,10 @@ private fun TarjetaCafe(
                 label = "Peso (kg)",
                 value = cafe.peso,
                 onValueChange = onPesoChange,
-                placeholder = "Ej. 25",
+                placeholder = "Ej. 1.500",
                 keyboardType = KeyboardType.Decimal,
-                helper = "Máx. 99.999 kg",
+                // Siempre visible: el punto es de miles y la coma de decimales (evita registrar 1,5 en vez de 1.500).
+                helper = AYUDA_PESO,
                 error = cafe.errorPeso,
                 modifier = Modifier.weight(1f)
             )

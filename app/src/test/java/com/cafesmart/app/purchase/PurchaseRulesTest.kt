@@ -20,6 +20,7 @@ import com.cafesmart.app.viewmodel.purchase.hayMasProductores
 import com.cafesmart.app.viewmodel.purchase.limpiarDocumento
 import com.cafesmart.app.viewmodel.purchase.limpiarNombre
 import com.cafesmart.app.viewmodel.purchase.limpiarPeso
+import com.cafesmart.app.viewmodel.purchase.pesoEnPantalla
 import com.cafesmart.app.viewmodel.purchase.limpiarPrecio
 import com.cafesmart.app.viewmodel.purchase.mensajeAgregarCafe
 import com.cafesmart.app.viewmodel.purchase.mensajePendientePaso1
@@ -148,12 +149,32 @@ class PurchaseRulesTest {
     // ---------- Paso 2 ----------
 
     @Test
-    fun limpiarPeso_aceptaComaYUnSoloPunto() {
+    fun limpiarPeso_elPuntoEsDeMilesYLaComaDecimal() {
+        // "12.500" y "12500" son lo mismo: doce mil quinientos kg (antes "1.500" quedaba en 1,5 kg).
+        assertEquals("12500", limpiarPeso("12.500"))
+        assertEquals("12500", limpiarPeso("12500"))
+        assertEquals("1500", limpiarPeso("1.500"))
+        // La coma es el decimal.
         assertEquals("25.5", limpiarPeso("25,5"))
-        assertEquals("25.55", limpiarPeso("25.5.5"))
+        assertEquals("12500.75", limpiarPeso("12.500,75"))
+        // Letras, signos y otras comas se ignoran.
         assertEquals("30", limpiarPeso("30kg"))
-        // RF-COM-09: maximo 3 decimales
-        assertEquals("25.125", limpiarPeso("25.12567"))
+        assertEquals("5", limpiarPeso("-5"))
+        assertEquals("25.55", limpiarPeso("25,5,5"))
+        // RF-COM-09: maximo 5 enteros (99.999 kg) y 3 decimales
+        assertEquals("99999", limpiarPeso("99999999"))
+        assertEquals("25.125", limpiarPeso("25,12567"))
+    }
+
+    @Test
+    fun pesoEnPantalla_conPuntoDeMilesYComaDecimal() {
+        assertEquals("12.500", pesoEnPantalla("12500"))
+        assertEquals("12.500,75", pesoEnPantalla("12500.75"))
+        assertEquals("25,", pesoEnPantalla("25."))   // mientras se escribe la coma
+        assertEquals("12", pesoEnPantalla("00012"))  // sin ceros a la izquierda
+        assertEquals("", pesoEnPantalla(""))
+        // Lo que se ve, al volver a limpiarse, da el mismo peso (no se pierde nada al seguir escribiendo).
+        listOf("12500", "12500.75", "25.", "1500").forEach { assertEquals(it, limpiarPeso(pesoEnPantalla(it))) }
     }
 
     @Test

@@ -444,6 +444,8 @@ fun LoginScreen(
                     // Ayuda del campo
                     help = "El correo con el que te registraste.",
 
+                    maxChars = MAX_CORREO,
+
                     // Error de validación
                     error = state.errors["loginEmail"],
 
@@ -490,6 +492,8 @@ fun LoginScreen(
                     hint = "********",
 
                     help = "La que creaste al registrarte.",
+
+                    maxChars = MAX_CONTRASENA,
 
                     // Muestra los errores del formulario
                     error = state.errors["loginPassword"],

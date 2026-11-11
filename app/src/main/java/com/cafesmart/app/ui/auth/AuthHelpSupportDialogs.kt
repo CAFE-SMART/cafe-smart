@@ -555,7 +555,7 @@ fun ContactSupportDialog(
                         // Actualiza el valor del campo
                         onValueChange = { value ->
 
-                            email = value
+                            email = value.take(MAX_CORREO)
 
                             // Limpia errores anteriores
                             error = null
@@ -627,7 +627,7 @@ fun ContactSupportDialog(
                         // Actualiza la descripción
                         onValueChange = { value ->
 
-                            description = value
+                            description = value.take(MAX_DESCRIPCION_SOPORTE)
 
                             // Limpia el error anterior
                             error = null
@@ -647,6 +647,8 @@ fun ContactSupportDialog(
                             )
                         },
 
+                        // Contador visible del máximo
+                        supportingText = { Text("${description.length}/$MAX_DESCRIPCION_SOPORTE", color = TextMuted) },
                         // Altura mínima en líneas
                         minLines = 3,
 
@@ -858,3 +860,6 @@ fun ContactSupportDialog(
         }
     )
 }
+
+// Máximo de la descripción del problema en Soporte (con contador visible).
+private const val MAX_DESCRIPCION_SOPORTE = 500
