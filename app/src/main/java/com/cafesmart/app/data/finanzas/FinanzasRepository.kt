@@ -43,6 +43,9 @@ data class ResumenFinanciero(
 
 interface FinanzasRepository {
     suspend fun resumen(periodo: PeriodoFinanciero): ResumenFinanciero
+
+    /** Todas las compras, ventas y gastos registrados, de la más reciente a la más antigua (Historial financiero). */
+    suspend fun movimientos(): List<MovimientoFinanciero>
 }
 
 /**
@@ -57,13 +60,32 @@ data class VentaRegistrada(
     val precioVentaKg: Double,
     val precioCompraKg: Double,
     val gastos: Double,
+    // Solo para el Historial: a quién se vendió y qué café fue (por ejemplo "Café seco · 200 kg").
+    val cliente: String = "Sin registrar",
+    val detalle: String = "",
 )
 
-/** Una compra confirmada: cuánto se pagó en total (en pesos) el día [fecha]. */
-data class CompraRegistrada(val fecha: Fecha, val totalPesos: Long)
+/**
+ * Una compra confirmada: cuánto se pagó en total (en pesos) el día [fecha].
+ * [productor] y [detalle] (por ejemplo "Café verde · 25 kg") solo se usan para mostrarla en el Historial.
+ */
+data class CompraRegistrada(
+    val fecha: Fecha,
+    val totalPesos: Long,
+    val productor: String = "Sin registrar",
+    val detalle: String = "",
+)
 
-/** Un gasto registrado (de cualquier tipo: general, de sublotes o de secado) por [montoPesos] el día [fecha]. */
-data class GastoRegistrado(val fecha: Fecha, val montoPesos: Long)
+/**
+ * Un gasto registrado (de cualquier tipo: general, de sublotes o de secado) por [montoPesos] el día [fecha].
+ * [concepto] y [detalle] (por ejemplo "Gasto general") solo se usan para mostrarlo en el Historial.
+ */
+data class GastoRegistrado(
+    val fecha: Fecha,
+    val montoPesos: Long,
+    val concepto: String = "Gasto",
+    val detalle: String = "",
+)
 
 /** Café perdido al secar: [kg] de merma de un secado terminado el día [fecha]. */
 data class MermaRegistrada(val fecha: Fecha, val kg: Double)
@@ -150,6 +172,9 @@ class FinanzasLocal(
 ) : FinanzasRepository {
     override suspend fun resumen(periodo: PeriodoFinanciero): ResumenFinanciero =
         resumirPeriodo(periodo, hoy(), origen.ventas(), origen.compras(), origen.gastos(), origen.mermas())
+
+    override suspend fun movimientos(): List<MovimientoFinanciero> =
+        armarMovimientos(origen.ventas(), origen.compras(), origen.gastos())
 }
 
 /** La fecha de hoy según el reloj del celular. */

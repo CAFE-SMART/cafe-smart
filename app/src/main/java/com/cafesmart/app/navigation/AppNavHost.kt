@@ -14,8 +14,10 @@ import com.cafesmart.app.data.finanzas.SinDatosFinancieros
 import com.cafesmart.app.data.finanzas.FirebaseConfirmacionCuenta
 import com.cafesmart.app.data.finanzas.fechaDeHoy
 import com.cafesmart.app.ui.finance.AccesoFinancieroScreen
+import com.cafesmart.app.ui.finance.HistorialFinancieroScreen
 import com.cafesmart.app.ui.finance.ResumenFinancieroScreen
 import com.cafesmart.app.viewmodel.finance.AccesoFinancieroViewModel
+import com.cafesmart.app.viewmodel.finance.HistorialFinancieroViewModel
 import com.cafesmart.app.viewmodel.finance.ResumenFinancieroViewModel
 import com.cafesmart.app.data.negocio.NegocioRepository
 import com.cafesmart.app.data.negocio.negocioDesdeRegistro
@@ -655,7 +657,8 @@ fun AppNavHost(
                     onBack = { navController.popBackStack() },
                     onPeriodo = resumenViewModel::cambiarPeriodo,
                     onRecargar = resumenViewModel::recargar,
-                    onAvisoOculto = resumenViewModel::ocultarAviso
+                    onAvisoOculto = resumenViewModel::ocultarAviso,
+                    onHistorial = { navController.navigateTo(Routes.FINANCE_HISTORY) }
                 )
             } else {
                 AccesoFinancieroScreen(
@@ -672,6 +675,22 @@ fun AppNavHost(
                     onConfirmarGoogle = accesoViewModel::confirmarConGoogle
                 )
             }
+        }
+
+        // Finanzas · Historial financiero: compras, ventas y gastos juntos. Solo se llega desde el Resumen, que ya
+        // pidió la clave propia; no hay otra entrada.
+        composable(Routes.FINANCE_HISTORY) {
+            val historialViewModel: HistorialFinancieroViewModel = viewModel {
+                HistorialFinancieroViewModel(FinanzasLocal(SinDatosFinancieros, ::fechaDeHoy), ::fechaDeHoy)
+            }
+            val historial by historialViewModel.estado.collectAsState()
+            HistorialFinancieroScreen(
+                estado = historial,
+                onBack = { navController.popBackStack() },
+                onFiltro = historialViewModel::cambiarFiltro,
+                onVerMas = historialViewModel::verMas,
+                onReintentar = historialViewModel::reintentar
+            )
         }
 
         // Ajustes · Información de empresa: completa o edita el Negocio (Room). Al guardar vuelve a Ajustes,

@@ -185,6 +185,7 @@ class ResumenFinancieroTest {
             if (falla) throw IllegalStateException("sin datos")
             return resumen
         }
+        override suspend fun movimientos() = emptyList<com.cafesmart.app.data.finanzas.MovimientoFinanciero>()
     }
 
     @Test

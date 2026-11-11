@@ -18,6 +18,7 @@ object Routes {
     const val HOME = "home"                        // Inicio · Panel principal
 
     const val FINANCE_SUMMARY = "finance_summary"  // Finanzas · Acceso con clave y Resumen financiero
+    const val FINANCE_HISTORY = "finance_history"  // Finanzas · Historial financiero (se abre desde el Resumen)
 
     // ── Compras ─────────────────────────────────────────────
     const val PURCHASE_STEP1 = "purchase_step1"    // Paso 1 · Productor

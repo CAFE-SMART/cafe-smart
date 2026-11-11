@@ -87,6 +87,7 @@ fun ResumenFinancieroScreen(
     onPeriodo: (PeriodoFinanciero) -> Unit,
     onRecargar: () -> Unit,
     onAvisoOculto: () -> Unit = {},
+    onHistorial: () -> Unit = {},
 ) {
   Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().background(SurfaceScreen)) {
@@ -109,7 +110,7 @@ fun ResumenFinancieroScreen(
             SelectorDePeriodo(estado.periodo, onPeriodo)
             val resumen = estado.resumen
             when {
-                resumen != null -> Contenido(resumen, estado.periodo)
+                resumen != null -> Contenido(resumen, estado.periodo, onHistorial)
                 estado.error != null -> Error(estado.error, onRecargar)
                 else -> Box(Modifier.fillMaxWidth().padding(Spacing.s28), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Primary)
@@ -147,7 +148,7 @@ private fun BotonRecargar(girando: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun Contenido(resumen: ResumenFinanciero, periodo: PeriodoFinanciero) {
+private fun Contenido(resumen: ResumenFinanciero, periodo: PeriodoFinanciero, onHistorial: () -> Unit) {
     val colorGanancia = when {
         resumen.utilidad > 0 -> SuccessText
         resumen.utilidad < 0 -> ErrorText
@@ -249,6 +250,25 @@ private fun Contenido(resumen: ResumenFinanciero, periodo: PeriodoFinanciero) {
         }
         Text(formatoKg(resumen.mermaKg), style = AppTypography.valueStrong)
     }
+
+    // Entrada al Historial financiero: todas las compras, ventas y gastos en una lista.
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(AppShapes.medium)
+            .background(SurfaceCard)
+            .border(BorderStroke(1.dp, BorderDefault), AppShapes.medium)
+            .clickable(onClick = onHistorial)
+            .padding(Spacing.s16),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s12)
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Ver historial de movimientos", style = AppTypography.labelField.copy(color = Primary))
+            Text("Todas tus compras, ventas y gastos, día por día.", style = AppTypography.helper.copy(color = TextMuted))
+        }
+        Icon(AppIcons.ChevronRight, contentDescription = null, tint = Primary, modifier = Modifier.size(20.dp))
+    }
 }
 
 @Composable
@@ -329,7 +349,7 @@ private fun pesos(valor: Long): String =
     (if (valor < 0) "− " else "") + "$ " + formatoMiles(kotlin.math.abs(valor))
 
 // Íconos de línea (Lucide), privados para no editar AppIcons.kt, que comparte todo el equipo.
-private fun icono(nombre: String, vararg trazos: String): ImageVector =
+internal fun icono(nombre: String, vararg trazos: String): ImageVector =
     ImageVector.Builder(nombre, 24.dp, 24.dp, 24f, 24f).apply {
         trazos.forEach {
             addPath(
@@ -342,10 +362,10 @@ private fun icono(nombre: String, vararg trazos: String): ImageVector =
 private val IconoRecargar by lazy {
     icono("Recargar", "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", "M21 3v5h-5", "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", "M8 16H3v5")
 }
-private val IconoDinero by lazy {
+internal val IconoDinero by lazy {
     icono("Dinero", "M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z", "M12 9a3 3 0 1 1 0 6a3 3 0 1 1 0-6Z", "M6 12h.01", "M18 12h.01")
 }
-private val IconoRecibo by lazy {
+internal val IconoRecibo by lazy {
     icono("Recibo", "M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z", "M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8", "M12 17.5v-11")
 }
 private val IconoGota by lazy {
