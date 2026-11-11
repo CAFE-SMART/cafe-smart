@@ -1,7 +1,11 @@
 package com.cafesmart.app.viewmodel.settings
 
+import com.cafesmart.app.data.auth.AuthError
 import com.cafesmart.app.data.local.NegocioEntity
+import com.cafesmart.app.ui.components.AvisoUi
+import com.cafesmart.app.ui.components.TipoAviso
 import com.cafesmart.app.data.negocio.NegocioRepository
+import com.cafesmart.app.data.session.PreferenciaNotificacionesEnMemoria
 import com.cafesmart.app.data.session.SessionGateway
 import com.cafesmart.app.data.session.UsuarioSesion
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +27,14 @@ import org.junit.Test
 // Versión falsa de la sesión: permite probar sin Firebase y contar los cierres de sesión.
 private class SesionFalsa(var usuario: UsuarioSesion?) : SessionGateway {
     var cierres = 0
+    // Lo que responde actualizarNombre: null = salió bien, o el error de Firebase.
+    var errorAlCambiarNombre: AuthError? = null
+    val nombresGuardados = mutableListOf<String>()
+    override suspend fun actualizarNombre(nombre: String): AuthError? {
+        nombresGuardados += nombre
+        if (errorAlCambiarNombre == null) usuario = usuario?.copy(nombre = nombre)
+        return errorAlCambiarNombre
+    }
     override fun usuarioActual(): UsuarioSesion? = usuario
     override fun cerrarSesion() {
         cierres++
@@ -135,5 +147,169 @@ class SettingsViewModelTest {
         val estado = SettingsUiState()
         assertFalse(estado.mostrarConfirmacion)
         assertEquals(PerfilUsuario(), estado.perfil)
+    }
+
+    // ── Editar perfil ──────────────────────────────────────
+
+    @Test
+    fun abrirEditarPerfilMuestraElNombreActualEnLaHoja() {
+        val vm = SettingsViewModel(SesionFalsa(andres), NegociosFalsos())
+        vm.abrirEditarPerfil()
+        assertEquals(EdicionPerfil(nombre = "Andrés Peña"), vm.uiState.value.edicion)
+    }
+
+    @Test
+    fun sinSesionNoSeAbreLaHojaDeEditar() {
+        val vm = SettingsViewModel(SesionFalsa(null), NegociosFalsos())
+        vm.abrirEditarPerfil()
+        assertNull(vm.uiState.value.edicion)
+    }
+
+    @Test
+    fun cancelarCierraLaHojaSinGuardar() {
+        val sesion = SesionFalsa(andres)
+        val vm = SettingsViewModel(sesion, NegociosFalsos())
+        vm.abrirEditarPerfil()
+        vm.cambiarNombre("Otro Nombre")
+        vm.cancelarEdicion()
+        assertNull(vm.uiState.value.edicion)
+        assertTrue(sesion.nombresGuardados.isEmpty())
+        assertEquals("Andrés Peña", vm.uiState.value.perfil.nombre)
+    }
+
+    @Test
+    fun nombreSinApellidoMuestraErrorYNoGuarda() {
+        val sesion = SesionFalsa(andres)
+        val vm = SettingsViewModel(sesion, NegociosFalsos())
+        vm.abrirEditarPerfil()
+        vm.cambiarNombre("Andrés")
+        vm.guardarNombre()
+        assertEquals(ERROR_APELLIDOS_VACIOS, vm.uiState.value.edicion?.error)
+        assertTrue(sesion.nombresGuardados.isEmpty())
+    }
+
+    @Test
+    fun escribirDeNuevoQuitaElError() {
+        val vm = SettingsViewModel(SesionFalsa(andres), NegociosFalsos())
+        vm.abrirEditarPerfil()
+        vm.cambiarNombre("")
+        vm.guardarNombre()
+        vm.cambiarNombre("A")
+        assertNull(vm.uiState.value.edicion?.error)
+    }
+
+    @Test
+    fun guardarNombreValidoLoNormalizaCierraLaHojaYActualizaElPerfil() {
+        val sesion = SesionFalsa(andres)
+        val negocios = NegociosFalsos().apply { datos.value = mapOf("u1" to negocioAndres) }
+        val vm = SettingsViewModel(sesion, negocios)
+        vm.abrirEditarPerfil()
+        vm.cambiarNombre("  Juan   Pérez  ")
+        vm.guardarNombre()
+        assertEquals(listOf("Juan Pérez"), sesion.nombresGuardados)
+        assertNull(vm.uiState.value.edicion)
+        // El perfil conserva el correo y el negocio, y muestra el nombre nuevo.
+        assertEquals(PerfilUsuario("Juan Pérez", "andres@correo.com", "Compraventa", "Café La Esperanza"), vm.uiState.value.perfil)
+    }
+
+    @Test
+    fun siFirebaseFallaLaHojaSigueAbiertaConElMensaje() {
+        val sesion = SesionFalsa(andres).apply { errorAlCambiarNombre = AuthError.SIN_CONEXION }
+        val vm = SettingsViewModel(sesion, NegociosFalsos())
+        vm.abrirEditarPerfil()
+        vm.cambiarNombre("Juan Pérez")
+        vm.guardarNombre()
+        val edicion = vm.uiState.value.edicion
+        assertEquals(AuthError.SIN_CONEXION.mensaje, edicion?.error)
+        assertFalse(edicion!!.guardando)
+        assertEquals("Juan Pérez", edicion.nombre)
+        assertEquals("Andrés Peña", vm.uiState.value.perfil.nombre)
+    }
+
+    @Test
+    fun alGuardarElNombreApareceElAvisoDeExitoYSeOculta() {
+        val vm = SettingsViewModel(SesionFalsa(andres), NegociosFalsos())
+        assertNull(vm.uiState.value.aviso)
+        vm.abrirEditarPerfil()
+        vm.cambiarNombre("Juan Pérez")
+        vm.guardarNombre()
+        assertEquals(AvisoUi(AVISO_NOMBRE_ACTUALIZADO, TipoAviso.EXITO), vm.uiState.value.aviso)
+        vm.ocultarAviso()
+        assertNull(vm.uiState.value.aviso)
+    }
+
+    @Test
+    fun siElGuardadoFallaApareceElAvisoRojoYNoElVerde() {
+        val sesion = SesionFalsa(andres).apply { errorAlCambiarNombre = AuthError.SIN_CONEXION }
+        val vm = SettingsViewModel(sesion, NegociosFalsos())
+        vm.abrirEditarPerfil()
+        vm.cambiarNombre("Juan Pérez")
+        vm.guardarNombre()
+        assertEquals(AvisoUi(AVISO_NOMBRE_ERROR, TipoAviso.ERROR), vm.uiState.value.aviso)
+    }
+
+    @Test
+    fun cancelarLaHojaBorraElAvisoRojoPendiente() {
+        val sesion = SesionFalsa(andres).apply { errorAlCambiarNombre = AuthError.SIN_CONEXION }
+        val vm = SettingsViewModel(sesion, NegociosFalsos())
+        vm.abrirEditarPerfil()
+        vm.cambiarNombre("Juan Pérez")
+        vm.guardarNombre()
+        vm.cancelarEdicion()
+        assertNull(vm.uiState.value.edicion)
+        assertNull(vm.uiState.value.aviso)
+    }
+
+    @Test
+    fun unAvisoQueDejaOtraPantallaSeMuestraYSeOculta() {
+        val vm = SettingsViewModel(SesionFalsa(andres), NegociosFalsos())
+        vm.mostrarAviso(AvisoUi("Datos del negocio guardados"))
+        assertEquals(AvisoUi("Datos del negocio guardados", TipoAviso.EXITO), vm.uiState.value.aviso)
+        vm.ocultarAviso()
+        assertNull(vm.uiState.value.aviso)
+    }
+
+    // ── Las 4 agrupaciones y el interruptor ────────────────
+
+    @Test
+    fun empiezaEnNegocioYCambiaDeAgrupacion() {
+        val vm = SettingsViewModel(SesionFalsa(andres), NegociosFalsos())
+        assertEquals(PestanaAjustes.NEGOCIO, vm.uiState.value.pestana)
+        PestanaAjustes.entries.forEach {
+            vm.seleccionarPestana(it)
+            assertEquals(it, vm.uiState.value.pestana)
+        }
+    }
+
+    @Test
+    fun lasCuatroAgrupacionesSonLasDelFigmaEnOrden() {
+        assertEquals(
+            listOf("Negocio", "Bodega", "Calidades", "Usuarios"),
+            PestanaAjustes.entries.map { it.etiqueta }
+        )
+    }
+
+    @Test
+    fun lasNotificacionesEmpiezanActivasYElCambioSeGuarda() {
+        val pref = PreferenciaNotificacionesEnMemoria()
+        val vm = SettingsViewModel(SesionFalsa(andres), NegociosFalsos(), pref)
+        assertTrue(vm.uiState.value.notificaciones)
+        vm.cambiarNotificaciones(false)
+        assertFalse(vm.uiState.value.notificaciones)
+        assertFalse(pref.activas())
+    }
+
+    @Test
+    fun alAbrirAjustesLeeLaPreferenciaGuardada() {
+        val vm = SettingsViewModel(SesionFalsa(andres), NegociosFalsos(), PreferenciaNotificacionesEnMemoria(valor = false))
+        assertFalse(vm.uiState.value.notificaciones)
+    }
+
+    @Test
+    fun cambiarDeAgrupacionNoCierraLaHojaDeEditarPerfil() {
+        val vm = SettingsViewModel(SesionFalsa(andres), NegociosFalsos())
+        vm.abrirEditarPerfil()
+        vm.seleccionarPestana(PestanaAjustes.BODEGA)
+        assertEquals("Andrés Peña", vm.uiState.value.edicion?.nombre)
     }
 }

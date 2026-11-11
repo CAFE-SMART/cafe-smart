@@ -13,8 +13,8 @@ import kotlin.math.roundToInt
 
 // Kilos que pesa un bulto. Valor inicial definido en el ERS (RF-G-29 y parámetros generales): 40,7 kg.
 // Con él salen las cifras del Figma (834 kg = 20,5 bultos, 290 kg = 7,1 bultos, 521 kg = 12,8 bultos...).
-// TODO: el ERS dice que el administrador lo configura en Ajustes; cuando exista esa pantalla, este valor
-// pasa a ser solo el inicial y las funciones de abajo lo reciben como parámetro.
+// Es solo el valor inicial: cada negocio lo cambia en Ajustes → Capacidad de bodega y las funciones de abajo
+// reciben el peso configurado como parámetro.
 const val KG_POR_BULTO = 40.7
 
 // Orden de los tipos en pantalla (Figma: Verde, Seco, Trillado, Pasilla). No es el orden del enum TipoCafe.
@@ -45,7 +45,9 @@ data class ResumenInventario(
     val totalKg: Double,
     val capacidadKg: Double,
     val ocupacion: OcupacionBodega,
-    val tipos: List<ResumenTipo>
+    val tipos: List<ResumenTipo>,
+    // Kilos de un bulto (Ajustes → Capacidad de bodega); sin configurar vale el inicial, 40,7.
+    val pesoBultoKg: Double = KG_POR_BULTO,
 ) {
     // Vacío = ningún tipo tiene sublotes con café (los agotados no cuentan).
     val estaVacio: Boolean get() = tipos.all { it.cantidadSublotes == 0 }
@@ -55,7 +57,8 @@ data class ResumenInventario(
 fun resumirInventario(
     lotes: List<LoteConSublotes>,
     capacidadKg: Double,
-    orden: OrdenInventario = OrdenInventario.MAS_RECIENTE
+    orden: OrdenInventario = OrdenInventario.MAS_RECIENTE,
+    pesoBultoKg: Double = KG_POR_BULTO,
 ): ResumenInventario {
     val tipos = TIPOS_EN_INVENTARIO.map { tipo ->
         val sublotes = lotes
@@ -73,7 +76,8 @@ fun resumirInventario(
         totalKg = totalKg,
         capacidadKg = capacidadKg,
         ocupacion = calcularOcupacionBodega(totalKg, capacidadKg),
-        tipos = ordenarTipos(tipos, orden)
+        tipos = ordenarTipos(tipos, orden),
+        pesoBultoKg = pesoBultoKg,
     )
 }
 
@@ -97,14 +101,15 @@ private fun Fecha.clave(): Int = anio * 10_000 + mes * 100 + dia
 
 // ---------------- Textos que muestra la pantalla ----------------
 
-fun kgABultos(kg: Double): Double = kg / KG_POR_BULTO
+fun kgABultos(kg: Double, pesoBultoKg: Double = KG_POR_BULTO): Double = kg / pesoBultoKg
 
 // 290.0 -> "7,1 bultos"
-fun formatoBultos(kg: Double): String =
-    String.format(Locale.US, "%.1f", kgABultos(kg)).replace('.', ',') + " bultos"
+fun formatoBultos(kg: Double, pesoBultoKg: Double = KG_POR_BULTO): String =
+    String.format(Locale.US, "%.1f", kgABultos(kg, pesoBultoKg)).replace('.', ',') + " bultos"
 
 // 290.0 -> "290 kg · 7,1 bultos"
-fun detallePeso(kg: Double): String = "${formatoKg(kg)} · ${formatoBultos(kg)}"
+fun detallePeso(kg: Double, pesoBultoKg: Double = KG_POR_BULTO): String =
+    "${formatoKg(kg)} · ${formatoBultos(kg, pesoBultoKg)}"
 
 // 0 -> "Sin sublotes", 1 -> "1 sublote", 4 -> "4 sublotes"
 fun formatoSublotes(cantidad: Int): String = when (cantidad) {

@@ -12,9 +12,13 @@ object Routes {
     const val REGISTER_STEP1 = "register_step1"    // Cuenta · Crear cuenta · Paso 1
     const val REGISTER_STEP2 = "register_step2"    // Cuenta · Crear cuenta · Paso 2
     const val REGISTER_SUCCESS = "register_success" // Cuenta · Registro exitoso
+    const val FORGOT_PASSWORD = "forgot_password"   // Cuenta · Recuperar contraseña (correo y enlace enviado)
 
     // ── Inicio ──────────────────────────────────────────────
     const val HOME = "home"                        // Inicio · Panel principal
+
+    const val FINANCE_SUMMARY = "finance_summary"  // Finanzas · Acceso con clave y Resumen financiero
+    const val FINANCE_HISTORY = "finance_history"  // Finanzas · Historial financiero (se abre desde el Resumen)
 
     // ── Compras ─────────────────────────────────────────────
     const val PURCHASE_STEP1 = "purchase_step1"    // Paso 1 · Productor
@@ -58,6 +62,7 @@ object Routes {
     // ── Ajustes ─────────────────────────────────────────────
     const val SETTINGS = "settings"                // Cuenta · Ajustes
     const val SETTINGS_BUSINESS = "settings_business" // Ajustes · Información de empresa
+    const val SETTINGS_WAREHOUSE = "settings_warehouse" // Ajustes · Capacidad de bodega y peso por bulto
 
     // ── Helpers para rutas con argumentos ───────────────────
     fun inventoryType(tipo: String) = "inventory_type/$tipo"

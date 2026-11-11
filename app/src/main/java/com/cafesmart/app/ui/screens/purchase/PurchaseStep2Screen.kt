@@ -44,6 +44,8 @@ import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.AppTextField
 import com.cafesmart.app.ui.components.ChoiceButton
 import com.cafesmart.app.ui.components.ContinueButton
+import com.cafesmart.app.ui.components.AvisoCapacidadCard
+import com.cafesmart.app.ui.components.EstiloAviso
 import com.cafesmart.app.ui.theme.AppShapes
 import com.cafesmart.app.ui.theme.AppTypography
 import com.cafesmart.app.ui.theme.BorderDashed
@@ -142,6 +144,13 @@ fun PurchaseStep2Screen(
         }
 
         PurchaseBottomBar {
+            // Avisa antes del paso 3 si la compra deja la bodega casi llena o la supera (no bloquea).
+            estado.avisoCapacidad?.let {
+                AvisoCapacidadCard(
+                    titulo = it.titulo, mensaje = it.mensajePaso2, estilo = EstiloAviso.ALERTA,
+                    porcentaje = it.porcentajeDespues, compacto = true
+                )
+            }
             // Gris mientras no hay totales; azul cuando ya hay valores.
             val colorTotales = if (estado.hayTotales) PrimaryDark else TextMuted
             Row(

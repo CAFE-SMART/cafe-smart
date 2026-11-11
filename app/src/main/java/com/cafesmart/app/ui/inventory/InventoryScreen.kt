@@ -155,7 +155,7 @@ fun InventoryScreen(
                     EncabezadoLista(orden = estado.orden, onOrdenChange = onOrdenChange)
                 }
                 items(items = estado.resumen.tipos, key = { it.tipo.name }) { fila ->
-                    TarjetaTipo(fila = fila, onClick = { onTipoClick(fila.tipo) })
+                    TarjetaTipo(fila = fila, pesoBultoKg = estado.resumen.pesoBultoKg, onClick = { onTipoClick(fila.tipo) })
                 }
             }
         }
@@ -194,9 +194,9 @@ private fun ResumenBodega(resumen: ResumenInventario, onAjustarBodega: () -> Uni
                 )
                 // Sin capacidad configurada no hay "de X kg": solo se muestran los bultos.
                 val detalle = if (resumen.capacidadKg > 0) {
-                    "de ${formatoKg(resumen.capacidadKg)} · ${formatoBultos(resumen.totalKg)}"
+                    "de ${formatoKg(resumen.capacidadKg)} · ${formatoBultos(resumen.totalKg, resumen.pesoBultoKg)}"
                 } else {
-                    formatoBultos(resumen.totalKg)
+                    formatoBultos(resumen.totalKg, resumen.pesoBultoKg)
                 }
                 Text(text = detalle, style = AppTypography.bodyMd)
             }
@@ -405,7 +405,7 @@ private fun EncabezadoLista(orden: OrdenInventario, onOrdenChange: (OrdenInventa
 
 // Tarjeta de un tipo de café: ícono, nombre, "290 kg · 7,1 bultos", etiqueta de sublotes y flecha.
 @Composable
-private fun TarjetaTipo(fila: ResumenTipo, onClick: () -> Unit) {
+private fun TarjetaTipo(fila: ResumenTipo, pesoBultoKg: Double, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -435,7 +435,7 @@ private fun TarjetaTipo(fila: ResumenTipo, onClick: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(text = fila.tipo.etiqueta, style = AppTypography.titleCard)
-            Text(text = detallePeso(fila.pesoKg), style = AppTypography.bodyMd)
+            Text(text = detallePeso(fila.pesoKg, pesoBultoKg), style = AppTypography.bodyMd)
         }
         EtiquetaSublotes(texto = formatoSublotes(fila.cantidadSublotes))
         Icon(

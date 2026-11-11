@@ -31,6 +31,8 @@ import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.purchase.productorSinRegistrar
 import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.ContinueButton
+import com.cafesmart.app.ui.components.AvisoCapacidadCard
+import com.cafesmart.app.ui.components.EstiloAviso
 import com.cafesmart.app.ui.theme.AppShapes
 import com.cafesmart.app.ui.theme.AppTypography
 import com.cafesmart.app.ui.theme.BorderDefault
@@ -93,8 +95,15 @@ fun PurchaseSuccessScreen(
                 text = "La compra se guardó correctamente.",
                 style = AppTypography.bodyMd,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = Spacing.s4, bottom = Spacing.s28)
+                modifier = Modifier.padding(top = Spacing.s4, bottom = Spacing.s20)
             )
+            // La compra dejo la bodega casi llena o la supero: se aconseja vender cafe para liberar espacio.
+            estado.avisoAlRegistrar?.let {
+                AvisoCapacidadCard(
+                    titulo = it.tituloRegistrada, mensaje = it.mensajeRegistrada, estilo = EstiloAviso.ALERTA,
+                    modifier = Modifier.padding(bottom = Spacing.s20)
+                )
+            }
             Text(
                 text = "Resumen de compra",
                 style = AppTypography.labelSection,

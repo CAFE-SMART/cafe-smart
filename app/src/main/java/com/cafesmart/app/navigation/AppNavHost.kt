@@ -8,9 +8,27 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import com.cafesmart.app.data.finanzas.AlmacenClaveFinancieraLocal
+import com.cafesmart.app.data.finanzas.FinanzasLocal
+import com.cafesmart.app.data.finanzas.SinDatosFinancieros
+import com.cafesmart.app.data.finanzas.FirebaseConfirmacionCuenta
+import com.cafesmart.app.data.finanzas.fechaDeHoy
+import com.cafesmart.app.ui.finance.AccesoFinancieroScreen
+import com.cafesmart.app.data.inventario.OcupacionDeEjemplo
+import com.cafesmart.app.ui.finance.HistorialFinancieroScreen
+import com.cafesmart.app.ui.settings.CapacidadBodegaScreen
+import com.cafesmart.app.viewmodel.settings.CapacidadBodegaViewModel
+import com.cafesmart.app.ui.finance.ResumenFinancieroScreen
+import com.cafesmart.app.viewmodel.finance.AccesoFinancieroViewModel
+import com.cafesmart.app.viewmodel.finance.HistorialFinancieroViewModel
+import com.cafesmart.app.viewmodel.finance.ResumenFinancieroViewModel
 import com.cafesmart.app.data.negocio.NegocioRepository
 import com.cafesmart.app.data.negocio.negocioDesdeRegistro
 import com.cafesmart.app.data.session.FirebaseSessionGateway
+import com.cafesmart.app.data.session.DestinoInicial
+import com.cafesmart.app.data.session.PreferenciaNotificacionesLocal
+import com.cafesmart.app.data.session.PreferenciaSesionLocal
+import com.cafesmart.app.data.session.decidirInicio
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,9 +50,12 @@ import com.cafesmart.app.ui.auth.AuthDialogsState
 import com.cafesmart.app.ui.auth.AuthHelpContext
 import com.cafesmart.app.ui.auth.AuthPage
 import com.cafesmart.app.ui.auth.AuthViewModel
+import com.cafesmart.app.ui.components.AvisoUi
 import com.cafesmart.app.ui.auth.ConfirmDestructiveDialog
 import com.cafesmart.app.ui.auth.LoginScreen
 import com.cafesmart.app.ui.auth.MODO_DEMOSTRACION
+import com.cafesmart.app.ui.auth.RecuperarContrasenaScreen
+import com.cafesmart.app.ui.auth.RecuperarContrasenaViewModel
 import com.cafesmart.app.ui.auth.RegisterStep1Screen
 import com.cafesmart.app.ui.auth.RegisterStep2Screen
 import com.cafesmart.app.ui.auth.RegistrationData
@@ -69,6 +90,8 @@ fun AppNavHost(
     val authViewModel: AuthViewModel = viewModel()
     val authState by authViewModel.state.collectAsState()
     val dialogs = remember { AuthDialogsState() }
+    // "Recordar mi cuenta": se guarda al iniciar sesión y el Splash la consulta al abrir la app.
+    val preferenciaSesion = remember { PreferenciaSesionLocal(context) }
 
     var registrationSuccess by remember { mutableStateOf<RegistrationData?>(null) }
     var pendingRegistration by remember { mutableStateOf<RegistrationData?>(null) }
@@ -101,6 +124,7 @@ fun AppNavHost(
     // Cierra sesión: limpia el estado de auth y deja solo LOGIN en la pila.
     val cerrarSesion: () -> Unit = {
         authViewModel.signOut()
+        preferenciaSesion.olvidar()
         registrationSuccess = null
         pendingRegistration = null
         dialogs.clear()
@@ -156,6 +180,8 @@ fun AppNavHost(
         authViewModel.events.collect { evento ->
             when (evento) {
                 AuthEvent.LoggedIn -> {
+                    // Guarda la casilla antes de que reset() limpie el formulario.
+                    preferenciaSesion.guardarRecordar(authViewModel.uiState.rememberMe)
                     authViewModel.reset()
                     navController.navigate(Routes.HOME) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
@@ -163,6 +189,8 @@ fun AppNavHost(
                 }
 
                 is AuthEvent.Registered -> {
+                    // Firebase ya dejó la sesión abierta al crear la cuenta; se conserva como en el login.
+                    preferenciaSesion.guardarRecordar(true)
                     // La cuenta ya existe en Firebase; los datos del negocio se guardan en Room con el uid.
                     guardarNegocio(evento.data)
                     dialogs.registrationError = null
@@ -187,10 +215,20 @@ fun AppNavHost(
     ) {
         // ── Cuenta ──────────────────────────────────────────
         composable(Routes.SPLASH) {
-            // Al terminar el splash pasa al login y lo saca de la pila.
+            // Al terminar el splash decide según la sesión de Firebase y la casilla "Recordar mi cuenta":
+            // con sesión y "recordar" entra a Inicio; con sesión sin "recordar" la cierra y pide el login.
             SplashScreen(
                 onSplashFinished = {
-                    navController.navigate(Routes.LOGIN) {
+                    val decision = decidirInicio(
+                        hayUsuario = FirebaseSessionGateway.usuarioActual() != null,
+                        recordar = preferenciaSesion.recordar()
+                    )
+                    if (decision.cerrarSesion) {
+                        FirebaseSessionGateway.cerrarSesion()
+                        preferenciaSesion.olvidar()
+                    }
+                    val ruta = if (decision.destino == DestinoInicial.INICIO) Routes.HOME else Routes.LOGIN
+                    navController.navigate(ruta) {
                         popUpTo(Routes.SPLASH) { inclusive = true }
                     }
                 }
@@ -223,7 +261,7 @@ fun AppNavHost(
                 onGoogle = {
                     dialogs.info = "El inicio de sesión con Google está pendiente de integración."
                 },
-                onForgotPassword = { dialogs.active = AuthAuxDialog.RECOVERY },
+                onForgotPassword = { navController.navigateTo(Routes.FORGOT_PASSWORD) },
                 onHelp = { dialogs.help = AuthHelpContext.LOGIN },
                 onSupport = { dialogs.active = AuthAuxDialog.SUPPORT },
                 onExit = { showExitConfirmation = true }
@@ -240,6 +278,18 @@ fun AppNavHost(
                     onDismiss = { showExitConfirmation = false }
                 )
             }
+        }
+        composable(Routes.FORGOT_PASSWORD) {
+            val recuperarViewModel: RecuperarContrasenaViewModel = viewModel()
+            val recuperarState by recuperarViewModel.state.collectAsState()
+            RecuperarContrasenaScreen(
+                estado = recuperarState,
+                onBack = { navController.popBackStack() },
+                onCorreoChange = recuperarViewModel::cambiarCorreo,
+                onEnviar = recuperarViewModel::enviar,
+                onReenviar = recuperarViewModel::reenviar,
+                onVolverAlLogin = { navController.popBackStack(Routes.LOGIN, inclusive = false) }
+            )
         }
         composable(Routes.REGISTER_STEP1) {
             // "Atrás" del sistema también retrocede el estado del ViewModel.
@@ -327,7 +377,7 @@ fun AppNavHost(
                     }
                 },
                 onActualizar = { /* TODO ciclo 2 */ },
-                onAjustarBodega = { /* TODO ciclo 2 */ },
+                onAjustarBodega = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
                 onAbrirSublote = { /* TODO ciclo 2 */ }
             )
 
@@ -347,7 +397,9 @@ fun AppNavHost(
         // ── Inventario ──────────────────────────────────────
         composable(Routes.INVENTORY) {
             // viewModel() ligado a esta entrada del NavHost (por ahora lee datos de ejemplo; luego, Room).
-            val inventoryViewModel: InventoryViewModel = viewModel()
+            val inventoryViewModel: InventoryViewModel = viewModel {
+                InventoryViewModel(negocios = negocios, uid = FirebaseSessionGateway.usuarioActual()?.uid)
+            }
             val inventoryState by inventoryViewModel.uiState.collectAsState()
 
             InventoryScreen(
@@ -355,7 +407,7 @@ fun AppNavHost(
                 // Figma: cada tipo abre su lista por calidad. Esa pantalla aún es placeholder.
                 onTipoClick = { tipo -> navController.navigateTo(Routes.inventoryType(tipo.name)) },
                 onOrdenChange = inventoryViewModel::cambiarOrden,
-                onAjustarBodega = { /* TODO ciclo 2: capacidad de bodega en Ajustes (igual que en Inicio) */ },
+                onAjustarBodega = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
                 onRegistrarCompra = { navController.navigateTo(Routes.PURCHASE_STEP1) },
                 // La barra inferior manda el nombre de la pestaña.
                 onNavegar = { destino ->
@@ -450,6 +502,19 @@ fun AppNavHost(
             val purchaseViewModel: PurchaseViewModel = viewModel()
             val estado by purchaseViewModel.uiState.collectAsState()
 
+            // La capacidad y la ocupacion de la bodega alimentan los avisos de capacidad; se actualizan solas.
+            val uidActual = FirebaseSessionGateway.usuarioActual()?.uid
+            LaunchedEffect(uidActual) {
+                val kgOcupados = OcupacionDeEjemplo.kgOcupados()
+                if (uidActual == null) {
+                    purchaseViewModel.actualizarBodega(0.0, kgOcupados)
+                } else {
+                    negocios.observar(uidActual).collect {
+                        purchaseViewModel.actualizarBodega(it?.capacidadBodegaKg ?: 0.0, kgOcupados)
+                    }
+                }
+            }
+
             // "Atrás" del sistema en la pantalla final lleva al inicio, no al paso 3.
             BackHandler(enabled = estado.compraRegistrada) {
                 purchaseViewModel.reiniciarCompra()
@@ -458,6 +523,7 @@ fun AppNavHost(
 
             PurchaseFlow(
                 viewModel = purchaseViewModel,
+                onConfigurarCapacidad = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
                 onSalir = { navController.popBackStack() },
                 onIrAInventario = {
                     navController.navigate(Routes.INVENTORY) {
@@ -548,11 +614,21 @@ fun AppNavHost(
         }
 
         // ── Ajustes ─────────────────────────────────────────
-        composable(Routes.SETTINGS) {
+        composable(Routes.SETTINGS) { entrada ->
             val settingsViewModel: SettingsViewModel = viewModel {
-                SettingsViewModel(FirebaseSessionGateway, negocios)
+                SettingsViewModel(FirebaseSessionGateway, negocios, PreferenciaNotificacionesLocal(context))
             }
             val settingsState by settingsViewModel.uiState.collectAsState()
+            // Avisos que dejan otras pantallas al volver a Ajustes (por ejemplo "Información de empresa"):
+            // se pasan al ViewModel y se borran del handle enseguida para que no reaparezcan.
+            val avisoDeOtraPantalla by entrada.savedStateHandle
+                .getStateFlow<String?>(CLAVE_AVISO_AJUSTES, null).collectAsState()
+            LaunchedEffect(avisoDeOtraPantalla) {
+                avisoDeOtraPantalla?.let {
+                    settingsViewModel.mostrarAviso(AvisoUi(it))
+                    entrada.savedStateHandle[CLAVE_AVISO_AJUSTES] = null
+                }
+            }
 
             SettingsScreen(
                 perfil = settingsState.perfil,
@@ -560,6 +636,19 @@ fun AppNavHost(
                 onBack = { navController.popBackStack() },
                 onGastosOperativos = { navController.navigateTo(Routes.EXPENSES) },
                 onInformacionEmpresa = { navController.navigateTo(Routes.SETTINGS_BUSINESS) },
+                onResumenFinanciero = { navController.navigateTo(Routes.FINANCE_SUMMARY) },
+                onCapacidadBodega = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
+                aviso = settingsState.aviso,
+                onAvisoOculto = settingsViewModel::ocultarAviso,
+                pestana = settingsState.pestana,
+                onPestana = settingsViewModel::seleccionarPestana,
+                notificaciones = settingsState.notificaciones,
+                onNotificaciones = settingsViewModel::cambiarNotificaciones,
+                edicion = settingsState.edicion,
+                onEditarPerfil = settingsViewModel::abrirEditarPerfil,
+                onNombreChange = settingsViewModel::cambiarNombre,
+                onGuardarNombre = settingsViewModel::guardarNombre,
+                onCancelarEdicion = settingsViewModel::cancelarEdicion,
                 onPedirCerrarSesion = settingsViewModel::pedirCerrarSesion,
                 onCancelarCierre = settingsViewModel::cancelarCierre,
                 onConfirmarCierre = {
@@ -567,6 +656,82 @@ fun AppNavHost(
                     settingsViewModel.confirmarCierre()
                     cerrarSesion()
                 }
+            )
+        }
+
+        // Finanzas · Resumen financiero: pide la clave propia (o la crea en el primer acceso) y solo con ella
+        // muestra el resumen. El estado del acceso vive en esta entrada: al salir se pierde y se vuelve a pedir la clave.
+        composable(Routes.FINANCE_SUMMARY) {
+            val uid = FirebaseSessionGateway.usuarioActual()?.uid ?: "demo"
+            val accesoViewModel: AccesoFinancieroViewModel = viewModel {
+                AccesoFinancieroViewModel(uid, AlmacenClaveFinancieraLocal(context), FirebaseConfirmacionCuenta)
+            }
+            val acceso by accesoViewModel.estado.collectAsState()
+            if (acceso.autorizado) {
+                val resumenViewModel: ResumenFinancieroViewModel = viewModel {
+                    ResumenFinancieroViewModel(FinanzasLocal(SinDatosFinancieros, ::fechaDeHoy))
+                }
+                val resumen by resumenViewModel.estado.collectAsState()
+                ResumenFinancieroScreen(
+                    estado = resumen,
+                    onBack = { navController.popBackStack() },
+                    onPeriodo = resumenViewModel::cambiarPeriodo,
+                    onRecargar = resumenViewModel::recargar,
+                    onAvisoOculto = resumenViewModel::ocultarAviso,
+                    onHistorial = { navController.navigateTo(Routes.FINANCE_HISTORY) }
+                )
+            } else {
+                AccesoFinancieroScreen(
+                    estado = acceso,
+                    onBack = { navController.popBackStack() },
+                    onClave = accesoViewModel::cambiarClave,
+                    onConfirmacion = accesoViewModel::cambiarConfirmacion,
+                    onContrasenaCuenta = accesoViewModel::cambiarContrasenaCuenta,
+                    onGuardarClave = accesoViewModel::guardarClave,
+                    onIngresar = accesoViewModel::ingresar,
+                    onOlvide = accesoViewModel::olvideMiClave,
+                    onCancelarOlvido = accesoViewModel::cancelarOlvido,
+                    onConfirmarContrasena = accesoViewModel::confirmarConContrasena,
+                    onConfirmarGoogle = accesoViewModel::confirmarConGoogle
+                )
+            }
+        }
+
+        // Finanzas · Historial financiero: compras, ventas y gastos juntos. Solo se llega desde el Resumen, que ya
+        // pidió la clave propia; no hay otra entrada.
+        composable(Routes.FINANCE_HISTORY) {
+            val historialViewModel: HistorialFinancieroViewModel = viewModel {
+                HistorialFinancieroViewModel(FinanzasLocal(SinDatosFinancieros, ::fechaDeHoy), ::fechaDeHoy)
+            }
+            val historial by historialViewModel.estado.collectAsState()
+            HistorialFinancieroScreen(
+                estado = historial,
+                onBack = { navController.popBackStack() },
+                onFiltro = historialViewModel::cambiarFiltro,
+                onVerMas = historialViewModel::verMas,
+                onReintentar = historialViewModel::reintentar
+            )
+        }
+
+        // Ajustes · Capacidad de bodega: kilos que caben y peso del bulto (Negocio). Se abre desde Ajustes, Inicio e Inventario;
+        // al guardar vuelve a donde estaba. Los kilos ocupados hoy son de ejemplo hasta que Compras esté en Room.
+        composable(Routes.SETTINGS_WAREHOUSE) {
+            val capacidadViewModel: CapacidadBodegaViewModel = viewModel {
+                CapacidadBodegaViewModel(FirebaseSessionGateway, negocios, OcupacionDeEjemplo)
+            }
+            val capacidadState by capacidadViewModel.uiState.collectAsState()
+            LaunchedEffect(capacidadState.guardado) {
+                if (capacidadState.guardado) {
+                    navController.previousBackStackEntry?.savedStateHandle?.set(CLAVE_AVISO_AJUSTES, AVISO_CAPACIDAD_GUARDADA)
+                    navController.popBackStack()
+                }
+            }
+            CapacidadBodegaScreen(
+                estado = capacidadState,
+                onBack = { navController.popBackStack() },
+                onEditar = capacidadViewModel::editar,
+                onGuardar = capacidadViewModel::guardar,
+                onAvisoOculto = capacidadViewModel::ocultarAviso
             )
         }
 
@@ -578,13 +743,18 @@ fun AppNavHost(
             }
             val negocioState by negocioViewModel.uiState.collectAsState()
             LaunchedEffect(negocioState.guardado) {
-                if (negocioState.guardado) navController.popBackStack()
+                if (negocioState.guardado) {
+                    // Deja el aviso para Ajustes, que lo muestra al aparecer.
+                    navController.previousBackStackEntry?.savedStateHandle?.set(CLAVE_AVISO_AJUSTES, AVISO_NEGOCIO_GUARDADO)
+                    navController.popBackStack()
+                }
             }
             NegocioInfoScreen(
                 estado = negocioState,
                 onBack = { navController.popBackStack() },
                 onEditar = negocioViewModel::editar,
-                onGuardar = negocioViewModel::guardar
+                onGuardar = negocioViewModel::guardar,
+                onAvisoOculto = negocioViewModel::ocultarAviso
             )
         }
     }
@@ -593,9 +763,15 @@ fun AppNavHost(
     AuthDialogs(
         state = dialogs,
         onRetryRegistration = { pendingRegistration?.let(processRegistration) },
-        onAuthErrorAction = onAuthErrorAction
+        onAuthErrorAction = onAuthErrorAction,
+        onRecovery = { navController.navigateTo(Routes.FORGOT_PASSWORD) }
     )
 }
+
+// Aviso de éxito que otra pantalla deja a Ajustes (se lee en su SavedStateHandle).
+private const val CLAVE_AVISO_AJUSTES = "aviso_ajustes"
+private const val AVISO_NEGOCIO_GUARDADO = "Datos del negocio guardados"
+private const val AVISO_CAPACIDAD_GUARDADA = "Capacidad de bodega guardada"
 
 /** Navega a una ruta sin duplicarla en la cima de la pila. */
 private fun NavHostController.navigateTo(route: String) =

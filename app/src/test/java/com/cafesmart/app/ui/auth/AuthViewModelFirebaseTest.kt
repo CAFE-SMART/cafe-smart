@@ -35,6 +35,8 @@ private class RepositorioFalso(var resultado: AuthResult = AuthResult.Success) :
         return resultado
     }
 
+    override suspend fun sendPasswordReset(email: String): AuthResult = resultado
+
     override fun signOut() {
         cerrada = true
     }

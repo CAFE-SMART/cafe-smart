@@ -875,18 +875,8 @@ object AuthValidation {
          * - Al menos una letra minúscula.
          * - Al menos un número.
          */
-        if (
-            password.length < 8 ||
-
-            // Comprueba si existe una mayúscula
-            !password.any(Char::isUpperCase) ||
-
-            // Comprueba si existe una minúscula
-            !password.any(Char::isLowerCase) ||
-
-            // Comprueba si existe un número
-            !password.any(Char::isDigit)
-        ) {
+        // Es la misma regla del aviso en vivo de la pantalla (requisitosContrasena): una sola versión.
+        if (!contrasenaValida(password)) {
 
             put(
                 "password",

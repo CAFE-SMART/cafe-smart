@@ -19,6 +19,8 @@ sealed interface AuthResult {
 interface AuthRepository {
     suspend fun signIn(email: String, password: String): AuthResult
     suspend fun register(email: String, password: String, displayName: String): AuthResult
+    /** Pide a Firebase que envíe al correo el enlace para crear una contraseña nueva. */
+    suspend fun sendPasswordReset(email: String): AuthResult
     fun signOut()
 }
 
@@ -44,16 +46,26 @@ class FirebaseAuthRepository : AuthRepository {
             }
         }
 
+    override suspend fun sendPasswordReset(email: String): AuthResult =
+        intentar(::authErrorRecuperacionDesdeCodigo) {
+            // El correo de Firebase sale en español (por defecto sale en inglés).
+            auth.setLanguageCode("es")
+            auth.sendPasswordResetEmail(email).await()
+        }
+
     override fun signOut() = auth.signOut()
 
-    private suspend fun intentar(bloque: suspend () -> Unit): AuthResult =
+    private suspend fun intentar(
+        traducir: (String?) -> AuthError = ::authErrorDesdeCodigo,
+        bloque: suspend () -> Unit
+    ): AuthResult =
         try {
             bloque()
             AuthResult.Success
         } catch (e: CancellationException) {
             throw e
         } catch (e: FirebaseAuthException) {
-            AuthResult.Failure(authErrorDesdeCodigo(e.errorCode))
+            AuthResult.Failure(traducir(e.errorCode))
         } catch (e: FirebaseNetworkException) {
             AuthResult.Failure(AuthError.SIN_CONEXION)
         } catch (e: Exception) {
@@ -62,7 +74,7 @@ class FirebaseAuthRepository : AuthRepository {
 }
 
 // Convierte un Task de Google en una función suspend, sin necesitar otra librería.
-private suspend fun <T> Task<T>.await(): T = suspendCancellableCoroutine { cont ->
+internal suspend fun <T> Task<T>.await(): T = suspendCancellableCoroutine { cont ->
     addOnSuccessListener { cont.resume(it) }
     addOnFailureListener { cont.resumeWithException(it) }
     addOnCanceledListener { cont.cancel() }

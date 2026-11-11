@@ -16,7 +16,8 @@ fun PurchaseFlow(
     viewModel: PurchaseViewModel,
     onSalir: () -> Unit,
     onIrAInventario: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onConfigurarCapacidad: () -> Unit = {}
 ) {
     // collectAsState observa el StateFlow: cada cambio del estado redibuja la pantalla.
     val estado by viewModel.uiState.collectAsState()
@@ -57,6 +58,7 @@ fun PurchaseFlow(
             onContinuar = { viewModel.continuarPaso1() },
             // La flecha del paso 1 sale del registro de compra.
             onBack = onSalir,
+            onConfigurarCapacidad = onConfigurarCapacidad,
             modifier = modifier
         )
 

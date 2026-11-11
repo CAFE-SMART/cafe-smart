@@ -75,8 +75,23 @@ data class PurchaseUiState(
     val cafes: List<CafeFormulario> = listOf(CafeFormulario()),
     // Posicion del cafe que se esta editando; los demas se ven como tiras
     val cafeAbierto: Int = 0,
-    val fecha: Fecha = fechaDeHoy()
+    val fecha: Fecha = fechaDeHoy(),
+    // Bodega: capacidad configurada (0 = sin configurar) y kilos que hay hoy; los avisos salen de aqui.
+    val capacidadKg: Double = 0.0,
+    val kgOcupados: Double = 0.0,
+    // Lo que dejo la compra en la bodega, fijado al confirmarla (para "Compra registrada").
+    val avisoAlRegistrar: AvisoCapacidad? = null
 ) {
+    // ---------- Avisos de capacidad (informativos, nunca bloquean) ----------
+
+    // Paso 1: la capacidad aun no esta configurada.
+    val avisoSinConfigurar: Boolean
+        get() = capacidadKg <= 0.0
+
+    // Pasos 2 y 3: lo que dejaria la compra que se esta escribiendo; null si queda por debajo de 90 %.
+    val avisoCapacidad: AvisoCapacidad?
+        get() = avisoCapacidadCompra(capacidadKg, kgOcupados, totalKg(cafes))
+
     // ---------- Paso 1 ----------
 
     val registradoSeleccionado: Boolean
@@ -470,14 +485,27 @@ class PurchaseViewModel : ViewModel() {
     // Por ahora solo cambia de pantalla; guardar la compra se conecta cuando exista Room
     fun confirmarCompra() {
         if (_uiState.value.cafesListos) {
-            _uiState.value = _uiState.value.copy(compraRegistrada = true)
+            // El aviso se calcula antes de registrar, con la ocupacion de ese momento.
+            val estado = _uiState.value
+            _uiState.value = estado.copy(compraRegistrada = true, avisoAlRegistrar = estado.avisoCapacidad)
         }
+    }
+
+    // La bodega cambio (se configuro la capacidad o cambiaron los kilos). Una compra ya registrada conserva su aviso.
+    fun actualizarBodega(capacidadKg: Double, kgOcupados: Double) {
+        if (_uiState.value.compraRegistrada) return
+        _uiState.value = _uiState.value.copy(capacidadKg = capacidadKg, kgOcupados = kgOcupados)
     }
 
     // Empieza una compra desde cero, conservando los productores registrados
     fun reiniciarCompra() {
         // Un estado nuevo vuelve todo a sus valores iniciales, menos la lista de productores.
-        _uiState.value = PurchaseUiState(productores = _uiState.value.productores)
+        val actual = _uiState.value
+        _uiState.value = PurchaseUiState(
+            productores = actual.productores,
+            capacidadKg = actual.capacidadKg,
+            kgOcupados = actual.kgOcupados
+        )
     }
 
     // Reemplaza solo la tarjeta que cambio
