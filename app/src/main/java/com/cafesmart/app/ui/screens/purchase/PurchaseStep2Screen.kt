@@ -43,7 +43,7 @@ import com.cafesmart.app.data.purchase.tiposCafe
 import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.AppTextField
 import com.cafesmart.app.ui.components.ChoiceButton
-import com.cafesmart.app.ui.components.ContinueButton
+import com.cafesmart.app.ui.components.BloqueDeTotales
 import com.cafesmart.app.ui.components.AvisoCapacidadCard
 import com.cafesmart.app.ui.components.EstiloAviso
 import com.cafesmart.app.ui.theme.AppShapes
@@ -141,39 +141,25 @@ fun PurchaseStep2Screen(
                 }
 
                 TarjetaFecha(fechaTexto = estado.fechaTexto, onCambiar = { mostrarCalendario = true })
-            }
-        }
 
-        PurchaseBottomBar {
-            // Avisa antes del paso 3 si la compra deja la bodega casi llena o la supera (no bloquea).
-            estado.avisoCapacidad?.let {
-                AvisoCapacidadCard(
-                    titulo = it.titulo, mensaje = it.mensajePaso2, estilo = EstiloAviso.ALERTA,
-                    porcentaje = it.porcentajeDespues, compacto = true
-                )
-            }
-            // Gris mientras no hay totales; azul cuando ya hay valores.
-            val colorTotales = if (estado.hayTotales) PrimaryDark else TextMuted
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                // SpaceBetween: un elemento a cada extremo de la fila.
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text(text = "Total kg", style = AppTypography.caption)
-                    Text(text = estado.totalKgTexto, style = AppTypography.titleModal.copy(color = colorTotales))
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(text = "Total estimado", style = AppTypography.caption)
-                    Text(text = estado.totalEstimadoTexto, style = AppTypography.titleModal.copy(color = colorTotales))
+                // Gris mientras no hay totales; azul cuando ya hay valores.
+                BloqueDeTotales(
+                    etiquetaIzquierda = "Total kg", valorIzquierdo = estado.totalKgTexto,
+                    etiquetaDerecha = "Total estimado", valorDerecho = estado.totalEstimadoTexto,
+                    color = if (estado.hayTotales) PrimaryDark else TextMuted,
+                    habilitado = estado.cafesListos,
+                    onContinuar = onContinuar,
+                    mensajePendiente = estado.mensajePendientePaso2
+                ) {
+                    // Avisa antes del paso 3 si la compra deja la bodega casi llena o la supera (no bloquea).
+                    estado.avisoCapacidad?.let {
+                        AvisoCapacidadCard(
+                            titulo = it.titulo, mensaje = it.mensajePaso2, estilo = EstiloAviso.ALERTA,
+                            porcentaje = it.porcentajeDespues, compacto = true
+                        )
+                    }
                 }
             }
-            PendingMessage(mensaje = estado.mensajePendientePaso2)
-            ContinueButton(
-                text = "Continuar",
-                enabled = estado.cafesListos,
-                onClick = onContinuar
-            )
         }
     }
 

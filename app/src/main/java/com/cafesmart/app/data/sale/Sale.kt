@@ -1,6 +1,7 @@
 package com.cafesmart.app.data.sale
 
 import com.cafesmart.app.data.model.Calidad
+import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.model.SubloteConLote
 import com.cafesmart.app.data.purchase.NuevoProductor
 
@@ -15,6 +16,7 @@ data class SubloteElegido(
     val id: Long get() = sublote.sublote.id
     val calidad: Calidad get() = sublote.calidad
     val disponibleKg: Double get() = sublote.sublote.pesoDisponibleKg
+    val fechaIngreso: Fecha get() = sublote.sublote.fechaIngreso
 }
 
 // Como se elige el cliente en el paso 1: uno de la lista, "Sin registrar" o uno nuevo.

@@ -1,20 +1,25 @@
 package com.cafesmart.app.sale
 
+import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.TipoDocumento
 import com.cafesmart.app.data.sale.ModoCliente
 import com.cafesmart.app.data.sale.clientesDeEjemplo
+import com.cafesmart.app.viewmodel.purchase.MENSAJE_PRECIO
 import com.cafesmart.app.viewmodel.sale.MENSAJE_REVISA_CAMPOS
 import com.cafesmart.app.viewmodel.sale.SaleViewModel
+import com.cafesmart.app.viewmodel.sale.mensajePrecioPendiente
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-// Texto sobre "Continuar" que dice que falta en el paso 1 de Ventas.
+// Texto sobre "Continuar" que dice que falta en el paso 1 y en el paso 2 de Ventas.
 // Regla de oro: hay mensaje justo cuando el boton esta deshabilitado (salvo el minimo de kg, que ya se ve en rojo).
 class MensajesPendientesVentasTest {
 
     private fun SaleViewModel.paso1() = uiState.value.mensajePendientePaso1
+    private fun SaleViewModel.paso2() = uiState.value.mensajePendientePaso2
 
     // ---------- Paso 1 ----------
 
@@ -163,6 +168,109 @@ class MensajesPendientesVentasTest {
     // ---------- Paso 2 ----------
 
     @Test
+    fun paso2_sinSubloteElegidoPideElegirUno() {
+        assertEquals("Elige al menos un sublote para continuar.", SaleViewModel().paso2())
+    }
+
+    @Test
+    fun paso2_conSubloteSinPrecioPideElPrecioDeEsaCalidad() {
+        val vm = SaleViewModel().apply { elegir(5) }
+        assertEquals(MENSAJE_REVISA_CAMPOS, vm.paso2())
+        assertEquals("Escribe el precio por kg de la calidad buena.", vm.uiState.value.grupos.first { it.precio != null }.precio!!.error)
+    }
+
+    @Test
+    fun paso2_conPrecioFueraDeRangoMuestraElRango() {
+        val vm = SaleViewModel().apply {
+            elegir(5)
+            cambiarPrecio(Calidad.BUENA, "500000")
+        }
+        assertEquals(MENSAJE_REVISA_CAMPOS, vm.paso2())
+        assertEquals(MENSAJE_PRECIO, vm.uiState.value.grupos.first { it.precio != null }.precio!!.error)
+    }
+
+    @Test
+    fun paso2_conSubloteYPrecioBuenoNoTieneMensaje() {
+        val vm = SaleViewModel().apply {
+            elegir(5)
+            cambiarPrecio(Calidad.BUENA, "20000")
+        }
+        assertNull(vm.paso2())
+        assertTrue(vm.uiState.value.puedeContinuar)
+    }
+
+    @Test
+    fun paso2_cantidadQuePasaDeLoDisponibleAvisa() {
+        val vm = SaleViewModel().apply {
+            elegir(5)
+            cambiarPrecio(Calidad.BUENA, "20000")
+            escribirCantidad(5L, "9999")
+        }
+        assertNotNull(vm.paso2())
+        assertTrue(!vm.uiState.value.puedeContinuar)
+    }
+
+    @Test
+    fun paso2_siFaltaElMinimoDeKgElMensajeNoSeRepite() {
+        // Menos de 5 kg: el aviso rojo de arriba ya lo explica, asi que debajo del boton no se repite.
+        val vm = SaleViewModel().apply {
+            elegir(5)
+            cambiarPrecio(Calidad.BUENA, "20000")
+            escribirCantidad(5L, "2")
+        }
+        assertNotNull(vm.uiState.value.errorDeTotal)
+        assertNull(vm.paso2())
+        assertTrue(!vm.uiState.value.puedeContinuar)
+    }
+
+    @Test
+    fun paso2_conDosCalidadesPideElPrecioDeLaQueFalta() {
+        val vm = SaleViewModel().apply {
+            elegir(5, 8)
+            cambiarPrecio(Calidad.BUENA, "20000")
+        }
+        assertEquals(MENSAJE_REVISA_CAMPOS, vm.paso2())
+        vm.cambiarPrecio(Calidad.REGULAR, "15000")
+        assertNull(vm.paso2())
+    }
+
+    @Test
+    fun paso2_alQuitarElSubloteVuelveAPedirElegirUno() {
+        val vm = SaleViewModel().apply { elegir(5) }
+        vm.elegir(5)
+        assertEquals("Elige al menos un sublote para continuar.", vm.paso2())
+    }
+
+    // ---------- Regla suelta del precio ----------
+
+    @Test
+    fun mensajePrecioPendiente_vacioValidoYFueraDeRango() {
+        assertEquals("Escribe el precio por kg de la calidad mala.", mensajePrecioPendiente(Calidad.MALA, ""))
+        assertNull(mensajePrecioPendiente(Calidad.MALA, "1000"))
+        assertNull(mensajePrecioPendiente(Calidad.MALA, "100000"))
+        assertEquals(MENSAJE_PRECIO, mensajePrecioPendiente(Calidad.MALA, "999"))
+        assertEquals(MENSAJE_PRECIO, mensajePrecioPendiente(Calidad.MALA, "100001"))
+    }
+
+    // ---------- El campo que falta se marca con su error ----------
+
+    @Test
+    fun paso2_conSubloteSinPrecio_elCampoDelPrecioMuestraQueFalta() {
+        val vm = SaleViewModel().apply { elegir(5) }
+        val precio = vm.uiState.value.grupos.first { it.precio != null }.precio!!
+        assertEquals("Escribe el precio por kg de la calidad buena.", precio.error)
+    }
+
+    @Test
+    fun paso2_alEscribirElPrecio_elCampoYaNoSeMarca() {
+        val vm = SaleViewModel().apply {
+            elegir(5)
+            cambiarPrecio(Calidad.BUENA, "20000")
+        }
+        assertNull(vm.uiState.value.grupos.first { it.precio != null }.precio!!.error)
+    }
+
+    @Test
     fun paso1_conUnCampoMarcado_elErrorExactoEstaSoloEnElCampoYAbajoVaElAvisoGeneral() {
         val vm = SaleViewModel().apply { elegirModo(ModoCliente.NUEVO) }
         assertEquals("Escribe el documento del cliente.", vm.uiState.value.documentoError)
@@ -171,5 +279,26 @@ class MensajesPendientesVentasTest {
         assertNull(vm.uiState.value.documentoError)
         assertEquals("Escribe el nombre del cliente.", vm.uiState.value.nombreError)
         assertEquals(MENSAJE_REVISA_CAMPOS, vm.paso1())
+    }
+
+    @Test
+    fun paso2_cantidadVaciaSinCampoEnRojoDiceQueEscribirla() {
+        val vm = SaleViewModel().apply {
+            elegir(5)
+            cambiarPrecio(Calidad.BUENA, "20000")
+            escribirCantidad(5L, "")
+        }
+        assertEquals("Escribe la cantidad a vender de cada sublote elegido.", vm.paso2())
+    }
+
+    @Test
+    fun paso2_cantidadQuePasaDeLoDisponible_marcaElCampoYAbajoVaElAvisoGeneral() {
+        val vm = SaleViewModel().apply {
+            elegir(5)
+            cambiarPrecio(Calidad.BUENA, "20000")
+            escribirCantidad(5L, "9999")
+        }
+        assertNotNull(vm.uiState.value.grupos.first { it.precio != null }.sublotes.first { it.elegido }.errorCantidad)
+        assertEquals(MENSAJE_REVISA_CAMPOS, vm.paso2())
     }
 }
