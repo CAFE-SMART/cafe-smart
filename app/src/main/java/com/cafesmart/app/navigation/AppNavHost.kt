@@ -69,6 +69,7 @@ import com.cafesmart.app.ui.screens.PlaceholderAction
 import com.cafesmart.app.ui.screens.PlaceholderScreen
 import com.cafesmart.app.ui.screens.SplashScreen
 import com.cafesmart.app.ui.screens.purchase.PurchaseFlow
+import com.cafesmart.app.ui.screens.sale.SaleStep1Flow
 import com.cafesmart.app.data.model.TipoCafe
 import com.cafesmart.app.ui.inventory.InventoryScreen
 import com.cafesmart.app.ui.settings.NegocioInfoScreen
@@ -76,6 +77,7 @@ import com.cafesmart.app.ui.settings.SettingsScreen
 import com.cafesmart.app.viewmodel.inventory.InventoryViewModel
 import com.cafesmart.app.viewmodel.inventory.tipoCafeDesdeRuta
 import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
+import com.cafesmart.app.viewmodel.sale.SaleViewModel
 import com.cafesmart.app.viewmodel.settings.NegocioInfoViewModel
 import com.cafesmart.app.viewmodel.settings.SettingsViewModel
 
@@ -534,7 +536,15 @@ fun AppNavHost(
         }
 
         // ── Ventas ──────────────────────────────────────────
-        composable(Routes.SALE_STEP1) { NavPlaceholder(navController, "Venta · Paso 1 · Cliente", Routes.SALE_STEP1, true, "Siguiente" to Routes.SALE_STEP2) }
+        composable(Routes.SALE_STEP1) {
+            // viewModel() ligado a esta entrada: los pasos 2 y 3 y la pantalla final usan este mismo ViewModel.
+            val saleViewModel: SaleViewModel = viewModel()
+            SaleStep1Flow(
+                viewModel = saleViewModel,
+                onContinuar = { navController.navigateTo(Routes.SALE_STEP2) },
+                onSalir = { navController.popBackStack() }
+            )
+        }
         composable(Routes.SALE_STEP2) { NavPlaceholder(navController, "Venta · Paso 2 · Café", Routes.SALE_STEP2, true, "Siguiente" to Routes.SALE_STEP3) }
         composable(Routes.SALE_STEP3) { NavPlaceholder(navController, "Venta · Paso 3 · Confirmar", Routes.SALE_STEP3, true, "Registrar venta" to Routes.SALE_DONE) }
         composable(Routes.SALE_DONE) {

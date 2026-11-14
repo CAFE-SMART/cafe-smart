@@ -24,18 +24,20 @@ const val PRECIO_MAX_KG = 100_000
 // const val: valor fijo que se conoce al compilar.
 const val CANTIDAD_RECIENTES = 2
 
-// Devuelve los productores cuyo nombre o documento (cedula o NIT) contienen lo que se busco.
+// true cuando el nombre o el documento (cedula o NIT) contienen lo que se busco.
+// Productores y clientes se buscan igual, por eso la regla esta aparte.
+// trim() quita los espacios de las puntas; ignoreCase ignora mayusculas.
+fun coincideBusqueda(nombre: String, documento: String, busqueda: String): Boolean =
+    nombre.contains(busqueda.trim(), ignoreCase = true) || documento.contains(busqueda.trim())
+
+// Devuelve los productores cuyo nombre o documento contienen lo que se busco.
 fun filtrarProductores(productores: List<Productor>, busqueda: String): List<Productor> =
     // isBlank: esta vacio o solo tiene espacios. Sin busqueda se devuelven todos.
     if (busqueda.isBlank()) {
         productores
     } else {
         // filter crea una lista nueva solo con los que cumplen la condicion.
-        // it es cada productor; trim() quita espacios; ignoreCase ignora mayusculas.
-        productores.filter {
-            it.nombre.contains(busqueda.trim(), ignoreCase = true) ||
-                it.documento.contains(busqueda.trim())
-        }
+        productores.filter { coincideBusqueda(it.nombre, it.documento, busqueda) }
     }
 
 // Sin busqueda muestra solo los ultimos registrados ("Recientes"), salvo que se pida ver todos
@@ -87,6 +89,18 @@ fun limpiarDocumento(texto: String): String = texto.filter { it.isDigit() }.take
 // Deja solo digitos, maximo 10.
 fun limpiarTelefono(texto: String): String = texto.filter { it.isDigit() }.take(10)
 
+// Lo que se escribe en el formulario de una persona (productor o cliente): cada campo se limpia al escribirlo.
+// Son funciones de extension: se leen como "formulario.conDocumento(texto)" y devuelven un formulario nuevo.
+// Al cambiar de tipo, el nombre se limpia otra vez (una persona no lleva numeros ni puntos; una empresa si).
+fun NuevoProductor.conTipo(tipo: TipoDocumento): NuevoProductor =
+    copy(tipo = tipo, nombre = normalizarEspacios(limpiarNombre(nombre, tipo)))
+
+fun NuevoProductor.conDocumento(texto: String): NuevoProductor = copy(documento = limpiarDocumento(texto))
+
+fun NuevoProductor.conNombre(texto: String): NuevoProductor = copy(nombre = limpiarNombre(texto, tipo))
+
+fun NuevoProductor.conTelefono(texto: String): NuevoProductor = copy(telefono = limpiarTelefono(texto))
+
 // Cada validacion devuelve el mensaje de error, o null si el valor es valido
 
 // RF-COM-05: persona = nombre y apellido; empresa = su nombre
@@ -105,14 +119,14 @@ fun validarNombre(nombre: String, tipo: TipoDocumento): String? {
 }
 
 // RF-COM-04: cedula de 6 a 10 digitos, NIT de 9 a 10, y que no este repetido
-// Recibe la lista de productores para detectar documentos repetidos.
-fun validarDocumento(documento: String, tipo: TipoDocumento, productores: List<Productor>): String? =
+// Recibe los documentos ya registrados (de productores o de clientes) para detectar repetidos.
+fun validarDocumento(documento: String, tipo: TipoDocumento, documentosRegistrados: List<String>): String? =
     when {
         documento.isEmpty() -> "Escribe solo números, sin puntos, comas ni espacios."
         tipo == TipoDocumento.CC && documento.length < 6 -> "La cédula debe tener entre 6 y 10 números."
         tipo == TipoDocumento.NIT && documento.length < 9 -> "El NIT debe tener 9 o 10 números."
-        // any: true si algun productor ya tiene este documento.
-        productores.any { it.documento == documento } -> "Este documento ya está registrado. Verifica en tu lista."
+        // contains: true si este documento ya esta en la lista.
+        documento in documentosRegistrados -> "Este documento ya está registrado. Verifica en tu lista."
         else -> null
     }
 
@@ -125,9 +139,9 @@ fun validarTelefono(telefono: String): String? =
     }
 
 // El formulario es valido cuando ninguna validacion devuelve mensaje de error.
-fun productorValido(datos: NuevoProductor, productores: List<Productor>): Boolean =
+fun productorValido(datos: NuevoProductor, documentosRegistrados: List<String>): Boolean =
     validarNombre(datos.nombre, datos.tipo) == null &&
-        validarDocumento(datos.documento, datos.tipo, productores) == null &&
+        validarDocumento(datos.documento, datos.tipo, documentosRegistrados) == null &&
         validarTelefono(datos.telefono) == null
 
 // Convierte lo escrito en el formulario en un Productor.

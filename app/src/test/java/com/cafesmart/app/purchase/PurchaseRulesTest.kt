@@ -52,6 +52,8 @@ class PurchaseRulesTest {
         Productor(nombre = "Andy López", documento = "11140596")
     )
 
+    private val documentos = productores.map { it.documento }
+
     private val cafeCompleto = CafeFormulario(tipoCafe = "Verde", calidad = Calidad.BUENA, peso = "25", precio = "14000")
 
     // ---------- Paso 1 ----------
@@ -118,23 +120,23 @@ class PurchaseRulesTest {
 
     @Test
     fun cedula_de6a10Digitos_RF_COM_04() {
-        assertNull(validarDocumento("1234567890", TipoDocumento.CC, productores))
-        assertNotNull(validarDocumento("12345", TipoDocumento.CC, productores))
+        assertNull(validarDocumento("1234567890", TipoDocumento.CC, documentos))
+        assertNotNull(validarDocumento("12345", TipoDocumento.CC, documentos))
         assertEquals("1234567890", limpiarDocumento("1.234-567 890123"))
     }
 
     @Test
     fun nit_de9a10Digitos_RF_COM_04() {
-        assertNull(validarDocumento("9001234567", TipoDocumento.NIT, productores))
-        assertNull(validarDocumento("900123457", TipoDocumento.NIT, productores))
-        assertNotNull(validarDocumento("90012345", TipoDocumento.NIT, productores))
+        assertNull(validarDocumento("9001234567", TipoDocumento.NIT, documentos))
+        assertNull(validarDocumento("900123457", TipoDocumento.NIT, documentos))
+        assertNotNull(validarDocumento("90012345", TipoDocumento.NIT, documentos))
     }
 
     @Test
     fun documentoRepetido_RF_COM_04() {
         assertEquals(
             "Este documento ya está registrado. Verifica en tu lista.",
-            validarDocumento("123456789", TipoDocumento.CC, productores)
+            validarDocumento("123456789", TipoDocumento.CC, documentos)
         )
     }
 

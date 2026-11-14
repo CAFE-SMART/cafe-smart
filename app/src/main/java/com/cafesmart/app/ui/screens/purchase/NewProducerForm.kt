@@ -56,6 +56,45 @@ fun NewProducerForm(
         verticalArrangement = Arrangement.spacedBy(Spacing.s16)
     ) {
         Text(text = titulo, style = AppTypography.titleModal)
+        CamposPersona(
+            esEmpresa = esEmpresa,
+            documento = documento,
+            nombre = nombre,
+            telefono = telefono,
+            documentoError = documentoError,
+            nombreError = nombreError,
+            telefonoError = telefonoError,
+            onTipoDocumentoChange = onTipoDocumentoChange,
+            onDocumentoChange = onDocumentoChange,
+            onNombreChange = onNombreChange,
+            onTelefonoChange = onTelefonoChange
+        )
+        // Guardar solo se activa cuando todos los campos son validos
+        ContinueButton(text = textoGuardar, enabled = guardarHabilitado, onClick = onGuardar)
+        // Cancelar queda centrado debajo del boton principal
+        TextButton(onClick = onCancelar, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text(text = "Cancelar", style = AppTypography.labelSection)
+        }
+    }
+}
+
+// Los cuatro campos de una persona (tipo de documento, documento, nombre y celular): los usan las hojas
+// "Productor nuevo" y "Modificar productor" y la tarjeta "Cliente nuevo" de Ventas.
+@Composable
+fun CamposPersona(
+    esEmpresa: Boolean,
+    documento: String,
+    nombre: String,
+    telefono: String,
+    documentoError: String?,
+    nombreError: String?,
+    telefonoError: String?,
+    onTipoDocumentoChange: (TipoDocumento) -> Unit,
+    onDocumentoChange: (String) -> Unit,
+    onNombreChange: (String) -> Unit,
+    onTelefonoChange: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.s16)) {
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.s8)) {
             Text(text = "Tipo de documento", style = AppTypography.labelField)
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s12)) {
@@ -107,12 +146,6 @@ fun NewProducerForm(
             keyboardType = KeyboardType.Phone,
             error = telefonoError
         )
-        // Guardar solo se activa cuando todos los campos son validos
-        ContinueButton(text = textoGuardar, enabled = guardarHabilitado, onClick = onGuardar)
-        // Cancelar queda centrado debajo del boton principal
-        TextButton(onClick = onCancelar, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text(text = "Cancelar", style = AppTypography.labelSection)
-        }
     }
 }
 

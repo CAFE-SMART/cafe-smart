@@ -29,12 +29,14 @@ import com.cafesmart.app.ui.theme.SurfaceScreen
 // Total de pasos del registro de compra.
 const val PURCHASE_STEPS = 3
 
-// Parte de arriba de cada paso: ← "Registro de compra", "Paso n de 3", barra de progreso y la pregunta
+// Parte de arriba de cada paso: ← "Registro de compra", "Paso n de 3", barra de progreso y la pregunta.
+// Ventas usa el mismo encabezado con su propio titulo ("Registro de venta").
 @Composable
 fun PurchaseHeader(
     paso: Int,
     pregunta: String,
     onBack: () -> Unit,
+    titulo: String = "Registro de compra",
     // modifier permite que quien usa este componente ajuste su tamano o margen.
     modifier: Modifier = Modifier
 ) {
@@ -51,7 +53,7 @@ fun PurchaseHeader(
         // Box superpone elementos: el titulo queda centrado y la flecha a la izquierda.
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             BackArrow(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart))
-            Text(text = "Registro de compra", style = AppTypography.titleScreen)
+            Text(text = titulo, style = AppTypography.titleScreen)
         }
         // Spacer deja un espacio vacio entre elementos.
         Spacer(modifier = Modifier.height(Spacing.s16))
