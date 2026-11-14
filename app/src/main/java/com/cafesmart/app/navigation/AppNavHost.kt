@@ -72,6 +72,8 @@ import com.cafesmart.app.ui.screens.SplashScreen
 import com.cafesmart.app.ui.screens.purchase.PurchaseFlow
 import com.cafesmart.app.ui.screens.sale.SaleStep1Flow
 import com.cafesmart.app.ui.screens.sale.SaleStep2Flow
+import com.cafesmart.app.ui.screens.sale.SaleStep3Flow
+import com.cafesmart.app.ui.screens.sale.SaleSuccessFlow
 import com.cafesmart.app.data.model.TipoCafe
 import com.cafesmart.app.ui.inventory.InventoryScreen
 import com.cafesmart.app.ui.settings.NegocioInfoScreen
@@ -554,25 +556,32 @@ fun AppNavHost(
                 onVolver = { navController.popBackStack() }
             )
         }
-        composable(Routes.SALE_STEP3) { NavPlaceholder(navController, "Venta · Paso 3 · Confirmar", Routes.SALE_STEP3, true, "Registrar venta" to Routes.SALE_DONE) }
-        composable(Routes.SALE_DONE) {
+        composable(Routes.SALE_STEP3) { entrada ->
+            SaleStep3Flow(
+                viewModel = rememberSaleViewModel(navController, entrada),
+                onCambiarCliente = { navController.popBackStack(Routes.SALE_STEP1, inclusive = false) },
+                onEditarCafe = { navController.popBackStack(Routes.SALE_STEP2, inclusive = false) },
+                // El paso 3 se quita de la pila: "atras" desde la pantalla final no puede volver a confirmar.
+                onConfirmada = {
+                    navController.navigate(Routes.SALE_DONE) { popUpTo(Routes.SALE_STEP3) { inclusive = true } }
+                },
+                // "Sí, cancelar" sale de todo el registro de venta.
+                onCancelada = { navController.popBackStack(Routes.SALE_STEP1, inclusive = true) },
+                onVolver = { navController.popBackStack() }
+            )
+        }
+        composable(Routes.SALE_DONE) { entrada ->
             // "Atrás" del sistema lleva al inicio, no al paso 3 del formulario.
             BackHandler { navController.popBackStack(Routes.HOME, inclusive = false) }
-            PlaceholderScreen(
-                title = "Venta registrada",
-                route = Routes.SALE_DONE,
-                actions = listOf(
-                    PlaceholderAction("Registrar nueva venta") {
-                        navController.navigate(Routes.SALE_STEP1) {
-                            popUpTo(Routes.HOME)
-                        }
-                    },
-                    PlaceholderAction("Ir a inventario") {
-                        navController.navigate(Routes.INVENTORY) {
-                            popUpTo(Routes.HOME)
-                        }
+            SaleSuccessFlow(
+                viewModel = rememberSaleViewModel(navController, entrada),
+                // Vuelve al paso 1 (que sigue en la pila) con la venta ya reiniciada.
+                onRegistrarNueva = { navController.popBackStack(Routes.SALE_STEP1, inclusive = false) },
+                onIrAInventario = {
+                    navController.navigate(Routes.INVENTORY) {
+                        popUpTo(Routes.HOME)
                     }
-                )
+                }
             )
         }
 

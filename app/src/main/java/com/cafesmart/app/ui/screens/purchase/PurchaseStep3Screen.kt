@@ -37,6 +37,7 @@ import com.cafesmart.app.data.purchase.productorSinRegistrar
 import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.CancelarSheet
 import com.cafesmart.app.ui.components.ContinueButton
+import com.cafesmart.app.ui.components.ajustadoAlLargo
 import com.cafesmart.app.ui.components.AvisoCapacidadCard
 import com.cafesmart.app.ui.components.EstiloAviso
 import com.cafesmart.app.ui.theme.AppShapes
@@ -45,6 +46,7 @@ import com.cafesmart.app.ui.theme.BorderDefault
 import com.cafesmart.app.ui.theme.BorderField
 import com.cafesmart.app.ui.theme.BorderSelectedSoft
 import com.cafesmart.app.ui.theme.CafesmartTheme
+import com.cafesmart.app.ui.theme.ErrorText
 import com.cafesmart.app.ui.theme.PrimaryDark
 import com.cafesmart.app.ui.theme.Spacing
 import com.cafesmart.app.ui.theme.SuccessBg
@@ -97,10 +99,11 @@ fun PurchaseStep3Screen(
                 modifier = Modifier.padding(horizontal = Spacing.s20, vertical = Spacing.s16),
                 verticalArrangement = Arrangement.spacedBy(Spacing.s12)
             ) {
-                DatosCompra(
-                    productor = estado.productorTexto,
+                TarjetaPersonaYFecha(
+                    etiquetaPersona = "Productor",
+                    persona = estado.productorTexto,
                     fecha = estado.fechaResumenTexto,
-                    onCambiarProductor = onCambiarProductor,
+                    onCambiarPersona = onCambiarProductor,
                     // "Cambiar" fecha abre el calendario.
                     onCambiarFecha = { mostrarCalendario = true }
                 )
@@ -159,13 +162,18 @@ fun PurchaseStep3Screen(
     }
 }
 
-// Tarjeta con el productor y la fecha, cada uno con su enlace "Cambiar"
+// Tarjeta con la persona (productor o cliente) y la fecha, cada una con su enlace "Cambiar".
+// La usan Compras y Ventas. En Ventas el cliente trae una segunda linea con su documento
+// y la fecha puede traer un mensaje de error.
 @Composable
-private fun DatosCompra(
-    productor: String,
+fun TarjetaPersonaYFecha(
+    etiquetaPersona: String,
+    persona: String,
     fecha: String,
-    onCambiarProductor: () -> Unit,
-    onCambiarFecha: () -> Unit
+    onCambiarPersona: () -> Unit,
+    onCambiarFecha: () -> Unit,
+    detallePersona: String? = null,
+    errorFecha: String? = null
 ) {
     Column(
         modifier = Modifier
@@ -174,23 +182,31 @@ private fun DatosCompra(
             .border(1.dp, BorderDefault, AppShapes.medium)
             .padding(start = Spacing.s16, top = Spacing.s8, end = Spacing.s4, bottom = Spacing.s8)
     ) {
-        FilaDato(etiqueta = "Productor", valor = productor, onCambiar = onCambiarProductor)
+        FilaDato(etiqueta = etiquetaPersona, valor = persona, detalle = detallePersona, onCambiar = onCambiarPersona)
         HorizontalDivider(
             color = BorderDefault,
             modifier = Modifier.padding(end = Spacing.s12, top = Spacing.s4, bottom = Spacing.s4)
         )
-        FilaDato(etiqueta = "Fecha", valor = fecha, onCambiar = onCambiarFecha)
+        FilaDato(etiqueta = "Fecha", valor = fecha, error = errorFecha, onCambiar = onCambiarFecha)
     }
 }
 
 @Composable
-// Una fila con etiqueta, valor y enlace "Cambiar".
-private fun FilaDato(etiqueta: String, valor: String, onCambiar: () -> Unit) {
+// Una fila con etiqueta, valor y enlace "Cambiar"; opcionalmente una linea de detalle y un error debajo.
+private fun FilaDato(
+    etiqueta: String,
+    valor: String,
+    onCambiar: () -> Unit,
+    detalle: String? = null,
+    error: String? = null
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         // weight(1f): ocupa el espacio libre y empuja "Cambiar" a la derecha.
         Column(modifier = Modifier.weight(1f)) {
             Text(text = etiqueta, style = AppTypography.caption)
             Text(text = valor, style = AppTypography.valueStrong)
+            detalle?.let { Text(text = it, style = AppTypography.caption) }
+            error?.let { Text(text = it, style = AppTypography.helper.copy(color = ErrorText)) }
         }
         TextButton(onClick = onCambiar) {
             Text(text = "Cambiar", style = AppTypography.buttonLink)
@@ -198,9 +214,9 @@ private fun FilaDato(etiqueta: String, valor: String, onCambiar: () -> Unit) {
     }
 }
 
-// Un cafe de la compra con su cuenta: kg x precio = total
+// Un cafe de la compra (o de la venta) con su cuenta: kg x precio = total
 @Composable
-private fun TarjetaCafeResumen(cafe: CafeEnResumen, onEditar: () -> Unit) {
+fun TarjetaCafeResumen(cafe: CafeEnResumen, onEditar: () -> Unit) {
     // Color del icono segun el tipo de cafe (solo apariencia)
     val fondoIcono = when (cafe.tipoCafe) {
         "Verde" -> SuccessBg
@@ -273,9 +289,9 @@ private fun TarjetaCafeResumen(cafe: CafeEnResumen, onEditar: () -> Unit) {
     }
 }
 
-// Resumen azul con los totales
+// Resumen azul con los totales. etiquetaTotal es "Total a pagar" en Compras y "Total a recibir" en Ventas.
 @Composable
-private fun ResumenPago(totalKg: String, totalPagar: String) {
+fun ResumenPago(totalKg: String, totalPagar: String, etiquetaTotal: String = "Total a pagar") {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -297,11 +313,11 @@ private fun ResumenPago(totalKg: String, totalPagar: String) {
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "Total a pagar", style = AppTypography.bodyMd)
+            Text(text = etiquetaTotal, style = AppTypography.bodyMd)
             // weight + TextAlign.End: si el valor es muy largo baja de linea en vez de cortarse
             Text(
                 text = totalPagar,
-                style = AppTypography.displayValorXl,
+                style = AppTypography.displayValorXl.ajustadoAlLargo(totalPagar),
                 textAlign = TextAlign.End,
                 modifier = Modifier.weight(1f)
             )

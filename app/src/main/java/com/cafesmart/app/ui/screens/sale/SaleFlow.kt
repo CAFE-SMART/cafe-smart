@@ -73,3 +73,58 @@ fun SaleStep2Flow(
         modifier = modifier
     )
 }
+
+@Composable
+fun SaleStep3Flow(
+    viewModel: SaleViewModel,
+    // "Cambiar" cliente: vuelve al paso 1 sin perder los datos.
+    onCambiarCliente: () -> Unit,
+    // "Editar" cafe: vuelve al paso 2 con lo elegido.
+    onEditarCafe: () -> Unit,
+    onConfirmada: () -> Unit,
+    // "Sí, cancelar": sale del registro de venta.
+    onCancelada: () -> Unit,
+    onVolver: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val estado by viewModel.uiState.collectAsState()
+
+    SaleStep3Screen(
+        estado = estado,
+        onCambiarCliente = onCambiarCliente,
+        onFechaChange = { viewModel.cambiarFecha(it) },
+        onEditarCafe = onEditarCafe,
+        onConfirmar = {
+            viewModel.confirmarVenta()
+            // Solo se pasa a la pantalla final si el ViewModel registro la venta.
+            if (viewModel.uiState.value.ventaRegistrada) onConfirmada()
+        },
+        onCancelarVenta = {
+            viewModel.reiniciarVenta()
+            onCancelada()
+        },
+        onBack = onVolver,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun SaleSuccessFlow(
+    viewModel: SaleViewModel,
+    onRegistrarNueva: () -> Unit,
+    onIrAInventario: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val estado by viewModel.uiState.collectAsState()
+
+    SaleSuccessScreen(
+        estado = estado,
+        onRegistrarNueva = {
+            // Primero limpia la venta y luego navega al paso 1.
+            viewModel.reiniciarVenta()
+            onRegistrarNueva()
+        },
+        onIrAInventario = onIrAInventario,
+        modifier = modifier
+    )
+}
