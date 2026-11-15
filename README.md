@@ -101,6 +101,11 @@ Si agregas una pantalla, añade su constante en `Routes.kt`, su `composable` en 
 ## Configuración de Firebase
 `google-services.json` no está en el repositorio. Las credenciales están en el Google Doc del equipo (pestaña "Móvil — Credenciales y Firebase"); descárgalo de ahí y colócalo en `app/`. Como referencia de su estructura está `app/google-services.json.example` (quítale el `.example` al nombre).
 
+## Datos de ejemplo (solo debug)
+En la versión **debug**, la primera vez que se abre la app instalada limpia se cargan en Room 4 productores, 9 compras, 7 lotes y 10 sublotes de ejemplo (834 kg en bodega, las cifras del Figma), para probar y grabar las demos. En **release** no se carga nada: el código vive en `app/src/debug/.../data/seed/SemillaDeEjemplo.kt` y en `app/src/release/` hay una función del mismo nombre que no hace nada.
+- Solo se carga una vez y solo si la base no tiene productores ni sublotes (no pisa datos reales). Para repetirla: desinstalar la app o *Borrar almacenamiento*.
+- No crea el Negocio: se crea al registrarse; para el "de 3.000 kg" del Figma, configura la capacidad en Ajustes.
+
 ## Pruebas
 El proyecto usa **JUnit 4** para las pruebas unitarias. Están en `app/src/test/java/com/cafesmart/app/` y no necesitan emulador ni celular.
 
