@@ -45,6 +45,7 @@ import com.cafesmart.app.ui.theme.BorderDefault
 import com.cafesmart.app.ui.theme.BorderField
 import com.cafesmart.app.ui.theme.BorderSelectedSoft
 import com.cafesmart.app.ui.theme.CafesmartTheme
+import com.cafesmart.app.ui.theme.ErrorText
 import com.cafesmart.app.ui.theme.PrimaryDark
 import com.cafesmart.app.ui.theme.Spacing
 import com.cafesmart.app.ui.theme.SuccessBg
@@ -129,8 +130,22 @@ fun PurchaseStep3Screen(
         }
 
         PurchaseBottomBar {
-            // Boton principal del equipo.
-            ContinueButton(text = "Confirmar compra", onClick = onConfirmar)
+            // Si no se pudo guardar la compra, se avisa aqui y el boton queda activo para intentarlo de nuevo.
+            estado.errorAlGuardar?.let {
+                Text(
+                    text = it,
+                    style = AppTypography.caption.copy(color = ErrorText),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            // Boton principal del equipo. Mientras se guarda queda bloqueado (con la ruedita) para no guardar dos veces.
+            ContinueButton(
+                text = "Confirmar compra",
+                onClick = onConfirmar,
+                enabled = !estado.guardando,
+                cargando = estado.guardando
+            )
             TextButton(
                 // "Cancelar" no borra nada todavia: primero pregunta con la hoja.
                 onClick = { mostrarCancelar = true },

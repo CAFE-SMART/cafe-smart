@@ -17,4 +17,11 @@ interface LoteDao {
     /** La fila con ese id, o null si no existe. */
     @Query("SELECT * FROM lote WHERE id = :id LIMIT 1")
     suspend fun buscarPorId(id: Long): LoteEntity?
+
+    /**
+     * El lote de ese tipo y calidad (nombres de los enums TipoCafe y Calidad), o null si no existe.
+     * Al registrar una compra se busca antes de insertar: el índice único (tipo_cafe, calidad) impide duplicarlo.
+     */
+    @Query("SELECT * FROM lote WHERE tipo_cafe = :tipoCafe AND calidad = :calidad LIMIT 1")
+    suspend fun buscarPorTipoYCalidad(tipoCafe: String, calidad: String): LoteEntity?
 }

@@ -135,6 +135,9 @@ En cada pull request el workflow `CI` corre las pruebas y guarda el reporte:
 | `purchase/PurchaseViewModelTest.kt` | Estado y pasos del flujo de compra | 24 |
 | `purchase/AvisoCapacidadTest.kt` | Avisos de capacidad en Compras (90 %, más de 100 % y compra registrada) | 10 |
 | `purchase/LimitesDeCamposTest.kt` | Nombre del productor (persona o empresa) y topes de escritura | 5 |
+| `purchase/PurchaseViewModelGuardadoTest.kt` | Compras en Room con repositorio falso: guardar la compra, avisos de bodega sin contar dos veces, productores | 13 |
+| `data/purchase/PurchaseRepositoryTest.kt` | Repositorio de compras con DAOs falsos: sublotes generados, lotes, total pagado, todo o nada y productores | 12 |
+| `data/inventario/OrigenOcupacionRoomTest.kt` | Kilos en bodega desde los sublotes (los agotados no suman) | 4 |
 | `sale/SaleRulesTest.kt` | Reglas de la venta (cantidad disponible, precio por kg y total) | 13 |
 | `sale/SaleViewModelTest.kt` | Estado del registro de venta (sublotes, cantidad escrita con su error, reiniciar) | 15 |
 | `sale/ClientesEjemploTest.kt` | Los clientes de ejemplo cumplen las reglas de documento | 4 |
@@ -167,9 +170,10 @@ En cada pull request el workflow `CI` corre las pruebas y guarda el reporte:
 | `viewmodel/settings/CapacidadBodegaTest.kt` | Capacidad de bodega y peso por bulto (reglas, guardado y lectura en Inventario) | 13 |
 | `ExampleUnitTest.kt` | Prueba de ejemplo de Android Studio | 1 |
 
-Total: 498 pruebas unitarias (37 archivos). El CI del proyecto corre `./gradlew testDebugUnitTest assembleDebug`.
+Total: 527 pruebas unitarias (40 archivos). El CI del proyecto corre `./gradlew testDebugUnitTest assembleDebug`.
 
-Las pruebas instrumentadas (`androidTest`: Room real en `data/local/AppDatabaseTest`, pantallas de Gastos y selector de fecha) compilan pero no corren en el CI: necesitan emulador. Para correr la de Room: `./gradlew connectedDebugAndroidTest --tests "*AppDatabaseTest"`. Ojo: ese comando desinstala la app del emulador al terminar (borra la sesión y el negocio guardado).
+Las pruebas instrumentadas (`androidTest`: Room real en `data/local/AppDatabaseTest` y `data/local/ComprasRoomTest`, pantallas de Gastos y selector de fecha) compilan pero no corren en el CI: necesitan emulador. Para correr una clase: clic derecho sobre ella en Android Studio → Run, o `./gradlew connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.cafesmart.app.data.local.ComprasRoomTest"` (cambia la clase por la que se desea probar; `--tests` no funciona con esta tarea).
+Ojo: ese comando desinstala la app del emulador al terminar (borra la sesión y el negocio guardado).
 
 ## Flujo de trabajo en Git (trunk-based)
 - Un solo tronco: `main`, siempre compilable.

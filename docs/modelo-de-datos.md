@@ -115,8 +115,17 @@ Los archivos del paquete `data/model` compilan con la versión de Kotlin del pro
 
 - Firebase Auth solo guarda correo, contraseña y nombre; nombres y apellidos **no** se copian a Room y la contraseña nunca.
 - Se crea al terminar el registro (`AuthEvent.Registered`). Si una cuenta no lo tiene (o se reinstaló la app), se crea desde Ajustes → Información de empresa, que conserva capacidad, bulto y fecha de creación al editar.
-- `AppDatabase` (archivo `cafesmart.db`, versión 2, sin esquema exportado) es la base única. La versión 2 agrega `ProductorEntity`, `CompraEntity`, `LoteEntity` y `SubloteEntity` (en `data/local/`, cada una con su DAO: `insertar`, `listar`, `buscarPorId`).
+- `AppDatabase` (archivo `cafesmart.db`, versión 2, sin esquema exportado) es la base única. La versión 2 agrega `ProductorEntity`, `CompraEntity`, `LoteEntity` y `SubloteEntity` (en `data/local/`, cada una con su DAO: `insertar`, `listar`, `buscarPorId`). Además: `LoteDao.buscarPorTipoYCalidad`, `ProductorDao.buscarPorDocumento` y `ProductorDao.actualizar`.
 - Las entidades de Room son clases aparte de las data classes de `data/model` (que siguen validando las reglas). Enums como texto (nombre del enum), fechas en milisegundos UTC (`fechaAMilis`), dinero en `Long`.
 - Llaves foráneas con `RESTRICT`: `compra.productor_id`, `sublote.lote_id` y `sublote.compra_id`. `sublote.secado_id` queda sin llave foránea hasta que exista la tabla de Secado.
 - Índices únicos: `productor.documento` y `lote(tipo_cafe, calidad)`.
 - Si cambias el esquema mientras la app no esté publicada, desinstálala del emulador (borra también el Negocio: se vuelve a llenar en Ajustes → Información de empresa).
+
+## 7. Compras en Room
+
+**Código:** `data/purchase/PurchaseRepository.kt` (interfaz + `RoomPurchaseRepository`), `data/local/Transaccion.kt` y `data/inventario/OrigenOcupacionRoom.kt`.
+
+- **Confirmar la compra** (`PurchaseViewModel.confirmarCompra` → `PurchaseRepository.registrarCompra`) guarda en **una sola transacción** la `Compra` (`totalPagado` = suma de peso × precio, en pesos), el `Lote` de cada café (se busca por tipo y calidad y se crea si no existe) y un `Sublote` por cada café (`pesoInicialKg = pesoDisponibleKg`, `costoKg` = precio por kg, `fechaIngreso` = fecha de la compra). Si algo falla no queda nada guardado.
+- **Productores:** se leen y se guardan en Room (`listarProductores`, `guardarProductor`, `actualizarProductor`). Antes de guardar se busca el documento (`buscarPorDocumento`); si ya existe el resultado es `DocumentoRepetido` y la pantalla muestra "Este documento ya está registrado" en vez de una falla de la base. "Sin registrar" se guarda con `productorId = null`.
+- **Kilos en bodega:** `OrigenOcupacionRoom.kgOcupados()` = suma del peso disponible de los sublotes con existencia (los agotados no cuentan). Reemplaza a `OcupacionDeEjemplo` en `AppNavHost` (Compras y Capacidad de bodega). El aviso de "Compra registrada" se calcula **antes** de guardar, con la ocupación de ese momento, para no contar la compra dos veces.
+- Versión de la base: sigue en 2 (`Productor`, `Compra`, `Lote` y `Sublote` ya estaban). Quien tenga instalada una versión anterior debe desinstalar la app y volver a llenar Información de empresa; no se escribe migración mientras la app no esté publicada.
