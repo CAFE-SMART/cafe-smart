@@ -77,7 +77,8 @@ fun ProducerListSheet(
                 textoGuardar = "Guardar cambios",
                 guardarHabilitado = estado.guardarEdicionHabilitado,
                 onGuardar = onGuardarEdicion,
-                onCancelar = onCancelarEdicion
+                onCancelar = onCancelarEdicion,
+                errorGeneral = estado.errorProductor
             )
         } else {
             ListaProductores(

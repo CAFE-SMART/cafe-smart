@@ -13,7 +13,13 @@ import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
 
 /** Kilos en bodega que se pueden cambiar desde la prueba. */
 class OcupacionFalsa(var kg: Double = 0.0) : OrigenOcupacion {
-    override suspend fun kgOcupados(): Double = kg
+    // true = leer los kilos falla (por ejemplo, la base no responde).
+    var fallar = false
+
+    override suspend fun kgOcupados(): Double {
+        if (fallar) throw IllegalStateException("fallo simulado al leer los kilos")
+        return kg
+    }
 }
 
 /** Repositorio en memoria: guarda productores con id y anota las compras que se registran. */
@@ -27,12 +33,20 @@ class RepositorioDeComprasFalso(productores: List<Productor> = emptyList()) : Pu
     // true = registrarCompra falla (por ejemplo, la base de datos no responde).
     var fallarAlRegistrar = false
 
+    // true = leer, guardar o modificar productores falla.
+    var fallarAlListar = false
+    var fallarAlGuardarProductor = false
+
     // Si se da, cada compra guardada suma sus kilos a la bodega, como pasaria con los sublotes en Room.
     var bodega: OcupacionFalsa? = null
 
-    override suspend fun listarProductores(): List<Productor> = productores.toList()
+    override suspend fun listarProductores(): List<Productor> {
+        if (fallarAlListar) throw IllegalStateException("fallo simulado al listar")
+        return productores.toList()
+    }
 
     override suspend fun guardarProductor(productor: Productor): ResultadoProductor {
+        if (fallarAlGuardarProductor) throw IllegalStateException("fallo simulado al guardar el productor")
         if (productores.any { it.documento == productor.documento }) return ResultadoProductor.DocumentoRepetido
         val guardado = productor.copy(id = (productores.maxOfOrNull { it.id } ?: 0L) + 1)
         productores += guardado
@@ -40,6 +54,7 @@ class RepositorioDeComprasFalso(productores: List<Productor> = emptyList()) : Pu
     }
 
     override suspend fun actualizarProductor(productor: Productor): ResultadoProductor {
+        if (fallarAlGuardarProductor) throw IllegalStateException("fallo simulado al modificar el productor")
         if (productores.any { it.documento == productor.documento && it.id != productor.id }) {
             return ResultadoProductor.DocumentoRepetido
         }

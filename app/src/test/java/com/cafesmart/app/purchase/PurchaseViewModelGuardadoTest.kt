@@ -4,7 +4,10 @@ import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.purchase.CafeValidado
 import com.cafesmart.app.data.purchase.ModoProductor
+import com.cafesmart.app.data.purchase.productoresDeEjemplo
+import com.cafesmart.app.viewmodel.purchase.MENSAJE_ERROR_CARGAR_PRODUCTORES
 import com.cafesmart.app.viewmodel.purchase.MENSAJE_ERROR_GUARDAR_COMPRA
+import com.cafesmart.app.viewmodel.purchase.MENSAJE_ERROR_GUARDAR_PRODUCTOR
 import com.cafesmart.app.viewmodel.purchase.NivelAvisoCapacidad
 import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
 import kotlinx.coroutines.Dispatchers
@@ -105,6 +108,64 @@ class PurchaseViewModelGuardadoTest {
         assertTrue(vm.uiState.value.compraRegistrada)
         assertNull(vm.uiState.value.errorAlGuardar)
         assertEquals(1, repositorio.compras.size)
+    }
+
+    @Test fun siFallaLeerLosKilosDespuesDeGuardarLaCompraSigueRegistrada() {
+        val vm = viewModel().conCafe("25")
+        vm.elegirModo(ModoProductor.SIN_REGISTRAR); vm.continuarPaso1()
+        ocupacion.fallar = true
+        vm.confirmarCompra()
+
+        // La compra ya estaba guardada: no se muestra como error (un reintento la duplicaria).
+        assertTrue(vm.uiState.value.compraRegistrada)
+        assertNull(vm.uiState.value.errorAlGuardar)
+        assertFalse(vm.uiState.value.guardando)
+        assertEquals(1, repositorio.compras.size)
+        // Sin lectura se suman los kilos de la compra a los que ya habia (0 + 25).
+        assertEquals(25.0, vm.uiState.value.kgOcupados, 0.0)
+    }
+
+    // ── Productores: los errores se avisan ─────────────────
+
+    @Test fun siFallaGuardarUnProductorSeAvisaYSePuedeReintentar() {
+        val vm = viewModel()
+        vm.cambiarDocumento("1114059684"); vm.cambiarNombre("Ana Gómez")
+        repositorio.fallarAlGuardarProductor = true
+        vm.guardarNuevoProductor()
+
+        assertEquals(MENSAJE_ERROR_GUARDAR_PRODUCTOR, vm.uiState.value.errorProductor)
+        assertTrue(repositorio.productores.isEmpty())
+        assertNull(vm.uiState.value.productorElegido)
+
+        repositorio.fallarAlGuardarProductor = false
+        vm.guardarNuevoProductor()
+        assertNull(vm.uiState.value.errorProductor)
+        assertEquals(1, repositorio.productores.size)
+    }
+
+    @Test fun siFallaModificarUnProductorSeAvisaYLaHojaSigueAbierta() {
+        val repo = RepositorioDeComprasFalso(productoresDeEjemplo)
+        val vm = viewModelDePrueba(repo)
+        val pepito = vm.uiState.value.productores.last()
+        vm.editarProductor(pepito)
+        vm.cambiarNombreEdicion("Pepito Gómez")
+        repo.fallarAlGuardarProductor = true
+        vm.guardarEdicion()
+
+        assertEquals(MENSAJE_ERROR_GUARDAR_PRODUCTOR, vm.uiState.value.errorProductor)
+        assertEquals(pepito, vm.uiState.value.productorEnEdicion)
+        assertEquals(pepito.nombre, repo.productores.last().nombre)
+    }
+
+    @Test fun siFallaLeerLosProductoresSeAvisa() {
+        repositorio.fallarAlListar = true
+        val vm = viewModel()
+        vm.cargarProductores()
+        assertEquals(MENSAJE_ERROR_CARGAR_PRODUCTORES, vm.uiState.value.errorProductor)
+
+        repositorio.fallarAlListar = false
+        vm.cargarProductores()
+        assertNull(vm.uiState.value.errorProductor)
     }
 
     // ── Bodega: la compra no se cuenta dos veces ───────────

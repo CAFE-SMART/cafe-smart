@@ -157,6 +157,9 @@ fun mensajePendientePaso1(modo: ModoProductor?, elegido: Productor?): String? =
 
 // Cuando Room no logra guardar la compra (texto propuesto; falta confirmarlo con el equipo)
 const val MENSAJE_ERROR_GUARDAR_COMPRA = "No pudimos registrar la compra. Inténtalo de nuevo."
+// Cuando Room no logra guardar, modificar o leer productores (textos propuestos; falta confirmarlos con el equipo)
+const val MENSAJE_ERROR_GUARDAR_PRODUCTOR = "No pudimos guardar el productor. Inténtalo de nuevo."
+const val MENSAJE_ERROR_CARGAR_PRODUCTORES = "No pudimos cargar tus productores. Inténtalo de nuevo."
 
 // RF-COM-02: cuando la busqueda no encuentra a nadie
 const val SIN_RESULTADOS = "Lo siento, no pudimos encontrarlo. Prueba con otro nombre o cédula."

@@ -90,7 +90,9 @@ data class PurchaseUiState(
     // true mientras se guarda la compra en Room (el boton Confirmar se bloquea para no guardarla dos veces)
     val guardando: Boolean = false,
     // Mensaje cuando no se pudo guardar la compra; null si no hay error
-    val errorAlGuardar: String? = null
+    val errorAlGuardar: String? = null,
+    // Mensaje cuando no se pudo leer, guardar o modificar un productor; null si no hay error
+    val errorProductor: String? = null
 ) {
     // ---------- Avisos de capacidad (informativos, nunca bloquean) ----------
 
@@ -295,7 +297,8 @@ class PurchaseViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // Sin lectura se queda la lista que ya habia; el registro de compra sigue funcionando.
+                // Se queda la lista que ya habia; el registro de compra sigue funcionando.
+                _uiState.update { it.copy(errorProductor = MENSAJE_ERROR_CARGAR_PRODUCTORES) }
             }
         }
     }
@@ -303,7 +306,7 @@ class PurchaseViewModel(
     // Vuelve a leer la lista desde Room (por ejemplo, si el documento ya existia y la copia estaba desactualizada).
     private suspend fun recargarProductores() {
         val guardados = repositorio.listarProductores()
-        _uiState.update { it.copy(productores = guardados) }
+        _uiState.update { it.copy(productores = guardados, errorProductor = null) }
     }
 
     // ---------------- Paso 1 ----------------
@@ -351,6 +354,7 @@ class PurchaseViewModel(
         val estado = _uiState.value
         if (!estado.guardarNuevoHabilitado) return
         val nuevo = crearProductor(estado.nuevoProductor)
+        _uiState.update { it.copy(errorProductor = null) }
         viewModelScope.launch {
             try {
                 when (val resultado = repositorio.guardarProductor(nuevo)) {
@@ -370,14 +374,15 @@ class PurchaseViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // No se pudo guardar: el formulario queda como estaba para intentarlo de nuevo.
+                // No se pudo guardar: lo escrito se conserva y se avisa para intentarlo de nuevo.
+                _uiState.update { it.copy(errorProductor = MENSAJE_ERROR_GUARDAR_PRODUCTOR) }
             }
         }
     }
 
     // "Cancelar": borra lo escrito; la opcion que estaba elegida no cambia
     fun cancelarNuevoProductor() {
-        _uiState.value = _uiState.value.copy(nuevoProductor = NuevoProductor())
+        _uiState.value = _uiState.value.copy(nuevoProductor = NuevoProductor(), errorProductor = null)
     }
 
     // ---------------- Hoja "Productores" ----------------
@@ -435,6 +440,7 @@ class PurchaseViewModel(
         if (original == null || !estado.guardarEdicionHabilitado) return
         // El formulario no trae el id: se conserva el del original para modificar la misma fila.
         val editado = crearProductor(estado.datosEdicion).copy(id = original.id)
+        _uiState.update { it.copy(errorProductor = null) }
         viewModelScope.launch {
             try {
                 when (repositorio.actualizarProductor(editado)) {
@@ -451,14 +457,15 @@ class PurchaseViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // No se pudo guardar: la hoja sigue abierta con lo escrito.
+                // No se pudo guardar: la hoja sigue abierta con lo escrito y se avisa.
+                _uiState.update { it.copy(errorProductor = MENSAJE_ERROR_GUARDAR_PRODUCTOR) }
             }
         }
     }
 
     // "Cancelar" en la edicion: vuelve a la lista sin guardar
     fun cancelarEdicion() {
-        _uiState.value = _uiState.value.copy(productorEnEdicion = null)
+        _uiState.value = _uiState.value.copy(productorEnEdicion = null, errorProductor = null)
     }
 
     fun continuarPaso1() {
@@ -564,15 +571,29 @@ class PurchaseViewModel(
         viewModelScope.launch {
             try {
                 repositorio.registrarCompra(productorId, estado.fecha, estado.sublotes)
-                // Con la compra ya guardada, la ocupacion de hoy la incluye: queda lista para la siguiente compra.
-                val kgHoy = ocupacion.kgOcupados()
-                _uiState.update {
-                    it.copy(compraRegistrada = true, avisoAlRegistrar = aviso, guardando = false, kgOcupados = kgHoy)
-                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _uiState.update { it.copy(guardando = false, errorAlGuardar = MENSAJE_ERROR_GUARDAR_COMPRA) }
+                return@launch
+            }
+            // La compra YA quedo guardada: si leer los kilos falla, no se muestra como error (un reintento la duplicaria).
+            // Con la compra guardada, la ocupacion de hoy la incluye: queda lista para la siguiente compra.
+            val kgHoy = try {
+                ocupacion.kgOcupados()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+            _uiState.update {
+                it.copy(
+                    compraRegistrada = true,
+                    avisoAlRegistrar = aviso,
+                    guardando = false,
+                    // Sin lectura: se suman los kilos de esta compra a los que ya se tenian.
+                    kgOcupados = kgHoy ?: (it.kgOcupados + totalKg(estado.cafes))
+                )
             }
         }
     }
