@@ -19,8 +19,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 // Identificadores de los recursos locales de la aplicación.
@@ -72,25 +75,40 @@ fun RegistrarGastoScreen(estado: GastosUiState, onEditar: ((GastoFormulario) -> 
             // Los callbacks reciben texto sin limpiarlo silenciosamente: el usuario puede ver el error original.
             AppTextField("Concepto del gasto", form.concepto, { texto -> onEditar { it.copy(concepto = texto) } },
                 placeholder = "Ej: Pago de jornaleros - Cosecha oct", error = estado.errores.concepto, enabled = habilitado, compact = true)
-            AppTextField("Descripción breve", form.descripcion, { texto -> onEditar { it.copy(descripcion = texto) } },
-                placeholder = "Detalles adicionales…", singleLine = false, minLines = 3, enabled = habilitado)
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s12)) {
+            GastoDescripcion(form.descripcion, estado.errores.descripcion, habilitado) { texto ->
+                onEditar { it.copy(descripcion = GastosValidation.limitarDescripcion(texto)) }
+            }
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
                 // KeyboardType.Number solicita teclado numérico, pero no reemplaza la validación: se puede pegar texto inválido.
-                AppTextField("Monto ($)", form.monto, { texto -> onEditar { it.copy(monto = texto) } },
-                    modifier = Modifier.weight(1f), placeholder = "0", keyboardType = KeyboardType.Number, leadingText = "$", enabled = habilitado, compact = true)
+                val monto: @Composable (Modifier) -> Unit = { campoModifier ->
+                    AppTextField("Monto ($)", form.monto, { texto -> onEditar { it.copy(monto = texto) } },
+                        modifier = campoModifier.testTag("gastos_monto"), placeholder = "0", keyboardType = KeyboardType.Number,
+                        leadingText = "$", enabled = habilitado, error = estado.errores.monto)
+                }
                 // El calendario común recibe Fecha y el formateador de Gastos. Su callback solo actualiza
                 // la fecha aceptada; cancelar conserva el valor. El icono original se inserta mediante trailingIcon.
-                AppDatePickerField(
+                val fecha: @Composable (Modifier) -> Unit = { campoModifier -> AppDatePickerField(
                     label = "Fecha", fecha = form.fecha,
                     onFechaChange = { fecha -> onEditar { it.copy(fecha = fecha) } },
                     formato = ::fechaGasto, enabled = habilitado, error = estado.errores.fecha,
-                    modifier = Modifier.weight(1f),
+                    modifier = campoModifier,
                     trailingIcon = {
                         Icon(painterResource(R.drawable.gasto_calendar), null, tint = TextMuted, modifier = Modifier.size(20.dp))
                     }
-                )
+                ) }
+                // El símbolo y 19 dígitos necesitan ancho: en móviles no se divide Monto con Fecha.
+                if (maxWidth < 480.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.s12)) {
+                        monto(Modifier.fillMaxWidth())
+                        fecha(Modifier.fillMaxWidth())
+                    }
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s12)) {
+                        monto(Modifier.weight(1f))
+                        fecha(Modifier.weight(1f))
+                    }
+                }
             }
-            if (estado.errores.monto != null) Text(estado.errores.monto, color = ErrorText, style = AppTypography.helper)
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.s8)) {
                 Text("Tipo de gasto", style = AppTypography.labelField)
                 // chunked(3) organiza las seis categorías oficiales en dos filas. El tipo elegido
@@ -122,6 +140,35 @@ fun RegistrarGastoScreen(estado: GastosUiState, onEditar: ((GastoFormulario) -> 
     }
 }
 
+/** El máximo ya existe en ExpenseRules. El campo acota su alto y conserva scroll interno. */
+@Composable
+private fun GastoDescripcion(valor: String, error: String?, habilitado: Boolean, onChange: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.s8)) {
+        Text("Descripción breve", style = AppTypography.labelField)
+        OutlinedTextField(
+            value = valor, onValueChange = onChange, enabled = habilitado,
+            modifier = Modifier.fillMaxWidth().testTag("gastos_descripcion"),
+            textStyle = AppTypography.bodyLg, minLines = 3, maxLines = 4,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+            placeholder = { Text("Detalles adicionales…", color = TextMuted) },
+            isError = error != null, shape = AppShapes.medium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary,
+                focusedContainerColor = SurfaceCard, unfocusedContainerColor = SurfaceCard,
+                focusedBorderColor = Primary, unfocusedBorderColor = BorderField,
+                errorBorderColor = ErrorText, errorContainerColor = SurfaceCard
+            )
+        )
+        Text("${valor.length}/${GastosValidation.DESCRIPCION_MAX_CARACTERES} caracteres",
+            style = AppTypography.helper, color = if (error != null) ErrorText else TextSecondary,
+            modifier = Modifier.align(Alignment.End).testTag("gastos_descripcion_contador"))
+        Text(error ?: if (valor.length >= GastosValidation.DESCRIPCION_MAX_CARACTERES)
+            "Límite alcanzado. Puedes editar o borrar el texto."
+        else "Opcional. Máximo ${GastosValidation.DESCRIPCION_MAX_CARACTERES} caracteres.",
+            color = if (error != null) ErrorText else TextMuted, style = AppTypography.helper)
+    }
+}
+
 // ============================================================
 // 3. APLICACIÓN GENERAL O ASOCIACIÓN A SUBLOTES
 // ============================================================
@@ -149,10 +196,18 @@ private fun GastoAsociacionSelector(estado: GastosUiState, onEditar: ((GastoForm
                 { onEditar { it.copy(aplicaA = AplicaGasto.SUBLOTES) } }, Modifier.weight(1f), habilitado, 86)
         }
         if (form.aplicaA == AplicaGasto.SUBLOTES) {
-            Text("Seleccionar sublotes", style = AppTypography.labelField)
             OutlinedButton(onSeleccionarSublotes, enabled = habilitado, shape = AppShapes.medium,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text(if (form.asignaciones.isEmpty()) "Seleccionar…" else "${form.asignaciones.size} sublote(s) seleccionado(s)")
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (form.asignaciones.isEmpty()) SurfaceCard else SurfaceSelected,
+                    contentColor = PrimaryDark, disabledContainerColor = ButtonDisabled,
+                    disabledContentColor = TextSecondary),
+                contentPadding = PaddingValues(horizontal = Spacing.s16, vertical = Spacing.s12),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("gastos_seleccionar_sublotes")) {
+                // labelLarge del tema tiene color blanco; definir color explícito también en Text.
+                Text(etiquetaSeleccionSublotes(form.asignaciones.size),
+                    color = if (habilitado) PrimaryDark else TextSecondary,
+                    style = AppTypography.valueStrong, textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth())
             }
             Text(if (estado.sublotes.isEmpty()) "El inventario todavía no proporciona sublotes. Puedes registrar un gasto general."
                 else "Indica cuánto corresponde a cada sublote. La suma debe coincidir con el total.", style = AppTypography.helper)

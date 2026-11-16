@@ -9,6 +9,30 @@ import java.math.BigInteger
 
 /** Reglas del modelo oficial: importes exactos, fechas, asignaciones e idempotencia demo. */
 class GastosValidationTest {
+    @Test fun descripcionOpcionalAceptaElMaximoExistenteYRechazaExcesoAlConvertir() {
+        assertEquals(200, GastosValidation.DESCRIPCION_MAX_CARACTERES)
+        for (texto in listOf("", "d".repeat(200))) {
+            assertNull(GastosValidation.validar(valido.copy(descripcion = texto), emptyList()).descripcion)
+        }
+        val largo = valido.copy(descripcion = "d".repeat(201))
+        val errores = GastosValidation.validar(largo, emptyList())
+        assertNotNull(errores.descripcion)
+        assertTrue(errores.hayErrores)
+        assertThrows(IllegalArgumentException::class.java) { GastosValidation.convertir(largo, 1, emptyList()) }
+    }
+
+    @Test fun limitaPegadoYSaltosDeLineaSinPartirUnEmoji() {
+        assertEquals("d".repeat(200), GastosValidation.limitarDescripcion("d".repeat(500)))
+        assertEquals(200, GastosValidation.limitarDescripcion("\n".repeat(300)).length)
+        val texto = "a".repeat(199) + "\uD83D\uDE00" + "fin"
+        assertEquals("a".repeat(199), GastosValidation.limitarDescripcion(texto))
+    }
+
+    @Test fun etiquetasDeSeleccionRespetanSingularYPlural() {
+        assertEquals("Seleccionar sublotes", etiquetaSeleccionSublotes(0))
+        assertEquals("1 sublote seleccionado", etiquetaSeleccionSublotes(1))
+        assertEquals("2 sublotes seleccionados", etiquetaSeleccionSublotes(2))
+    }
     private val fecha = Fecha(5, 11, 2026)
     private val valido = GastoFormulario(concepto = "Transporte", monto = "12500", fecha = fecha)
     private val sublote = Sublote(7, 1, pesoInicialKg = 10.0, pesoDisponibleKg = 10.0, costoKg = 1000, fechaIngreso = fecha)

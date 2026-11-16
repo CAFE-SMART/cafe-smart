@@ -37,6 +37,8 @@ class GastosFlowTest {
     /** Usa pantallas y hojas reales con repositorio inyectable para ejercitar el fallo. */
     private fun montar(lista: Boolean = false, sublotes: List<Sublote> = emptyList(), falla: Boolean = false) {
         modelo = if (falla) GastosViewModel(object : GastosRepository {
+            override fun observarGastosSublote(subloteId: Long) =
+                kotlinx.coroutines.flow.flowOf(emptyList<com.cafesmart.app.data.gastos.GastoDelSublote>())
             override val gastos = MutableStateFlow<List<Gasto>>(emptyList())
             override suspend fun guardar(gasto: Gasto, reparto: List<GastoSublote>) { error("Fallo controlado de prueba") }
         }, sublotes) else GastosViewModel(sublotes = sublotes)
@@ -147,7 +149,7 @@ class GastosFlowTest {
     }
     @Test fun G08_subloteDisponibleYReparto() {
         montar(sublotes = listOf(Sublote(7, 1, pesoInicialKg = 10.0, pesoDisponibleKg = 10.0, costoKg = 1000, fechaIngreso = Fecha(5,11,2026))))
-        llenar(); texto("Asociar a sublotes").performScrollTo().performClick(); texto("Seleccionar…").performScrollTo().performClick(); texto("Sublote 7").performClick()
+        llenar(); texto("Asociar a sublotes").performScrollTo().performClick(); texto("Seleccionar sublotes").performScrollTo().performClick(); texto("Sublote 7").performClick()
         texto("Guardar selección").performClick()
         campo(3).performScrollTo().performTextInput("12500"); guardar(); texto("¿Registrar este gasto?").assertIsDisplayed(); confirmar(); texto("Gasto registrado con éxito").assertIsDisplayed()
     }

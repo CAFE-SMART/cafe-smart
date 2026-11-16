@@ -5,6 +5,7 @@ package com.cafesmart.app.viewmodel.gastos
 // ============================================================
 // Modelos oficiales que transportan los datos del módulo.
 import com.cafesmart.app.data.model.*
+import com.cafesmart.app.viewmodel.finance.LARGO_DESCRIPCION_GASTO_MAXIMO
 // Aritmética entera de gran tamaño para sumas sin desbordamiento de Long.
 import java.math.BigInteger
 // Formato numérico, fechas, idioma y zona horaria compatibles con este proyecto.
@@ -20,6 +21,15 @@ import java.util.GregorianCalendar
  * Separarlas permite probarlas con JUnit sin abrir Android ni mezclar reglas con colores o layouts.
  */
 object GastosValidation {
+    // Reutiliza la regla existente de ExpenseRules; no adopta sus otros límites.
+    const val DESCRIPCION_MAX_CARACTERES = LARGO_DESCRIPCION_GASTO_MAXIMO
+
+    /** Limita escritura/pegado sin dejar medio par sustituto UTF-16 al final. */
+    fun limitarDescripcion(texto: String): String {
+        if (texto.length <= DESCRIPCION_MAX_CARACTERES) return texto
+        val recorte = texto.take(DESCRIPCION_MAX_CARACTERES)
+        return if (recorte.last().isHighSurrogate()) recorte.dropLast(1) else recorte
+    }
     // ============================================================
     // 3. MONTO EN PESOS ENTEROS
     // ============================================================
@@ -93,7 +103,9 @@ object GastosValidation {
             concepto = if (form.concepto.isBlank()) "Escribe el concepto del gasto." else null,
             monto = if (monto == null) "Ingresa un monto válido en pesos enteros mayores que cero, sin puntos ni comas." else null,
             fecha = if (!fechaValida(form.fecha)) "Selecciona una fecha válida." else null,
-            sublotes = repartoError
+            sublotes = repartoError,
+            descripcion = if (form.descripcion.length > DESCRIPCION_MAX_CARACTERES)
+                "La descripción puede tener máximo $DESCRIPCION_MAX_CARACTERES caracteres." else null
         )
     }
 

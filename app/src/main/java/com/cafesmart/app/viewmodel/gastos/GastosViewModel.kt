@@ -20,6 +20,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.catch
 // Corrutinas, cambios de hilo y manejo de cancelación.
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -50,6 +55,21 @@ class GastosViewModel(
         GastosUiState(gastos = repository.gastos.value, sublotes = sublotes)
     )
     val uiState: StateFlow<GastosUiState> = mutableState
+
+    /** batchId de navegación representa Sublote.id; nunca Lote.id ni Gasto.id. */
+    fun observarGastosSublote(batchId: String?): Flow<GastosSubloteUiState> {
+        val id = batchId?.toLongOrNull()?.takeIf { it > 0 }
+            ?: return flowOf(GastosSubloteUiState(error = "El identificador del sublote no es válido."))
+        val sublote = uiState.value.sublotes.find { it.id == id }
+            ?: return flowOf(GastosSubloteUiState(error = "No se encontró este sublote en la fuente de inventario disponible."))
+        return repository.observarGastosSublote(id)
+            .map { GastosSubloteUiState(sublote = sublote, gastos = it) }
+            .onStart { emit(GastosSubloteUiState(sublote = sublote, cargando = true)) }
+            .catch { error ->
+                if (error is CancellationException) throw error
+                emit(GastosSubloteUiState(sublote = sublote, error = "No se pudieron consultar los gastos. Inténtalo nuevamente.", recuperable = true))
+            }
+    }
     // El contador y el ID del borrador viven en esta instancia; no se guardan en disco.
     private var siguienteId = (repository.gastos.value.maxOfOrNull { it.id } ?: 0L) + 1L
     private var idBorrador = siguienteId
@@ -66,7 +86,7 @@ class GastosViewModel(
     // 3. EVENTOS DE LOS CAMPOS
     // ============================================================
     /**
-     * Conserva el texto escrito; no borra caracteres inválidos para ocultar errores.
+     * Conserva los textos de importe para explicar sus errores; acota la descripción al máximo existente.
      *
      * Solo permite cambios en EDICION. update aplica la transformación recibida y elimina
      * los errores anteriores; los valores se comprobarán de nuevo al solicitar confirmación.
@@ -75,7 +95,11 @@ class GastosViewModel(
      */
     fun editar(cambio: (GastoFormulario) -> GastoFormulario) {
         if (uiState.value.resultado != ResultadoGasto.EDICION) return
-        mutableState.update { it.copy(formulario = cambio(it.formulario), errores = GastoErrores()) }
+        mutableState.update {
+            val nuevo = cambio(it.formulario)
+            it.copy(formulario = nuevo.copy(descripcion = GastosValidation.limitarDescripcion(nuevo.descripcion)),
+                errores = GastoErrores())
+        }
     }
 
     /** La selección se escribe en el mismo borrador que contiene los montos manuales. */
