@@ -9,13 +9,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.lifecycleScope
+import com.cafesmart.app.data.seed.cargarSemillaSiEsPrimeraVez
 import com.cafesmart.app.navigation.AppNavHost
 import com.cafesmart.app.ui.theme.CafesmartTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Datos de ejemplo para demos: solo en debug y solo la primera vez. En release la función no hace nada.
+        lifecycleScope.launch { cargarSemillaSiEsPrimeraVez(applicationContext) }
         setContent {
             CafesmartTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
