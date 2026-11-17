@@ -95,9 +95,9 @@ fun SaleStep3Flow(
         onFechaChange = { viewModel.cambiarFecha(it) },
         onEditarCafe = onEditarCafe,
         onConfirmar = {
-            viewModel.confirmarVenta()
-            // Solo se pasa a la pantalla final si el ViewModel registro la venta.
-            if (viewModel.uiState.value.ventaRegistrada) onConfirmada()
+            val registrada = viewModel.confirmarVenta()
+            // Solo se pasa a la pantalla final si este toque registro la venta: un segundo toque no navega otra vez.
+            if (registrada) onConfirmada()
         },
         onCancelarVenta = {
             viewModel.reiniciarVenta()

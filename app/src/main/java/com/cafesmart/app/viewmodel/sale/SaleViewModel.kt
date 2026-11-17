@@ -578,10 +578,12 @@ class SaleViewModel : ViewModel() {
     // "Confirmar venta": descuenta lo vendido del inventario y marca la venta como registrada.
     // Si falta algo, o ya se registro, no hace nada (asi no se puede registrar dos veces).
     // Temporal: cuando exista Room aqui se guardan la Venta y sus VentaSublote.
-    fun confirmarVenta() {
+    // Devuelve true solo si esta llamada registro la venta: un segundo toque no la registra otra vez.
+    fun confirmarVenta(): Boolean {
         val estado = _uiState.value
-        if (!estado.puedeConfirmar) return
+        if (!estado.puedeConfirmar) return false
         _uiState.value = estado.copy(inventario = descontarVenta(estado.inventario, estado.elegidos), ventaRegistrada = true)
+        return true
     }
 }
 
