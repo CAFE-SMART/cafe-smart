@@ -320,6 +320,11 @@ data class SaleUiState(
         get() = elegidos.isNotEmpty() && cantidadesValidas && errorDeTotal == null &&
             calidadesElegidas.all { precioValido(textoPrecio(it)) }
 
+    // Un precio de 1 a 3 digitos no sale en rojo mientras se escribe: el aviso dice de que calidad es.
+    private fun avisoPrecioSinMarcar(): String? =
+        calidadesElegidas.firstOrNull { errorDePrecio(it) == null && textoPrecio(it).isNotEmpty() && !precioValido(textoPrecio(it)) }
+            ?.let { "Revisa el precio por kg de la calidad ${it.etiqueta.lowercase()}." }
+
     // Texto sobre "Continuar" del paso 2. Si hay un campo en rojo (precio o cantidad) solo avisa que se revise;
     // el error exacto esta en el campo. El minimo de kg no se repite: ya se ve en rojo arriba.
     val mensajePendientePaso2: String?
@@ -331,7 +336,7 @@ data class SaleUiState(
                 "Escribe la cantidad a vender de cada sublote elegido."
             }
             errorDeTotal != null -> null
-            calidadesElegidas.any { mensajePrecioPendiente(it, textoPrecio(it)) != null } -> MENSAJE_REVISA_CAMPOS
+            calidadesElegidas.any { mensajePrecioPendiente(it, textoPrecio(it)) != null } -> avisoPrecioSinMarcar() ?: MENSAJE_REVISA_CAMPOS
             else -> null
         }
 
