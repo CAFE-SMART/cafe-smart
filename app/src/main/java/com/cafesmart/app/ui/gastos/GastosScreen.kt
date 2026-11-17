@@ -60,7 +60,7 @@ fun GastosRoute(navController: NavHostController, backStackEntry: NavBackStackEn
     // por ejemplo, tras cerrar sesión e ingresar otra vez con el mismo NavController.
     // HOME sigue siendo el propietario: Lista y Registro comparten su ViewModel durante la sesión.
     val propietario = remember(backStackEntry) { navController.getBackStackEntry(Routes.HOME) }
-    val modelo: GastosViewModel = viewModel(viewModelStoreOwner = propietario)
+    val modelo: GastosViewModel = viewModel(viewModelStoreOwner = propietario, factory = rememberGastosViewModelFactory())
     // collectAsState convierte StateFlow en un estado que Compose observa. by permite leer
     // el valor directamente; sus cambios actualizan las partes de la interfaz que lo utilizan.
     val estado by modelo.uiState.collectAsState()
@@ -124,7 +124,8 @@ fun GastosRoute(navController: NavHostController, backStackEntry: NavBackStackEn
             modelo.nuevoRegistro()
             navController.navigate(Routes.EXPENSE_NEW) { launchSingleTop = true }
         }, modelo::filtrar, modifier = contenido, onActualizar = modelo::actualizar,
-            onCargarEjemplos = modelo::cargarEjemplos)
+            // "Ver datos de ejemplo" solo existe con la demostración en memoria; con Room no se inventan gastos.
+            onCargarEjemplos = if (modelo.permiteEjemplos) modelo::cargarEjemplos else null)
     }
     GastosResultado(estado, modelo::confirmar, modelo::volverAEditar, listado) {
         modelo.nuevoRegistro()

@@ -14,7 +14,7 @@ Inicio → Compra → Inventario → Secado → Gastos → Venta → Resultado f
 - Kotlin + Jetpack Compose
 - Navigation Compose
 - Arquitectura MVVM (ViewModel + StateFlow)
-- Room (almacenamiento local) — `AppDatabase` (versión 2) con `Negocio`, `Productor`, `Compra`, `Lote` y `Sublote`; Gasto, Secado y Venta se agregan después
+- Room (almacenamiento local) — `AppDatabase` (versión 3) con `Negocio`, `Productor`, `Compra`, `Lote`, `Sublote`, `Gasto` y `GastoSublote`; Secado y Venta se agregan después
 - Firebase Authentication (inicio de sesión y registro con correo y contraseña)
 - JUnit (pruebas unitarias)
 
@@ -31,7 +31,7 @@ Modelo de datos: [`docs/modelo-de-datos.md`](docs/modelo-de-datos.md).
 
 ## Navegación (Navigation Compose)
 Todo el grafo vive en `navigation/AppNavHost.kt` y los nombres de ruta en `navigation/Routes.kt`.
-Cada ruta corresponde a una pantalla del Figma (pestaña "Flujos"). Ya son reales: cuenta (inicio de sesión, registro y recuperar contraseña con Firebase), `home`, Compras (pasos 1 a 3 y `purchase_done`), el resumen de `inventory`, los tres de Gastos, Ajustes (`settings`, `settings_business` y `settings_warehouse`) y las Finanzas (`finance_summary` y `finance_history`).
+Cada ruta corresponde a una pantalla del Figma (pestaña "Flujos"). Ya son reales: cuenta (inicio de sesión, registro y recuperar contraseña con Firebase), `home`, Compras (pasos 1 a 3 y `purchase_done`), el resumen de `inventory`, los tres de Gastos y los Gastos del sublote (`inventory_batch_expenses`), Ajustes (`settings`, `settings_business` y `settings_warehouse`) y las Finanzas (`finance_summary` y `finance_history`).
 El resto (lo demás de Inventario, Ventas y Secado) son *placeholders* (`NavPlaceholder`) que se reemplazan por la pantalla real dentro de su `composable(...)`.
 
 **Flujo base:** `splash` → `login` → `home` → `inventory`

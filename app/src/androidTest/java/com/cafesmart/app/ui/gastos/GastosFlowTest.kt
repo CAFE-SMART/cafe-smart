@@ -37,6 +37,8 @@ class GastosFlowTest {
     /** Usa pantallas y hojas reales con repositorio inyectable para ejercitar el fallo. */
     private fun montar(lista: Boolean = false, sublotes: List<Sublote> = emptyList(), falla: Boolean = false) {
         modelo = if (falla) GastosViewModel(object : GastosRepository {
+            override fun observarGastosSublote(subloteId: Long) =
+                kotlinx.coroutines.flow.flowOf(emptyList<com.cafesmart.app.data.gastos.GastoDelSublote>())
             override val gastos = MutableStateFlow<List<Gasto>>(emptyList())
             override suspend fun guardar(gasto: Gasto, reparto: List<GastoSublote>) { error("Fallo controlado de prueba") }
         }, sublotes) else GastosViewModel(sublotes = sublotes)
@@ -108,6 +110,7 @@ class GastosFlowTest {
                 // Scaffold subcompone el NavHost: esperar su primera entrada evita navegar antes del grafo.
                 nav.currentBackStackEntryFlow.first()
                 nav.navigate(Routes.HOME) { popUpTo(Routes.SPLASH) { inclusive = true } }
+                nav.usarGastosEnMemoria()
             }
         }
         texto("Registrar gasto").performScrollTo().performClick()
@@ -121,6 +124,7 @@ class GastosFlowTest {
             LaunchedEffect(Unit) {
                 nav.currentBackStackEntryFlow.first()
                 nav.navigate(Routes.HOME) { popUpTo(Routes.SPLASH) { inclusive = true } }
+                nav.usarGastosEnMemoria()
             }
         }
         texto("Ver gastos").performScrollTo().performClick()
@@ -129,14 +133,31 @@ class GastosFlowTest {
     }
     @Test fun G03_conceptoVacio() {
         montar(); campo(0).performTextInput("   "); campo(2).performTextInput("1000"); guardar()
-        texto("Escribe el concepto del gasto.").performScrollTo().assertIsDisplayed()
+        texto("Escribe el concepto del gasto").performScrollTo().assertIsDisplayed()
     }
     @Test fun G04_ceroYNegativo() {
-        montar(); llenar("0"); guardar(); compose.runOnIdle { assertNotNull(modelo.uiState.value.errores.monto); modelo.editar { it.copy(monto = "-10") }; modelo.solicitarConfirmacion(); assertNotNull(modelo.uiState.value.errores.monto) }
+        // Mensajes de ExpenseRules, sin reescribirlos. El "-" no se puede escribir: "-10" queda en 10, que no llega al mínimo.
+        montar(); llenar("0"); guardar(); compose.runOnIdle { assertEquals("El valor debe ser mayor que 0", modelo.uiState.value.errores.monto); modelo.editar { it.copy(monto = "-10") }; modelo.solicitarConfirmacion(); assertEquals("El valor mínimo es 1.000 pesos", modelo.uiState.value.errores.monto) }
     }
-    @Test fun G05_formatoInvalido() {
-        montar(); llenar("1e3"); guardar(); compose.runOnIdle { assertNotNull(modelo.uiState.value.errores.monto) }
-        compose.runOnIdle { modelo.editar { it.copy(monto = "12.50") }; modelo.solicitarConfirmacion(); assertNotNull(modelo.uiState.value.errores.monto) }
+    @Test fun G05_soloDigitosHastaOchoYConPuntoDeMiles() {
+        // El campo solo deja dígitos (como el precio de Compras): letras y símbolos no entran, y se ve con punto de miles.
+        montar(); campo(2).performTextInput("1a5b00")
+        campo(2).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("1.500"))); compose.runOnIdle { assertEquals("1500", modelo.uiState.value.formulario.monto) }
+        // Hasta 8 dígitos (50.000.000): lo que sobra no se escribe.
+        campo(2).performTextReplacement("123456789012")
+        campo(2).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("12.345.678"))); compose.runOnIdle { assertEquals("12345678", modelo.uiState.value.formulario.monto) }
+        captura("G05-monto-con-puntos")
+    }
+    @Test fun G17_valorMinimoYMaximoMuestranSuMensaje() {
+        montar(); llenar("500"); guardar()
+        texto("El valor mínimo es 1.000 pesos").performScrollTo().assertIsDisplayed(); captura("G17-valor-minimo")
+        campo(2).performTextReplacement("99999999"); guardar()
+        texto("El valor máximo es 50.000.000 pesos").performScrollTo().assertIsDisplayed(); captura("G17-valor-maximo")
+    }
+    @Test fun G18_conceptoDe60ConContador() {
+        montar(); campo(0).performTextInput("Transporte"); texto("10/60").assertIsDisplayed()
+        campo(0).performTextReplacement("c".repeat(80))
+        campo(0).assertTextEquals("c".repeat(60)); texto("60/60").assertIsDisplayed(); captura("G18-concepto-60")
     }
     @Test fun G06_seisCategorias() {
         montar(); TipoGasto.entries.forEach { tipo -> texto(tipo.etiqueta).performScrollTo().performClick(); compose.runOnIdle { assertEquals(tipo, modelo.uiState.value.formulario.tipo) } }
@@ -147,7 +168,7 @@ class GastosFlowTest {
     }
     @Test fun G08_subloteDisponibleYReparto() {
         montar(sublotes = listOf(Sublote(7, 1, pesoInicialKg = 10.0, pesoDisponibleKg = 10.0, costoKg = 1000, fechaIngreso = Fecha(5,11,2026))))
-        llenar(); texto("Asociar a sublotes").performScrollTo().performClick(); texto("Seleccionar…").performScrollTo().performClick(); texto("Sublote 7").performClick()
+        llenar(); texto("Asociar a sublotes").performScrollTo().performClick(); texto("Seleccionar sublotes").performScrollTo().performClick(); texto("Sublote 7").performClick()
         texto("Guardar selección").performClick()
         campo(3).performScrollTo().performTextInput("12500"); guardar(); texto("¿Registrar este gasto?").assertIsDisplayed(); confirmar(); texto("Gasto registrado con éxito").assertIsDisplayed()
     }
@@ -163,7 +184,7 @@ class GastosFlowTest {
         montar(); llenar(); guardar(); texto("Regresar").performClick()
         campo(0).performScrollTo().assertTextEquals("Transporte de prueba")
         // El nodo también contiene el prefijo monetario "$" en su semántica accesible.
-        campo(2).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("12500")))
+        campo(2).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("12.500")))
     }
     @Test fun G12_guardarYMostrar() {
         montar(); llenar(); guardar(); confirmar(); texto("Gasto registrado con éxito").assertIsDisplayed(); captura("G12-exito")
@@ -194,6 +215,7 @@ class GastosFlowTest {
             LaunchedEffect(Unit) {
                 nav.currentBackStackEntryFlow.first()
                 nav.navigate(Routes.HOME) { popUpTo(Routes.SPLASH) { inclusive = true } }
+                nav.usarGastosEnMemoria()
             }
         }
         texto("Registrar gasto").performScrollTo().performClick(); llenar(); guardar()

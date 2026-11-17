@@ -67,6 +67,7 @@ import com.cafesmart.app.ui.auth.authErrorDialogData
 import com.cafesmart.app.ui.auth.SIMULAR_ERROR_REGISTRO
 import com.cafesmart.app.ui.home.HomeScreen
 import com.cafesmart.app.ui.gastos.GastosRoute
+import com.cafesmart.app.ui.gastos.GastosSubloteRoute
 import com.cafesmart.app.ui.screens.PlaceholderAction
 import com.cafesmart.app.ui.screens.PlaceholderScreen
 import com.cafesmart.app.ui.screens.SplashScreen
@@ -468,12 +469,7 @@ fun AppNavHost(
             route = Routes.INVENTORY_BATCH_EXPENSES,
             arguments = listOf(navArgument(Routes.ARG_BATCH_ID) { type = NavType.StringType })
         ) { entry ->
-            val batchId = entry.arguments?.getString(Routes.ARG_BATCH_ID).orEmpty()
-            NavPlaceholder(
-                navController,
-                "Gastos del sublote #$batchId", Routes.inventoryBatchExpenses(batchId), true,
-                "Registrar gasto" to Routes.EXPENSE_LINK_BATCHES
-            )
+            GastosSubloteRoute(navController, entry)
         }
 
         // ── Venta desde un sublote ──────────────────────────
