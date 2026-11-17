@@ -16,7 +16,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.cafesmart.app.data.model.TipoDocumento
 import com.cafesmart.app.ui.components.AppTextField
@@ -24,7 +23,6 @@ import com.cafesmart.app.ui.components.ChoiceButton
 import com.cafesmart.app.ui.components.ContinueButton
 import com.cafesmart.app.ui.theme.AppTypography
 import com.cafesmart.app.ui.theme.CafesmartTheme
-import com.cafesmart.app.ui.theme.ErrorText
 import com.cafesmart.app.ui.theme.Spacing
 
 // Vista (MVVM): formulario de las hojas "Productor nuevo" y "Modificar productor".
@@ -46,9 +44,7 @@ fun NewProducerForm(
     textoGuardar: String,
     guardarHabilitado: Boolean,
     onGuardar: () -> Unit,
-    onCancelar: () -> Unit,
-    // Mensaje cuando no se pudo guardar en Room (null = sin error)
-    errorGeneral: String? = null
+    onCancelar: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -111,14 +107,6 @@ fun NewProducerForm(
             keyboardType = KeyboardType.Phone,
             error = telefonoError
         )
-        errorGeneral?.let {
-            Text(
-                text = it,
-                style = AppTypography.caption.copy(color = ErrorText),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
         // Guardar solo se activa cuando todos los campos son validos
         ContinueButton(text = textoGuardar, enabled = guardarHabilitado, onClick = onGuardar)
         // Cancelar queda centrado debajo del boton principal
