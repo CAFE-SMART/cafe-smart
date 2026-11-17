@@ -7,6 +7,7 @@ import com.cafesmart.app.data.purchase.ModoProductor
 import com.cafesmart.app.data.purchase.productoresDeEjemplo
 import com.cafesmart.app.viewmodel.purchase.MENSAJE_ERROR_CARGAR_PRODUCTORES
 import com.cafesmart.app.viewmodel.purchase.MENSAJE_ERROR_GUARDAR_COMPRA
+import com.cafesmart.app.viewmodel.purchase.MENSAJE_ERROR_GUARDAR_COMPRA_AGOTADO
 import com.cafesmart.app.viewmodel.purchase.MENSAJE_ERROR_GUARDAR_PRODUCTOR
 import com.cafesmart.app.viewmodel.purchase.NivelAvisoCapacidad
 import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
@@ -107,6 +108,44 @@ class PurchaseViewModelGuardadoTest {
         vm.confirmarCompra()
         assertTrue(vm.uiState.value.compraRegistrada)
         assertNull(vm.uiState.value.errorAlGuardar)
+        assertEquals(1, repositorio.compras.size)
+    }
+
+    @Test fun despuesDeTresFallosSeguidosYaNoSePuedeReintentar() {
+        val vm = viewModel().conCafe("25")
+        repositorio.fallarAlRegistrar = true
+        vm.confirmarCompra(); vm.confirmarCompra()
+        assertFalse(vm.uiState.value.reintentosAgotados)
+        assertEquals(MENSAJE_ERROR_GUARDAR_COMPRA, vm.uiState.value.errorAlGuardar)
+
+        vm.confirmarCompra()
+        assertTrue(vm.uiState.value.reintentosAgotados)
+        assertEquals(MENSAJE_ERROR_GUARDAR_COMPRA_AGOTADO, vm.uiState.value.errorAlGuardar)
+
+        // Aunque la base ya responda, el boton esta bloqueado: no se guarda nada.
+        repositorio.fallarAlRegistrar = false
+        vm.confirmarCompra()
+        assertFalse(vm.uiState.value.compraRegistrada)
+        assertTrue(repositorio.compras.isEmpty())
+    }
+
+    @Test fun reiniciarLaCompraRestableceLosReintentos() {
+        val vm = viewModel().conCafe("25")
+        repositorio.fallarAlRegistrar = true
+        repeat(3) { vm.confirmarCompra() }
+        assertTrue(vm.uiState.value.reintentosAgotados)
+
+        vm.reiniciarCompra()
+        assertFalse(vm.uiState.value.reintentosAgotados)
+        assertEquals(0, vm.uiState.value.intentosFallidos)
+        assertNull(vm.uiState.value.errorAlGuardar)
+    }
+
+    @Test fun unaCompraYaRegistradaNoSeGuardaDeNuevo() {
+        val vm = viewModel().conCafe("25")
+        vm.elegirModo(ModoProductor.SIN_REGISTRAR); vm.continuarPaso1()
+        vm.confirmarCompra()
+        vm.confirmarCompra()
         assertEquals(1, repositorio.compras.size)
     }
 

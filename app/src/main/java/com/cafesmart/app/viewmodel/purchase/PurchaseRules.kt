@@ -160,6 +160,9 @@ const val MENSAJE_ERROR_GUARDAR_COMPRA = "No pudimos registrar la compra. Intén
 // Cuando Room no logra guardar, modificar o leer productores (textos propuestos; falta confirmarlos con el equipo)
 const val MENSAJE_ERROR_GUARDAR_PRODUCTOR = "No pudimos guardar el productor. Inténtalo de nuevo."
 const val MENSAJE_ERROR_CARGAR_PRODUCTORES = "No pudimos cargar tus productores. Inténtalo de nuevo."
+// Tras varios fallos seguidos al confirmar, ya no se deja reintentar (texto propuesto; falta confirmarlo con el equipo)
+const val MAX_INTENTOS_GUARDAR_COMPRA = 3
+const val MENSAJE_ERROR_GUARDAR_COMPRA_AGOTADO = "No pudimos registrar la compra. Cancela e inténtalo más tarde."
 
 // RF-COM-02: cuando la busqueda no encuentra a nadie
 const val SIN_RESULTADOS = "Lo siento, no pudimos encontrarlo. Prueba con otro nombre o cédula."

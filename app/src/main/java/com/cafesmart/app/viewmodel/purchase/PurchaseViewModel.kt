@@ -92,8 +92,14 @@ data class PurchaseUiState(
     // Mensaje cuando no se pudo guardar la compra; null si no hay error
     val errorAlGuardar: String? = null,
     // Mensaje cuando no se pudo leer, guardar o modificar un productor; null si no hay error
-    val errorProductor: String? = null
+    val errorProductor: String? = null,
+    // Fallos seguidos al confirmar la compra; vuelve a 0 al reiniciar la compra
+    val intentosFallidos: Int = 0
 ) {
+    // true cuando ya se fallo demasiadas veces: el boton "Confirmar compra" se bloquea
+    val reintentosAgotados: Boolean
+        get() = intentosFallidos >= MAX_INTENTOS_GUARDAR_COMPRA
+
     // ---------- Avisos de capacidad (informativos, nunca bloquean) ----------
 
     // Paso 1: la capacidad aun no esta configurada.
@@ -561,7 +567,8 @@ class PurchaseViewModel(
     // "Compra registrada". Si falla no se muestra y queda el mensaje de error para intentarlo de nuevo.
     fun confirmarCompra() {
         val estado = _uiState.value
-        if (!estado.cafesListos || estado.guardando) return
+        // Tampoco se guarda de nuevo una compra ya registrada ni despues de agotar los reintentos.
+        if (!estado.cafesListos || estado.guardando || estado.compraRegistrada || estado.reintentosAgotados) return
         // El aviso se calcula ANTES de guardar, con la ocupacion de ese momento: despues de guardar,
         // kgOcupados ya incluye esta compra y se contaria dos veces.
         val aviso = estado.avisoCapacidad
@@ -574,7 +581,14 @@ class PurchaseViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.update { it.copy(guardando = false, errorAlGuardar = MENSAJE_ERROR_GUARDAR_COMPRA) }
+                _uiState.update {
+                    val fallos = it.intentosFallidos + 1
+                    it.copy(
+                        guardando = false,
+                        intentosFallidos = fallos,
+                        errorAlGuardar = if (fallos >= MAX_INTENTOS_GUARDAR_COMPRA) MENSAJE_ERROR_GUARDAR_COMPRA_AGOTADO else MENSAJE_ERROR_GUARDAR_COMPRA
+                    )
+                }
                 return@launch
             }
             // La compra YA quedo guardada: si leer los kilos falla, no se muestra como error (un reintento la duplicaria).

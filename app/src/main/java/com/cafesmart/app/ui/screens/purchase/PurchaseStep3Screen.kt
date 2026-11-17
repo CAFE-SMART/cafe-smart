@@ -130,7 +130,8 @@ fun PurchaseStep3Screen(
         }
 
         PurchaseBottomBar {
-            // Si no se pudo guardar la compra, se avisa aqui y el boton queda activo para intentarlo de nuevo.
+            // Si no se pudo guardar la compra, se avisa aqui y el boton queda activo para intentarlo de nuevo
+            // (hasta MAX_INTENTOS_GUARDAR_COMPRA fallos seguidos; despues se bloquea y solo queda Cancelar).
             estado.errorAlGuardar?.let {
                 Text(
                     text = it,
@@ -143,7 +144,7 @@ fun PurchaseStep3Screen(
             ContinueButton(
                 text = "Confirmar compra",
                 onClick = onConfirmar,
-                enabled = !estado.guardando,
+                enabled = !estado.guardando && !estado.reintentosAgotados,
                 cargando = estado.guardando
             )
             TextButton(
