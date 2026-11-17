@@ -267,7 +267,7 @@ class PurchaseRulesTest {
             listOf(cafe("10.5", "13001")),
             listOf(cafe("2.675", "12000")),
             listOf(cafe("8.2", "15000")),
-            listOf(cafe("0.5", "15001"), cafe("0.5", "15001")),
+            listOf(cafe("1.5", "15001"), cafe("1.5", "15001")),
         )
         for (cafes in casos) {
             val guardado = cafes.mapNotNull { crearSublote(it) }.sumOf { totalDe(it) }.aPesos()
