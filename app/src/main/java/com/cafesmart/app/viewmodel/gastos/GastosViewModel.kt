@@ -86,9 +86,10 @@ class GastosViewModel(
     // 3. EVENTOS DE LOS CAMPOS
     // ============================================================
     /**
-     * Conserva los textos de importe para explicar sus errores; acota la descripción al máximo existente.
+     * Aplica los topes de escritura de ExpenseRules: concepto de 60 caracteres, descripción de 200
+     * y valores solo con dígitos (hasta 8). Lo que no cabe no entra al borrador.
      *
-     * Solo permite cambios en EDICION. update aplica la transformación recibida y elimina
+     * Solo permite cambios en EDICION. update aplica la transformación recibida, la normaliza y elimina
      * los errores anteriores; los valores se comprobarán de nuevo al solicitar confirmación.
      *
      * @param cambio Función que recibe el borrador actual y devuelve una copia con los campos editados.
@@ -96,9 +97,7 @@ class GastosViewModel(
     fun editar(cambio: (GastoFormulario) -> GastoFormulario) {
         if (uiState.value.resultado != ResultadoGasto.EDICION) return
         mutableState.update {
-            val nuevo = cambio(it.formulario)
-            it.copy(formulario = nuevo.copy(descripcion = GastosValidation.limitarDescripcion(nuevo.descripcion)),
-                errores = GastoErrores())
+            it.copy(formulario = GastosValidation.normalizar(cambio(it.formulario)), errores = GastoErrores())
         }
     }
 

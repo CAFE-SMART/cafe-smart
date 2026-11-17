@@ -38,6 +38,8 @@ import com.cafesmart.app.ui.gastos.components.*
 import com.cafesmart.app.ui.theme.*
 // Estado, eventos y lógica de presentación del ViewModel.
 import com.cafesmart.app.viewmodel.gastos.*
+// Misma forma de mostrar un valor que Compras: "1500" se ve "1.500".
+import com.cafesmart.app.viewmodel.purchase.precioEnPantalla
 
 // ============================================================
 // 2. FORMULARIO CONTROLADO POR EL VIEWMODEL
@@ -72,16 +74,21 @@ fun RegistrarGastoScreen(estado: GastosUiState, onEditar: ((GastoFormulario) -> 
         GastosHeader("Registro de Gastos", { if (habilitado) onCancelar() })
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = Spacing.s20, vertical = Spacing.s8),
             verticalArrangement = Arrangement.spacedBy(Spacing.s20)) {
-            // Los callbacks reciben texto sin limpiarlo silenciosamente: el usuario puede ver el error original.
-            AppTextField("Concepto del gasto", form.concepto, { texto -> onEditar { it.copy(concepto = texto) } },
-                placeholder = "Ej: Pago de jornaleros - Cosecha oct", error = estado.errores.concepto, enabled = habilitado, compact = true)
+            // Topes de escritura de ExpenseRules: el concepto no pasa de 60 caracteres y su contador se ve debajo (12/60).
+            AppTextField("Concepto del gasto", form.concepto,
+                { texto -> onEditar { it.copy(concepto = GastosValidation.limitarConcepto(texto)) } },
+                modifier = Modifier.testTag("gastos_concepto"),
+                placeholder = "Ej: Pago de jornaleros - Cosecha oct", error = estado.errores.concepto, enabled = habilitado, compact = true,
+                helper = "${form.concepto.length}/${GastosValidation.CONCEPTO_MAX_CARACTERES}")
             GastoDescripcion(form.descripcion, estado.errores.descripcion, habilitado) { texto ->
                 onEditar { it.copy(descripcion = GastosValidation.limitarDescripcion(texto)) }
             }
             BoxWithConstraints(Modifier.fillMaxWidth()) {
-                // KeyboardType.Number solicita teclado numérico, pero no reemplaza la validación: se puede pegar texto inválido.
+                // Como el precio de Compras: el estado guarda solo dígitos (hasta 8) y aquí se ven con punto de miles ("1.500").
+                // KeyboardType.Number abre el teclado numérico; si se pega texto, limpiarValor deja solo los dígitos.
                 val monto: @Composable (Modifier) -> Unit = { campoModifier ->
-                    AppTextField("Monto ($)", form.monto, { texto -> onEditar { it.copy(monto = texto) } },
+                    AppTextField("Monto ($)", precioEnPantalla(GastosValidation.limpiarValor(form.monto)),
+                        { texto -> onEditar { it.copy(monto = GastosValidation.limpiarValor(texto)) } },
                         modifier = campoModifier.testTag("gastos_monto"), placeholder = "0", keyboardType = KeyboardType.Number,
                         leadingText = "$", enabled = habilitado, error = estado.errores.monto)
                 }
@@ -96,7 +103,7 @@ fun RegistrarGastoScreen(estado: GastosUiState, onEditar: ((GastoFormulario) -> 
                         Icon(painterResource(R.drawable.gasto_calendar), null, tint = TextMuted, modifier = Modifier.size(20.dp))
                     }
                 ) }
-                // El símbolo y 19 dígitos necesitan ancho: en móviles no se divide Monto con Fecha.
+                // El símbolo y "50.000.000" necesitan ancho: en móviles no se divide Monto con Fecha.
                 if (maxWidth < 480.dp) {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.s12)) {
                         monto(Modifier.fillMaxWidth())
@@ -134,7 +141,7 @@ fun RegistrarGastoScreen(estado: GastosUiState, onEditar: ((GastoFormulario) -> 
                     Text("Cancelar", style = AppTypography.valueStrong, color = TextSecondary)
                 }
             }
-            Text("Demostración temporal · COP en pesos enteros, sin centavos ni separadores.", style = AppTypography.helper)
+            Text("Demostración temporal · valores en COP, sin centavos.", style = AppTypography.helper)
             Spacer(Modifier.height(Spacing.s12))
         }
     }
@@ -159,7 +166,7 @@ private fun GastoDescripcion(valor: String, error: String?, habilitado: Boolean,
                 errorBorderColor = ErrorText, errorContainerColor = SurfaceCard
             )
         )
-        Text("${valor.length}/${GastosValidation.DESCRIPCION_MAX_CARACTERES} caracteres",
+        Text("${valor.length}/${GastosValidation.DESCRIPCION_MAX_CARACTERES}",
             style = AppTypography.helper, color = if (error != null) ErrorText else TextSecondary,
             modifier = Modifier.align(Alignment.End).testTag("gastos_descripcion_contador"))
         Text(error ?: if (valor.length >= GastosValidation.DESCRIPCION_MAX_CARACTERES)
@@ -213,7 +220,8 @@ private fun GastoAsociacionSelector(estado: GastosUiState, onEditar: ((GastoForm
                 else "Indica cuánto corresponde a cada sublote. La suma debe coincidir con el total.", style = AppTypography.helper)
             // Se dibuja un campo por ID seleccionado para que el usuario escriba el reparto explícitamente.
             form.asignaciones.forEach { (id, monto) ->
-                AppTextField("Asignación al sublote $id", monto, { texto -> onEditar { it.copy(asignaciones = it.asignaciones + (id to texto)) } },
+                AppTextField("Asignación al sublote $id", precioEnPantalla(GastosValidation.limpiarValor(monto)),
+                    { texto -> onEditar { it.copy(asignaciones = it.asignaciones + (id to GastosValidation.limpiarValor(texto))) } },
                     keyboardType = KeyboardType.Number, leadingText = "$", enabled = habilitado)
             }
             estado.errores.sublotes?.let { Text(it, color = ErrorText, style = AppTypography.helper) }

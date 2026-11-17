@@ -1,13 +1,9 @@
 package com.cafesmart.app.ui.gastos
 
-import android.graphics.Bitmap
-import android.os.Bundle
-import android.util.Base64
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
@@ -17,7 +13,6 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
-import androidx.test.platform.app.InstrumentationRegistry
 import com.cafesmart.app.data.model.AplicaGasto
 import com.cafesmart.app.data.sample.lotesEjemplo
 import com.cafesmart.app.ui.theme.*
@@ -25,7 +20,6 @@ import com.cafesmart.app.viewmodel.gastos.*
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import java.io.ByteArrayOutputStream
 
 /** Formulario real con borrador aislado: no guarda datos ni llama a Firebase. */
 class RegistroGastoResponsiveTest {
@@ -56,23 +50,14 @@ class RegistroGastoResponsiveTest {
 
     private fun monto() = compose.onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag("gastos_monto")))
 
-    private fun evidenciar(nombre: String) {
-        // Sin archivos en el dispositivo: el ejecutor privado decodifica el status en el host.
-        val bytes = ByteArrayOutputStream()
-        compose.onNodeWithTag("registro_root").captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, bytes)
-        InstrumentationRegistry.getInstrumentation().sendStatus(0, Bundle().apply {
-            putString("cafesmartScreenshot", nombre + "|" + Base64.encodeToString(bytes.toByteArray(), Base64.NO_WRAP))
-        })
-    }
 
     @Test fun descripcion360LimitaPegadoYExponeContador() {
         montar(360)
         val campo = compose.onNodeWithTag("gastos_descripcion")
         campo.performScrollTo().performTextReplacement("d".repeat(250))
         campo.assertTextEquals("d".repeat(200))
-        compose.onNodeWithTag("gastos_descripcion_contador").performScrollTo().assertTextEquals("200/200 caracteres")
+        compose.onNodeWithTag("gastos_descripcion_contador").performScrollTo().assertTextEquals("200/200")
         compose.onNodeWithText("Límite alcanzado. Puedes editar o borrar el texto.").assertExists()
-        evidenciar("360-descripcion-limite")
     }
 
     @Test fun descripcion390AcotaSaltosDeLineaYMantieneAccesoAMontoYGuardar() {
@@ -80,23 +65,21 @@ class RegistroGastoResponsiveTest {
         val campo = compose.onNodeWithTag("gastos_descripcion")
         campo.performScrollTo().performTextReplacement("linea\n".repeat(100))
         assertTrue("La descripción desplaza excesivamente el formulario", campo.getUnclippedBoundsInRoot().height <= 160.dp)
-        monto().performScrollTo().performTextReplacement(Long.MAX_VALUE.toString())
-        monto().assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString(Long.MAX_VALUE.toString())))
+        monto().performScrollTo().performTextReplacement("50000000")
+        monto().assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("50.000.000")))
         compose.onNodeWithTag("gastos_monto").assertWidthIsAtLeast(300.dp)
-        evidenciar("390-monto-largo")
         compose.onNodeWithText("Guardar gasto").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("1 sublote seleccionado").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Asignación al sublote 2").assertExists()
     }
 
-    @Test fun monto360ConservaDiecinueveDigitosYFocoConTeclado() {
+    @Test fun monto360ConservaOchoDigitosConPuntosYFocoConTeclado() {
         montar(360)
-        monto().performScrollTo().performTextReplacement(Long.MAX_VALUE.toString())
+        monto().performScrollTo().performTextReplacement("50000000")
         monto().performClick().assertIsFocused()
-        monto().assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString(Long.MAX_VALUE.toString())))
+        monto().assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("50.000.000")))
         compose.onNodeWithTag("gastos_monto").assertWidthIsAtLeast(300.dp)
         compose.onNode(hasText("$") and hasAnyAncestor(hasTestTag("gastos_monto")), useUnmergedTree = true).assertExists()
-        evidenciar("360-monto-largo")
     }
 
     @Test fun selectorTieneTextoOscuroYContrasteEnCeroUnoYVarios() {
@@ -120,7 +103,6 @@ class RegistroGastoResponsiveTest {
             assertTrue("Fondo esperado ausente en captura", pixelesFondo > 100)
             val luminanciaRealFondo = luminanciaFondo / pixelesFondo
             assertTrue("Contraste inferior a 4.5:1", (luminanciaRealFondo+.05f)/(PrimaryDark.luminance()+.05f) >= 4.5f)
-            evidenciar("360-selector-$cantidad")
             boton.performClick()
         }
     }

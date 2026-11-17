@@ -131,14 +131,31 @@ class GastosFlowTest {
     }
     @Test fun G03_conceptoVacio() {
         montar(); campo(0).performTextInput("   "); campo(2).performTextInput("1000"); guardar()
-        texto("Escribe el concepto del gasto.").performScrollTo().assertIsDisplayed()
+        texto("Escribe el concepto del gasto").performScrollTo().assertIsDisplayed()
     }
     @Test fun G04_ceroYNegativo() {
-        montar(); llenar("0"); guardar(); compose.runOnIdle { assertNotNull(modelo.uiState.value.errores.monto); modelo.editar { it.copy(monto = "-10") }; modelo.solicitarConfirmacion(); assertNotNull(modelo.uiState.value.errores.monto) }
+        // Mensajes de ExpenseRules, sin reescribirlos. El "-" no se puede escribir: "-10" queda en 10, que no llega al mínimo.
+        montar(); llenar("0"); guardar(); compose.runOnIdle { assertEquals("El valor debe ser mayor que 0", modelo.uiState.value.errores.monto); modelo.editar { it.copy(monto = "-10") }; modelo.solicitarConfirmacion(); assertEquals("El valor mínimo es 1.000 pesos", modelo.uiState.value.errores.monto) }
     }
-    @Test fun G05_formatoInvalido() {
-        montar(); llenar("1e3"); guardar(); compose.runOnIdle { assertNotNull(modelo.uiState.value.errores.monto) }
-        compose.runOnIdle { modelo.editar { it.copy(monto = "12.50") }; modelo.solicitarConfirmacion(); assertNotNull(modelo.uiState.value.errores.monto) }
+    @Test fun G05_soloDigitosHastaOchoYConPuntoDeMiles() {
+        // El campo solo deja dígitos (como el precio de Compras): letras y símbolos no entran, y se ve con punto de miles.
+        montar(); campo(2).performTextInput("1a5b00")
+        campo(2).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("1.500"))); compose.runOnIdle { assertEquals("1500", modelo.uiState.value.formulario.monto) }
+        // Hasta 8 dígitos (50.000.000): lo que sobra no se escribe.
+        campo(2).performTextReplacement("123456789012")
+        campo(2).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("12.345.678"))); compose.runOnIdle { assertEquals("12345678", modelo.uiState.value.formulario.monto) }
+        captura("G05-monto-con-puntos")
+    }
+    @Test fun G17_valorMinimoYMaximoMuestranSuMensaje() {
+        montar(); llenar("500"); guardar()
+        texto("El valor mínimo es 1.000 pesos").performScrollTo().assertIsDisplayed(); captura("G17-valor-minimo")
+        campo(2).performTextReplacement("99999999"); guardar()
+        texto("El valor máximo es 50.000.000 pesos").performScrollTo().assertIsDisplayed(); captura("G17-valor-maximo")
+    }
+    @Test fun G18_conceptoDe60ConContador() {
+        montar(); campo(0).performTextInput("Transporte"); texto("10/60").assertIsDisplayed()
+        campo(0).performTextReplacement("c".repeat(80))
+        campo(0).assertTextEquals("c".repeat(60)); texto("60/60").assertIsDisplayed(); captura("G18-concepto-60")
     }
     @Test fun G06_seisCategorias() {
         montar(); TipoGasto.entries.forEach { tipo -> texto(tipo.etiqueta).performScrollTo().performClick(); compose.runOnIdle { assertEquals(tipo, modelo.uiState.value.formulario.tipo) } }
@@ -165,7 +182,7 @@ class GastosFlowTest {
         montar(); llenar(); guardar(); texto("Regresar").performClick()
         campo(0).performScrollTo().assertTextEquals("Transporte de prueba")
         // El nodo también contiene el prefijo monetario "$" en su semántica accesible.
-        campo(2).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("12500")))
+        campo(2).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("12.500")))
     }
     @Test fun G12_guardarYMostrar() {
         montar(); llenar(); guardar(); confirmar(); texto("Gasto registrado con éxito").assertIsDisplayed(); captura("G12-exito")
