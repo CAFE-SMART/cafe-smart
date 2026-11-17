@@ -30,6 +30,7 @@ class GastosCiclo2Test {
             LaunchedEffect(Unit) {
                 nav.currentBackStackEntryFlow.first()
                 nav.navigate(Routes.HOME) { popUpTo(Routes.SPLASH) { inclusive = true } }
+                nav.usarGastosEnMemoria()
             }
         }
     }

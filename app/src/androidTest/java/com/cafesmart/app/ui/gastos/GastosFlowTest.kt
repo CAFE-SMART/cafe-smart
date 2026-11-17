@@ -110,6 +110,7 @@ class GastosFlowTest {
                 // Scaffold subcompone el NavHost: esperar su primera entrada evita navegar antes del grafo.
                 nav.currentBackStackEntryFlow.first()
                 nav.navigate(Routes.HOME) { popUpTo(Routes.SPLASH) { inclusive = true } }
+                nav.usarGastosEnMemoria()
             }
         }
         texto("Registrar gasto").performScrollTo().performClick()
@@ -123,6 +124,7 @@ class GastosFlowTest {
             LaunchedEffect(Unit) {
                 nav.currentBackStackEntryFlow.first()
                 nav.navigate(Routes.HOME) { popUpTo(Routes.SPLASH) { inclusive = true } }
+                nav.usarGastosEnMemoria()
             }
         }
         texto("Ver gastos").performScrollTo().performClick()
@@ -213,6 +215,7 @@ class GastosFlowTest {
             LaunchedEffect(Unit) {
                 nav.currentBackStackEntryFlow.first()
                 nav.navigate(Routes.HOME) { popUpTo(Routes.SPLASH) { inclusive = true } }
+                nav.usarGastosEnMemoria()
             }
         }
         texto("Registrar gasto").performScrollTo().performClick(); llenar(); guardar()
