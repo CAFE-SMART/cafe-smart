@@ -26,19 +26,3 @@ app/google-services.json
 
 # Copias de trabajo temporales de Claude Code
 .claude/worktrees/
-
-# Resultados privados de QA, nunca parte de la entrega.
-/.qa-backups/
-/.codex/
-/.idea/*
-!/.idea/.gitignore
-**/node_modules/
-*.apk
-*.log
-/docs/validacion/evidencias-*/
-/docs/validacion/ejecucion-*/
-/docs/validacion/**/resultados*.json
-/docs/validacion/**/ui-*.xml
-/tools/firebase-auth/qa-local-*.json
-/tools/firebase-auth/.firebase/
-# No excluir XML, JSON o imagenes de las fuentes ni toda la documentacion.

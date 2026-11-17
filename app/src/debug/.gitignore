@@ -1,5 +1,0 @@
-# Overlay exclusivo de QA local; conservar en disco, excluir de la entrega.
-google-services.json
-AndroidManifest.xml
-java/com/cafesmart/app/qa/
-res/xml/qa_auth_network_security.xml
