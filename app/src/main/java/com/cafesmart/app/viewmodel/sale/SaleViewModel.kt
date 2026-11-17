@@ -21,6 +21,7 @@ import com.cafesmart.app.viewmodel.purchase.conTipo
 import com.cafesmart.app.viewmodel.purchase.errorPrecio
 import com.cafesmart.app.viewmodel.purchase.fechaAMilis
 import com.cafesmart.app.viewmodel.purchase.fechaDeHoy
+import com.cafesmart.app.viewmodel.inventory.redondearKg
 import com.cafesmart.app.viewmodel.purchase.formatoDinero
 import com.cafesmart.app.viewmodel.purchase.formatoFecha
 import com.cafesmart.app.viewmodel.purchase.formatoKg
@@ -295,8 +296,9 @@ data class SaleUiState(
             textosCantidad[elegido.id]?.let { cantidadValida(cantidadDesdeTexto(it), elegido.disponibleKg) } ?: true
         }
 
+    // Redondeado a gramos: sumar decimales puede dar 4.999999 cuando son 5 kg y rechazaria una venta valida.
     val totalKg: Double
-        get() = elegidos.sumOf { it.cantidadKg }
+        get() = redondearKg(elegidos.sumOf { it.cantidadKg })
 
     // Cada sublote vale su cantidad por el precio de su calidad (0 mientras no se escribe el precio).
     val totalARecibir: Long
