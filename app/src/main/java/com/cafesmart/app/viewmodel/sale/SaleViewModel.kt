@@ -499,7 +499,7 @@ class SaleViewModel : ViewModel() {
         val estado = _uiState.value
         val delTipo = sublotesDelTipo(estado.inventario, estado.tipoCafe)
         _uiState.value = if (estado.todosElegidos) {
-            estado.copy(elegidos = emptyList(), textosCantidad = emptyMap())
+            estado.copy(elegidos = emptyList(), textosCantidad = emptyMap(), precios = emptyMap())
         } else {
             estado.copy(elegidos = delTipo.map { item ->
                 estado.elegidos.firstOrNull { it.id == item.sublote.id } ?: SubloteElegido(item, item.sublote.pesoDisponibleKg)
@@ -518,8 +518,12 @@ class SaleViewModel : ViewModel() {
             elegidos + SubloteElegido(sublote, sublote.sublote.pesoDisponibleKg)
         }
         // Al marcar o desmarcar, el campo vuelve a mostrar la cantidad elegida (se borra lo escrito antes).
-        _uiState.value = _uiState.value.copy(elegidos = nuevos, textosCantidad = _uiState.value.textosCantidad - id)
+        _uiState.value = _uiState.value.copy(elegidos = nuevos, textosCantidad = _uiState.value.textosCantidad - id).sinPreciosSueltos()
     }
+
+    // El precio es por calidad: si ya no queda un sublote elegido de esa calidad, su precio se borra.
+    private fun SaleUiState.sinPreciosSueltos(): SaleUiState =
+        copy(precios = precios.filterKeys { it in calidadesElegidas })
 
     // Lo que la persona escribe en "Cantidad a vender". Se guarda el texto tal cual (limpiado como el peso de
     // Compras) para mostrarlo con su error; la cantidad elegida solo cambia cuando el valor es valido.
