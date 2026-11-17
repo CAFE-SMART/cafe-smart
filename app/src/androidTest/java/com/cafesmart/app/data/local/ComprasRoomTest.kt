@@ -88,6 +88,45 @@ class ComprasRoomTest {
         assertEquals(1, db.productorDao().listar().size)
     }
 
+    // Simula la carrera: la consulta previa no ve el documento (otro guardado aún no había terminado),
+    // así que quien lo frena es el índice único de Room. Debe seguir dando DocumentoRepetido, no una excepción.
+    private fun repositorioQueNoVeDocumentos() = RoomPurchaseRepository(
+        object : ProductorDao by db.productorDao() {
+            override suspend fun buscarPorDocumento(documento: String): ProductorEntity? = null
+        },
+        db.compraDao(), db.loteDao(), db.subloteDao(), TransaccionRoom(db),
+    )
+
+    @Test
+    fun siSeCuelaUnDocumentoRepetidoAlGuardarElIndiceUnicoDevuelveDocumentoRepetido() = runBlocking {
+        db.productorDao().insertar(
+            ProductorEntity(nombre = "Ana Gómez", documento = "52123456", tipoDocumento = TipoDocumento.CC.name),
+        )
+
+        val resultado = repositorioQueNoVeDocumentos()
+            .guardarProductor(Productor(nombre = "Otra Ana", documento = "52123456"))
+
+        assertEquals(ResultadoProductor.DocumentoRepetido, resultado)
+        assertEquals(1, db.productorDao().listar().size)
+    }
+
+    @Test
+    fun siSeCuelaUnDocumentoRepetidoAlModificarElProductorQuedaIgual() = runBlocking {
+        db.productorDao().insertar(
+            ProductorEntity(nombre = "Ana Gómez", documento = "52123456", tipoDocumento = TipoDocumento.CC.name),
+        )
+        val bId = db.productorDao().insertar(
+            ProductorEntity(nombre = "Beto Ruiz", documento = "80123456", tipoDocumento = TipoDocumento.CC.name),
+        )
+
+        val resultado = repositorioQueNoVeDocumentos().actualizarProductor(
+            Productor(id = bId, nombre = "Beto Ruiz", documento = "52123456"),
+        )
+
+        assertEquals(ResultadoProductor.DocumentoRepetido, resultado)
+        assertEquals("80123456", db.productorDao().buscarPorId(bId)?.documento)
+    }
+
     @Test
     fun modificarUnProductorCambiaSuFilaSinCrearOtra() = runBlocking {
         val repo = repositorio()

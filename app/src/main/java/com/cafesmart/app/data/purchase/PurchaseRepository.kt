@@ -1,6 +1,7 @@
 package com.cafesmart.app.data.purchase
 
 import android.content.Context
+import android.database.sqlite.SQLiteConstraintException
 import com.cafesmart.app.data.local.AppDatabase
 import com.cafesmart.app.data.local.CompraDao
 import com.cafesmart.app.data.local.CompraEntity
@@ -78,15 +79,25 @@ class RoomPurchaseRepository(
     override suspend fun guardarProductor(productor: Productor): ResultadoProductor {
         // El índice único también lo rechazaría, pero con una falla de la base; así la pantalla puede avisar.
         if (productorDao.buscarPorDocumento(productor.documento) != null) return ResultadoProductor.DocumentoRepetido
-        val id = productorDao.insertar(productor.aEntidad())
-        return ResultadoProductor.Guardado(productor.copy(id = id))
+        return try {
+            val id = productorDao.insertar(productor.aEntidad())
+            ResultadoProductor.Guardado(productor.copy(id = id))
+        } catch (e: SQLiteConstraintException) {
+            // Otro guardado del mismo documento se coló entre la consulta y el insert: lo frenó el índice único.
+            ResultadoProductor.DocumentoRepetido
+        }
     }
 
     override suspend fun actualizarProductor(productor: Productor): ResultadoProductor {
         val conEseDocumento = productorDao.buscarPorDocumento(productor.documento)
         if (conEseDocumento != null && conEseDocumento.id != productor.id) return ResultadoProductor.DocumentoRepetido
-        productorDao.actualizar(productor.aEntidad())
-        return ResultadoProductor.Guardado(productor)
+        return try {
+            productorDao.actualizar(productor.aEntidad())
+            ResultadoProductor.Guardado(productor)
+        } catch (e: SQLiteConstraintException) {
+            // Mismo caso que al guardar: otro productor tomó ese documento después de la consulta.
+            ResultadoProductor.DocumentoRepetido
+        }
     }
 
     override suspend fun registrarCompra(productorId: Long?, fecha: Fecha, cafes: List<CafeValidado>): Long {
