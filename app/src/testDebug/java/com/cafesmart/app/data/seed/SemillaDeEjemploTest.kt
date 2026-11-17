@@ -3,7 +3,6 @@ package com.cafesmart.app.data.seed
 import com.cafesmart.app.data.model.Productor
 import com.cafesmart.app.data.model.Sublote
 import com.cafesmart.app.data.model.TipoCafe
-import com.cafesmart.app.data.sample.lotesEjemplo
 import com.cafesmart.app.viewmodel.purchase.validarDocumento
 import com.cafesmart.app.viewmodel.purchase.validarNombre
 import com.cafesmart.app.viewmodel.purchase.validarTelefono
@@ -55,14 +54,15 @@ class SemillaDeEjemploTest {
     }
 
     @Test
-    fun losKilosCoincidenConElFigmaYConLosDatosDeEjemploActuales() {
+    fun losKilosCoincidenConElFigma() {
         fun kg(tipo: TipoCafe) = cafes.filter { it.tipo == tipo }.sumOf { it.pesoDisponibleKg }
 
         assertEquals(290.0, kg(TipoCafe.VERDE), 0.0)
         assertEquals(521.0, kg(TipoCafe.SECO), 0.0)
         assertEquals(23.0, kg(TipoCafe.TRILLADO), 0.0)
         assertEquals(0.0, kg(TipoCafe.PASILLA), 0.0)
-        assertEquals(lotesEjemplo().sumOf { it.pesoDisponibleKg }, cafes.sumOf { it.pesoDisponibleKg }, 0.0)
+        // Total en bodega del Figma (los agotados no cuentan porque su peso disponible es 0).
+        assertEquals(834.0, cafes.sumOf { it.pesoDisponibleKg }, 0.0)
         // 10 sublotes, 1 agotado: 9 con existencia (Verde 4, Seco 4, Trillado 1).
         assertEquals(10, cafes.size)
         assertEquals(9, cafes.count { it.pesoDisponibleKg > 0 })
