@@ -21,7 +21,7 @@ import com.cafesmart.app.viewmodel.gastos.*
 @Composable
 fun GastosSubloteRoute(navController: NavHostController, entry: NavBackStackEntry) {
     val propietario = remember(entry) { navController.getBackStackEntry(Routes.HOME) }
-    val modelo: GastosViewModel = viewModel(viewModelStoreOwner = propietario)
+    val modelo: GastosViewModel = viewModel(viewModelStoreOwner = propietario, factory = rememberGastosViewModelFactory())
     val batchId = entry.arguments?.getString(Routes.ARG_BATCH_ID)
     var intento by remember(entry) { mutableIntStateOf(0) }
     val fuente = remember(modelo, batchId, intento) { modelo.observarGastosSublote(batchId) }

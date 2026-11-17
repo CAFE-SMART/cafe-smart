@@ -14,7 +14,7 @@ Inicio → Compra → Inventario → Secado → Gastos → Venta → Resultado f
 - Kotlin + Jetpack Compose
 - Navigation Compose
 - Arquitectura MVVM (ViewModel + StateFlow)
-- Room (almacenamiento local) — `AppDatabase` (versión 2) con `Negocio`, `Productor`, `Compra`, `Lote` y `Sublote`; Gasto, Secado y Venta se agregan después
+- Room (almacenamiento local) — `AppDatabase` (versión 3) con `Negocio`, `Productor`, `Compra`, `Lote`, `Sublote`, `Gasto` y `GastoSublote`; Secado y Venta se agregan después
 - Firebase Authentication (inicio de sesión y registro con correo y contraseña)
 - JUnit (pruebas unitarias)
 
