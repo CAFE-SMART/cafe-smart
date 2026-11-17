@@ -5,6 +5,7 @@ import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.purchase.ModoProductor
 import com.cafesmart.app.data.model.Productor
+import com.cafesmart.app.data.model.aPesos
 import com.cafesmart.app.data.model.TipoDocumento
 import com.cafesmart.app.viewmodel.purchase.cafesCompletos
 import com.cafesmart.app.viewmodel.purchase.crearSublote
@@ -246,6 +247,32 @@ class PurchaseRulesTest {
         assertEquals("25,125 kg", formatoKg(25.125))
         assertEquals("1.200 kg", formatoKg(1200.0))
         assertEquals("$ 350.000", formatoDinero(350000.0))
+    }
+
+    @Test
+    fun formatoDinero_redondeaAlPesoMasCercano() {
+        // Empate de medio peso: sube (10,5 kg x $13.001 = 136.510,5).
+        assertEquals("$ 136.511", formatoDinero(10.5 * 13_001))
+        // En Double estos totales exactos quedan un pelo por debajo (32099,999… y 122999,999…): no pierden un peso.
+        assertEquals("$ 32.100", formatoDinero(2.675 * 12_000))
+        assertEquals("$ 123.000", formatoDinero(8.2 * 15_000))
+    }
+
+    @Test
+    fun elTotalQueSeMuestraEsElMismoQueSeGuardaEnRoom() {
+        // RoomPurchaseRepository guarda cafes.sumOf { totalDe(it) }.aPesos(): el paso 3 debe mostrar lo mismo.
+        fun cafe(peso: String, precio: String) =
+            CafeFormulario(tipoCafe = "Verde", calidad = Calidad.BUENA, peso = peso, precio = precio)
+        val casos = listOf(
+            listOf(cafe("10.5", "13001")),
+            listOf(cafe("2.675", "12000")),
+            listOf(cafe("8.2", "15000")),
+            listOf(cafe("0.5", "15001"), cafe("0.5", "15001")),
+        )
+        for (cafes in casos) {
+            val guardado = cafes.mapNotNull { crearSublote(it) }.sumOf { totalDe(it) }.aPesos()
+            assertEquals(formatoDinero(guardado.toDouble()), formatoDinero(totalEstimado(cafes)))
+        }
     }
 
     @Test
