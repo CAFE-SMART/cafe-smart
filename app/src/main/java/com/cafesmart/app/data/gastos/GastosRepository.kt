@@ -10,6 +10,11 @@ import com.cafesmart.app.data.sample.gastosEjemplo
 // Flujos observables para publicar y leer el estado.
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+/** Resultado de lectura: conserva la identidad del gasto y solo el importe de la relación. */
+data class GastoDelSublote(val gasto: Gasto, val subloteId: Long, val montoAsignado: Long)
 
 // ============================================================
 // 2. CONTRATO DE LA FUENTE DE GASTOS
@@ -22,6 +27,7 @@ import kotlinx.coroutines.flow.StateFlow
  * un guardado o informar un fallo; suspend no significa por sí solo que exista una red.
  */
 interface GastosRepository {
+    fun observarGastosSublote(subloteId: Long): Flow<List<GastoDelSublote>>
     // StateFlow expone el listado más reciente para que el ViewModel lo observe.
     val gastos: StateFlow<List<Gasto>>
     // ============================================================
@@ -53,6 +59,9 @@ class DemoGastosRepository : GastosRepository {
     // MutableStateFlow publica listas nuevas; el mapa asocia cada ID de gasto con su lista de relaciones.
     private val registros = MutableStateFlow<List<Gasto>>(emptyList())
     private val repartos = mutableMapOf<Long, List<GastoSublote>>()
+    private val asignados = MutableStateFlow<List<GastoDelSublote>>(emptyList())
+    override fun observarGastosSublote(subloteId: Long): Flow<List<GastoDelSublote>> =
+        asignados.map { filas -> filas.filter { it.subloteId == subloteId } }
     override val gastos: StateFlow<List<Gasto>> = registros
 
     /** Carga explícita para revisar el estado con datos, sin sobrescribir registros. */
@@ -87,6 +96,7 @@ class DemoGastosRepository : GastosRepository {
         // Se copia el reparto y luego se publica la nueva lista, con el gasto más reciente al principio.
         // La emisión de StateFlow es lo que actualiza el listado que observa el ViewModel.
         repartos[gasto.id] = reparto.toList()
+        asignados.value = reparto.map { GastoDelSublote(gasto, it.subloteId, it.montoAsignado) } + asignados.value
         registros.value = listOf(gasto) + registros.value
     }
 
