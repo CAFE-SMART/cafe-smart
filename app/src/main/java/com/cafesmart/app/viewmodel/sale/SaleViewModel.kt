@@ -27,6 +27,7 @@ import com.cafesmart.app.viewmodel.purchase.formatoKg
 import com.cafesmart.app.viewmodel.purchase.limpiarPeso
 import com.cafesmart.app.viewmodel.purchase.limpiarPrecio
 import com.cafesmart.app.viewmodel.purchase.milisAFecha
+import com.cafesmart.app.viewmodel.purchase.pesoEnPantalla
 import com.cafesmart.app.viewmodel.purchase.precioEnPantalla
 import com.cafesmart.app.viewmodel.purchase.precioKg
 import com.cafesmart.app.viewmodel.purchase.precioValido
@@ -258,7 +259,7 @@ data class SaleUiState(
             detalle = "${formatoKg(disponible)} disponibles · ${textoComprado(diasDesde(item.sublote.fechaIngreso, hoy))}",
             elegido = estaElegido(item),
             cantidadTexto = formatoKg(elegidos.firstOrNull { it.id == id }?.cantidadKg ?: 0.0),
-            cantidadCampo = textoCantidad(id),
+            cantidadCampo = campoCantidad(id),
             ayudaCantidad = mensajeCantidad(disponible),
             errorCantidad = errorDeCantidad(id),
             cantidadValida = cantidadValida(cantidadDesdeTexto(textoCantidad(id)), disponible)
@@ -277,6 +278,9 @@ data class SaleUiState(
     // Texto del campo "Cantidad a vender" de un sublote: lo escrito, o la cantidad elegida si no se ha tocado.
     fun textoCantidad(subloteId: Long): String =
         textosCantidad[subloteId] ?: elegidos.firstOrNull { it.id == subloteId }?.cantidadKg?.let(::formatoKgCampo).orEmpty()
+
+    // Lo que se ve en el campo: coma para decimales y punto para miles, como en Compras.
+    fun campoCantidad(subloteId: Long): String = pesoEnPantalla(textoCantidad(subloteId))
 
     // Error de la cantidad escrita: solo aparece cuando pasa de lo disponible (con el campo vacio o en 0 no hay error).
     fun errorDeCantidad(subloteId: Long): String? {
