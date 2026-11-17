@@ -203,7 +203,7 @@ data class SaleUiState(
     private fun aPantalla(cliente: Cliente) = ClienteEnPantalla(
         cliente = cliente,
         nombre = cliente.nombre,
-        documento = "${cliente.tipoDocumento.etiqueta} ${cliente.documento}",
+        documento = documentoTexto(cliente),
         elegido = cliente == this.cliente
     )
 
@@ -348,7 +348,7 @@ data class SaleUiState(
 
     // "Cédula 16780012" / "NIT 9003421215"; null cuando la venta es sin registrar.
     val clienteDocumentoTexto: String?
-        get() = clienteDeLaVenta?.let { "${it.tipoDocumento.etiqueta} ${it.documento}" }
+        get() = clienteDeLaVenta?.let(::documentoTexto)
 
     val fechaResumenTexto: String
         get() = formatoFecha(fecha)
