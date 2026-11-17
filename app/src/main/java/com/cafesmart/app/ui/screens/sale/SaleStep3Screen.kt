@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,8 +50,8 @@ fun SaleStep3Screen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var mostrarCalendario by remember { mutableStateOf(false) }
-    var mostrarCancelar by remember { mutableStateOf(false) }
+    var mostrarCalendario by rememberSaveable { mutableStateOf(false) }
+    var mostrarCancelar by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = modifier
