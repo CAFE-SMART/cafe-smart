@@ -91,7 +91,7 @@ Las constantes de rango están en `Sublote.kt` (`HUMEDAD_MIN/MAX_PORCENTAJE`, `F
 - `Calidad`, `TipoDocumento` y `Fecha` ahora **viven en `data/model`** (antes estaban en `data/purchase`), así el modelo no depende del paquete del formulario.
 - **Nombres sin choque:** se borró el `Productor` viejo de `data/purchase` (el formulario usa el de `data.model`, con `id = 0` por defecto) y el `Sublote` viejo pasó a llamarse `CafeValidado`.
 - **`tiposCafe`** (lista de textos del formulario) se arma desde el enum `TipoCafe`: hay una sola fuente. `TipoCafe.desdeEtiqueta("Verde")` convierte el texto al enum.
-- **Dinero:** el formulario aún usa `Double` (`CafeValidado.precioKg`); el modelo usa `Long`. Convertir siempre con `Double.aPesos()` (redondea al peso más cercano).
+- **Dinero:** el formulario aún usa `Double` (`CafeValidado.precioKg`); el modelo usa `Long`. Convertir siempre con `Double.aPesos()` (redondea al peso más cercano).Al mostrar dinero pasa lo mismo:\formatoDinero´usa 'aPesos()' para que el total del paso 3 se guarde en el Room (truncar con 'toLong()´mostraba 1 peso menos.
 - **Merma:** `SecadoConDetalle.mermaPorcentaje` usa `calcularMermaPorcentaje`. Sin kg enviados devuelve `0.0` (la función exige `kgInicial > 0`).
 - **Al confirmar una compra (paso 3)** el ViewModel haría: productor (o `null`) → `Compra` → por cada `CafeValidado`: buscar/crear `Lote` → `Sublote(pesoInicialKg = pesoDisponibleKg = peso, costoKg = precio.aPesos())`.
 - **Pendiente de confirmar con el equipo:** la regla de reparto de un gasto entre sublotes (hoy se propone en proporción a los kg). El modelo solo valida que la suma coincida con el monto.
