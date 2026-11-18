@@ -1,8 +1,10 @@
 package com.cafesmart.app.viewmodel.settings
 
+import com.cafesmart.app.data.inventario.InventarioFalso
 import com.cafesmart.app.data.inventario.OrigenOcupacion
 import com.cafesmart.app.data.local.NegocioEntity
 import com.cafesmart.app.data.negocio.NegocioRepository
+import com.cafesmart.app.data.sample.lotesEjemplo
 import com.cafesmart.app.data.session.SessionGateway
 import com.cafesmart.app.data.session.UsuarioSesion
 import com.cafesmart.app.ui.components.TipoAviso
@@ -161,7 +163,7 @@ class CapacidadBodegaTest {
 
     @Test fun inventarioUsaLaCapacidadYElBultoDelNegocioYSeActualizaSolo() {
         val negocios = NegociosCap(sinConfigurar)
-        val vm = InventoryViewModel(negocios = negocios, uid = "u1")
+        val vm = InventoryViewModel(inventario = InventarioFalso(lotesEjemplo()), negocios = negocios, uid = "u1")
         // Cuenta nueva: capacidad sin configurar.
         assertEquals(EstadoBodega.SIN_CAPACIDAD, vm.uiState.value.resumen.ocupacion.estado)
         assertEquals(KG_POR_BULTO, vm.uiState.value.resumen.pesoBultoKg, 0.0)
