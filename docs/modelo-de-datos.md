@@ -68,7 +68,7 @@ erDiagram
 5. **"Sin registrar" = FK nula**, no un productor ficticio (Tony Café no registra nombre ni cédula, RN-V-01).
 6. **Dinero en `Long` (pesos enteros), kg en `Double`.** La app ya fuerza precios enteros; con `Long` los totales no pierden centavos.
 7. **Fechas con la clase `Fecha` existente** (minSdk 24, sin `LocalDate`). Para Room: convertir con `fechaAMilis` / `milisAFecha`, que ya están en `Formatters.kt`.
-8. **Room ya tiene `Negocio`, `Productor`, `Compra`, `Lote` y `Sublote`** (ver sección 5). Los ids (`Long = 0`) son `@PrimaryKey(autoGenerate = true)` y las relaciones son `@ForeignKey` con `RESTRICT`. Faltan las entidades de Gasto, Secado y Venta (con sus tablas intermedias) y las `@Relation`: las clases `*ConSublotes` / `*ConDetalle` siguen siendo vistas de lectura que Room llenará con `@Relation` cuando se conecten las pantallas.
+8. **Room ya tiene `Negocio`, `Productor`, `Compra`, `Lote`, `Sublote`, `Gasto` y `GastoSublote`** (ver sección 5). Los ids (`Long = 0`) son `@PrimaryKey(autoGenerate = true)` y las relaciones son `@ForeignKey` con `RESTRICT`. Faltan las entidades de Secado y Venta (con sus tablas intermedias) y las `@Relation`: las clases `*ConSublotes` / `*ConDetalle` siguen siendo vistas de lectura que Room llenará con `@Relation` cuando se conecten las pantallas.
 
 ## 4. Reglas que el modelo valida
 
@@ -91,7 +91,7 @@ Las constantes de rango están en `Sublote.kt` (`HUMEDAD_MIN/MAX_PORCENTAJE`, `F
 - `Calidad`, `TipoDocumento` y `Fecha` ahora **viven en `data/model`** (antes estaban en `data/purchase`), así el modelo no depende del paquete del formulario.
 - **Nombres sin choque:** se borró el `Productor` viejo de `data/purchase` (el formulario usa el de `data.model`, con `id = 0` por defecto) y el `Sublote` viejo pasó a llamarse `CafeValidado`.
 - **`tiposCafe`** (lista de textos del formulario) se arma desde el enum `TipoCafe`: hay una sola fuente. `TipoCafe.desdeEtiqueta("Verde")` convierte el texto al enum.
-- **Dinero:** el formulario aún usa `Double` (`CafeValidado.precioKg`); el modelo usa `Long`. Convertir siempre con `Double.aPesos()` (redondea al peso más cercano).
+- **Dinero:** el formulario aún usa `Double` (`CafeValidado.precioKg`); el modelo usa `Long`. Convertir siempre con `Double.aPesos()` (redondea al peso más cercano).Al mostrar dinero pasa lo mismo:\formatoDinero´usa 'aPesos()' para que el total del paso 3 se guarde en el Room (truncar con 'toLong()´mostraba 1 peso menos.
 - **Merma:** `SecadoConDetalle.mermaPorcentaje` usa `calcularMermaPorcentaje`. Sin kg enviados devuelve `0.0` (la función exige `kgInicial > 0`).
 - **Al confirmar una compra (paso 3)** el ViewModel haría: productor (o `null`) → `Compra` → por cada `CafeValidado`: buscar/crear `Lote` → `Sublote(pesoInicialKg = pesoDisponibleKg = peso, costoKg = precio.aPesos())`.
 - **Pendiente de confirmar con el equipo:** la regla de reparto de un gasto entre sublotes (hoy se propone en proporción a los kg). El modelo solo valida que la suma coincida con el monto.
@@ -115,8 +115,18 @@ Los archivos del paquete `data/model` compilan con la versión de Kotlin del pro
 
 - Firebase Auth solo guarda correo, contraseña y nombre; nombres y apellidos **no** se copian a Room y la contraseña nunca.
 - Se crea al terminar el registro (`AuthEvent.Registered`). Si una cuenta no lo tiene (o se reinstaló la app), se crea desde Ajustes → Información de empresa, que conserva capacidad, bulto y fecha de creación al editar.
-- `AppDatabase` (archivo `cafesmart.db`, versión 2, sin esquema exportado) es la base única. La versión 2 agrega `ProductorEntity`, `CompraEntity`, `LoteEntity` y `SubloteEntity` (en `data/local/`, cada una con su DAO: `insertar`, `listar`, `buscarPorId`).
+- `AppDatabase` (archivo `cafesmart.db`, versión 2, sin esquema exportado) es la base única. La versión 2 agrega `ProductorEntity`, `CompraEntity`, `LoteEntity` y `SubloteEntity` (en `data/local/`, cada una con su DAO: `insertar`, `listar`, `buscarPorId`). Además: `LoteDao.buscarPorTipoYCalidad`, `ProductorDao.buscarPorDocumento` y `ProductorDao.actualizar`.
 - Las entidades de Room son clases aparte de las data classes de `data/model` (que siguen validando las reglas). Enums como texto (nombre del enum), fechas en milisegundos UTC (`fechaAMilis`), dinero en `Long`.
-- Llaves foráneas con `RESTRICT`: `compra.productor_id`, `sublote.lote_id` y `sublote.compra_id`. `sublote.secado_id` queda sin llave foránea hasta que exista la tabla de Secado.
+- Llaves foráneas con `RESTRICT`: `compra.productor_id`, `sublote.lote_id`, `sublote.compra_id`, `gasto_sublote.gasto_id` y `gasto_sublote.sublote_id`. `sublote.secado_id` y `gasto.secado_id` quedan sin llave foránea hasta que exista la tabla de Secado.
+- **Gastos (la base sube a la versión 3):** `GastoEntity` y `GastoSubloteEntity` con `GastoDao`, que guarda el gasto y su reparto en una sola transacción (si un sublote del reparto no existe, no se guarda nada) y lee los gastos de un sublote con lo que le tocó (`montoAsignado`). El repositorio es `RoomGastosRepository` (`data/gastos/`); `gastosRegistrados()` entrega todos los gastos, con su monto completo, para el Resumen y el Historial financiero.
 - Índices únicos: `productor.documento` y `lote(tipo_cafe, calidad)`.
 - Si cambias el esquema mientras la app no esté publicada, desinstálala del emulador (borra también el Negocio: se vuelve a llenar en Ajustes → Información de empresa).
+
+## 7. Compras en Room
+
+**Código:** `data/purchase/PurchaseRepository.kt` (interfaz + `RoomPurchaseRepository`), `data/local/Transaccion.kt` y `data/inventario/OrigenOcupacionRoom.kt`.
+
+- **Confirmar la compra** (`PurchaseViewModel.confirmarCompra` → `PurchaseRepository.registrarCompra`) guarda en **una sola transacción** la `Compra` (`totalPagado` = suma de peso × precio, en pesos), el `Lote` de cada café (se busca por tipo y calidad y se crea si no existe) y un `Sublote` por cada café (`pesoInicialKg = pesoDisponibleKg`, `costoKg` = precio por kg, `fechaIngreso` = fecha de la compra). Si algo falla no queda nada guardado.
+- **Productores:** se leen y se guardan en Room (`listarProductores`, `guardarProductor`, `actualizarProductor`). Antes de guardar se busca el documento (`buscarPorDocumento`); si ya existe el resultado es `DocumentoRepetido` y la pantalla muestra "Este documento ya está registrado" en vez de una falla de la base. "Sin registrar" se guarda con `productorId = null`.
+- **Kilos en bodega:** `OrigenOcupacionRoom.kgOcupados()` = suma del peso disponible de los sublotes con existencia (los agotados no cuentan). Reemplaza a `OcupacionDeEjemplo` en `AppNavHost` (Compras y Capacidad de bodega). El aviso de "Compra registrada" se calcula **antes** de guardar, con la ocupación de ese momento, para no contar la compra dos veces.
+- Versión de la base: sigue en 2 (`Productor`, `Compra`, `Lote` y `Sublote` ya estaban). Quien tenga instalada una versión anterior debe desinstalar la app y volver a llenar Información de empresa; no se escribe migración mientras la app no esté publicada.
