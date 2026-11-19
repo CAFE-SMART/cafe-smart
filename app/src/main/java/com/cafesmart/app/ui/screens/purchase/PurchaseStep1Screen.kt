@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -238,24 +239,54 @@ private fun BuscadorProductor(
     onProductorClick: (Productor) -> Unit,
     onVerMas: () -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.s12)) {
-        ProducerSearchField(busqueda = busqueda, onBusquedaChange = onBusquedaChange)
+    BuscadorPersonas(
+        busqueda = busqueda,
+        titulo = titulo,
+        mensajeListaVacia = mensajeListaVacia,
+        hayMas = hayMasProductores,
+        textoVerMas = "Ver más productores",
+        onBusquedaChange = onBusquedaChange,
+        onVerMas = onVerMas
+    ) {
+        // forEach dibuja una fila por cada productor.
+        productores.forEach { fila ->
+            ProducerRow(
+                nombre = fila.nombre,
+                documento = fila.documento,
+                elegido = fila.elegido,
+                // Avisa al ViewModel cual productor se eligio.
+                onClick = { onProductorClick(fila.productor) }
+            )
+        }
+    }
+}
 
-        // Si no hay productores muestra el mensaje; si hay, muestra la lista.
+// Barra de busqueda y lista dentro de una tarjeta "registrado": la usan Compras (productores) y Ventas (clientes).
+// Cada pantalla pone sus filas en [filas]; el resto es igual para las dos.
+@Composable
+fun BuscadorPersonas(
+    busqueda: String,
+    titulo: String,
+    // Si no es null se muestra en lugar de la lista
+    mensajeListaVacia: String?,
+    hayMas: Boolean,
+    textoVerMas: String,
+    onBusquedaChange: (String) -> Unit,
+    onVerMas: () -> Unit,
+    placeholder: String = PLACEHOLDER_BUSQUEDA,
+    filas: @Composable ColumnScope.() -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.s12)) {
+        ProducerSearchField(busqueda = busqueda, onBusquedaChange = onBusquedaChange, placeholder = placeholder)
+
+        // Si no hay nadie muestra el mensaje; si hay, muestra la lista.
         if (mensajeListaVacia != null) {
             Text(text = mensajeListaVacia, style = AppTypography.bodyMd)
         } else {
             Text(text = titulo, style = AppTypography.labelField)
-            // forEach dibuja una fila por cada productor.
-            productores.forEach { fila ->
-                ProducerRow(
-                    fila = fila,
-                    // Avisa al ViewModel cual productor se eligio.
-                    onClick = { onProductorClick(fila.productor) }
-                )
-            }
-            // El boton solo aparece si quedan productores por mostrar.
-            if (hayMasProductores) {
+            filas()
+            // El boton solo aparece si quedan personas por mostrar.
+            if (hayMas) {
                 OutlinedButton(
                     onClick = onVerMas,
                     shape = AppShapes.medium,
@@ -264,7 +295,7 @@ private fun BuscadorProductor(
                         .fillMaxWidth()
                         .height(50.dp)
                 ) {
-                    Text(text = "Ver más productores", style = AppTypography.buttonLink)
+                    Text(text = textoVerMas, style = AppTypography.buttonLink)
                 }
             }
         }

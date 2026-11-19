@@ -1,6 +1,5 @@
 package com.cafesmart.app.sale
 
-import com.cafesmart.app.data.model.Productor
 import com.cafesmart.app.data.sale.clientesDeEjemplo
 import com.cafesmart.app.viewmodel.purchase.limpiarDocumento
 import com.cafesmart.app.viewmodel.purchase.validarDocumento
@@ -22,8 +21,7 @@ class ClientesEjemploTest {
     fun cadaDocumentoCumpleLaReglaDeCedulaONitSinRepetirse() {
         clientesDeEjemplo.forEach { cliente ->
             // Se compara contra los demás clientes (sin él mismo) con la misma regla de Compras.
-            val otros = clientesDeEjemplo.filter { it !== cliente }
-                .map { Productor(nombre = it.nombre, documento = it.documento, tipoDocumento = it.tipoDocumento) }
+            val otros = clientesDeEjemplo.filter { it !== cliente }.map { it.documento }
             assertNull("Documento inválido: ${cliente.nombre}", validarDocumento(cliente.documento, cliente.tipoDocumento, otros))
         }
     }
