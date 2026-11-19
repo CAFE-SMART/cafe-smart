@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.cafesmart.app.data.purchase.ModoProductor
@@ -34,6 +35,7 @@ import com.cafesmart.app.ui.theme.AppShapes
 import com.cafesmart.app.ui.theme.AppTypography
 import com.cafesmart.app.ui.theme.BorderField
 import com.cafesmart.app.ui.theme.CafesmartTheme
+import com.cafesmart.app.ui.theme.ErrorText
 import com.cafesmart.app.ui.theme.Spacing
 import com.cafesmart.app.ui.theme.SurfaceScreen
 import com.cafesmart.app.viewmodel.purchase.ProductorEnPantalla
@@ -150,6 +152,15 @@ fun PurchaseStep1Screen(
 
         // Pie fijo abajo: mensaje de lo que falta y boton Continuar.
         PurchaseBottomBar {
+            // Si no se pudo leer o guardar un productor en Room (la hoja de "Productor nuevo" ya se cerro)
+            estado.errorProductor?.let {
+                Text(
+                    text = it,
+                    style = AppTypography.caption.copy(color = ErrorText),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
             PendingMessage(mensaje = estado.mensajePendientePaso1)
             ContinueButton(
                 text = "Continuar",

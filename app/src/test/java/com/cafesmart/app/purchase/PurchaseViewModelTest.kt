@@ -6,17 +6,29 @@ import com.cafesmart.app.data.purchase.NuevoProductor
 import com.cafesmart.app.data.model.TipoDocumento
 import com.cafesmart.app.data.purchase.productorSinRegistrar
 import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class PurchaseViewModelTest {
+
+    // El ViewModel guarda en un repositorio falso desde su viewModelScope: se necesita un Main de prueba.
+    @Before fun preparar() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
+    @After fun limpiar() { Dispatchers.resetMain() }
 
     @Test
     fun alEmpezar_estaEnElPaso1SinOpcionElegida() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         val estado = viewModel.uiState.value
         assertEquals(1, estado.paso)
         assertFalse(estado.registradoSeleccionado)
@@ -26,7 +38,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun sinRegistrar_pasaAlPaso2ConProductorSinRegistrar() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         viewModel.elegirModo(ModoProductor.SIN_REGISTRAR)
         assertTrue(viewModel.uiState.value.sinRegistrarSeleccionado)
         viewModel.continuarPaso1()
@@ -37,7 +49,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun productorNuevo_seGuardaEnLaListaYQuedaElegido() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         viewModel.cambiarDocumento("1114059684")
         viewModel.cambiarNombre("Pepito Pérez")
         // Sin guardar no se puede continuar
@@ -57,7 +69,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun productorRegistrado_buscarYSeleccionar() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         viewModel.elegirModo(ModoProductor.REGISTRADO)
         // Recientes: 2 productores y el boton "Ver más"
         assertEquals("Recientes", viewModel.uiState.value.tituloLista)
@@ -79,7 +91,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun documentoYaRegistrado_noDejaContinuar() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         viewModel.cambiarDocumento("890301886")
         viewModel.cambiarNombre("Otro Nombre")
         assertEquals("Este documento ya está registrado. Verifica en tu lista.", viewModel.uiState.value.documentoError)
@@ -88,7 +100,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun continuarPaso1_noAvanzaSiFaltanDatos() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         viewModel.elegirModo(ModoProductor.REGISTRADO)
         viewModel.continuarPaso1()
         assertEquals(1, viewModel.uiState.value.paso)
@@ -97,7 +109,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun productorNuevo_limpiaLoEscrito() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         viewModel.cambiarTipoDocumento(TipoDocumento.NIT)
         viewModel.cambiarDocumento("12.345-678")
         viewModel.cambiarNombre("Ana2 Gómez!")
@@ -112,7 +124,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun paso2_entregaTextosListosParaLaVista() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         viewModel.cambiarTipoCafe(0, "Verde")
         viewModel.cambiarCalidad(0, Calidad.BUENA)
         viewModel.cambiarPeso(0, "25")
@@ -128,7 +140,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun paso2_agregarYQuitarCafes() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         viewModel.cambiarTipoCafe(0, "Verde")
         viewModel.cambiarCalidad(0, Calidad.BUENA)
         viewModel.cambiarPeso(0, "25")
@@ -146,7 +158,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun cambiarFecha_desdeElCalendario() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         // 15 de mayo de 2026 a medianoche UTC, como lo entrega el calendario
         viewModel.cambiarFecha(1778803200000L)
         val fecha = viewModel.uiState.value.fecha
@@ -157,7 +169,7 @@ class PurchaseViewModelTest {
 
     // Lleva el flujo hasta el paso 3 con un cafe completo
     private fun viewModelEnPaso3(): PurchaseViewModel {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         viewModel.elegirModo(ModoProductor.SIN_REGISTRAR)
         viewModel.continuarPaso1()
         viewModel.cambiarTipoCafe(0, "Verde")
@@ -170,7 +182,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun continuarPaso2_noAvanzaSiFaltanDatos() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         viewModel.elegirModo(ModoProductor.SIN_REGISTRAR)
         viewModel.continuarPaso1()
         viewModel.continuarPaso2()
@@ -206,7 +218,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun reiniciarCompra_empiezaDeCeroYConservaLosProductores() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         viewModel.cambiarDocumento("1114059684")
         viewModel.cambiarNombre("Ana Gómez")
         viewModel.guardarNuevoProductor()
@@ -223,7 +235,7 @@ class PurchaseViewModelTest {
 
     // Deja el primer cafe completo
     private fun viewModelConUnCafe(): PurchaseViewModel {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         viewModel.cambiarTipoCafe(0, "Verde")
         viewModel.cambiarCalidad(0, Calidad.BUENA)
         viewModel.cambiarPeso(0, "25")
@@ -283,7 +295,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun cancelarNuevoProductor_borraLoEscritoYConservaLaOpcionElegida() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         viewModel.elegirModo(ModoProductor.SIN_REGISTRAR)
         viewModel.cambiarNombre("Ana Gómez")
         viewModel.cancelarNuevoProductor()
@@ -293,7 +305,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun listaDeProductores_buscaYSeLimpiaAlCerrar() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         assertEquals(3, viewModel.uiState.value.productoresEnLista.size)
         viewModel.cambiarBusquedaLista("xyz")
         assertEquals("Lo siento, no pudimos encontrarlo. Prueba con otro nombre o cédula.", viewModel.uiState.value.mensajeSinResultadosLista)
@@ -304,7 +316,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun editarProductor_guardaLosCambiosYActualizaElElegido() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         val pepito = viewModel.uiState.value.productores.last()
         viewModel.elegirProductor(pepito)
         viewModel.editarProductor(pepito)
@@ -320,7 +332,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun editarProductor_noDejaUsarElDocumentoDeOtro() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         val pepito = viewModel.uiState.value.productores.last()
         viewModel.editarProductor(pepito)
         viewModel.cambiarDocumentoEdicion("11140596")
@@ -329,7 +341,7 @@ class PurchaseViewModelTest {
 
     @Test
     fun cancelarEdicion_noCambiaAlProductor() {
-        val viewModel = PurchaseViewModel()
+        val viewModel = viewModelDePrueba()
         val pepito = viewModel.uiState.value.productores.last()
         viewModel.editarProductor(pepito)
         viewModel.cambiarNombreEdicion("Otro Nombre")
