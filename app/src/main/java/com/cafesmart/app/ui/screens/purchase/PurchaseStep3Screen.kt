@@ -132,8 +132,23 @@ fun PurchaseStep3Screen(
         }
 
         PurchaseBottomBar {
-            // Boton principal del equipo.
-            ContinueButton(text = "Confirmar compra", onClick = onConfirmar)
+            // Si no se pudo guardar la compra, se avisa aqui y el boton queda activo para intentarlo de nuevo
+            // (hasta MAX_INTENTOS_GUARDAR_COMPRA fallos seguidos; despues se bloquea y solo queda Cancelar).
+            estado.errorAlGuardar?.let {
+                Text(
+                    text = it,
+                    style = AppTypography.caption.copy(color = ErrorText),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            // Boton principal del equipo. Mientras se guarda queda bloqueado (con la ruedita) para no guardar dos veces.
+            ContinueButton(
+                text = "Confirmar compra",
+                onClick = onConfirmar,
+                enabled = !estado.guardando && !estado.reintentosAgotados,
+                cargando = estado.guardando
+            )
             TextButton(
                 // "Cancelar" no borra nada todavia: primero pregunta con la hoja.
                 onClick = { mostrarCancelar = true },

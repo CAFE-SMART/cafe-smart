@@ -9,10 +9,22 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 
 // Avisos de capacidad de bodega en Compras: informativos, nunca bloquean la compra.
+@OptIn(ExperimentalCoroutinesApi::class)
 class AvisoCapacidadTest {
+
+    // El ViewModel usa viewModelScope: se necesita un Main de prueba.
+    @Before fun preparar() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
+    @After fun limpiar() { Dispatchers.resetMain() }
 
     // ── Regla ──────────────────────────────────────────────
 
@@ -65,21 +77,21 @@ class AvisoCapacidadTest {
 
     // ── Flujo de compra ────────────────────────────────────
 
-    private fun compraDe(kg: String, vm: PurchaseViewModel = PurchaseViewModel()): PurchaseViewModel {
+    private fun compraDe(kg: String, vm: PurchaseViewModel = viewModelDePrueba()): PurchaseViewModel {
         vm.cambiarTipoCafe(0, "Verde"); vm.cambiarCalidad(0, Calidad.BUENA)
         vm.cambiarPeso(0, kg); vm.cambiarPrecio(0, "14000")
         return vm
     }
 
     @Test fun conCapacidadEnCeroElPaso1AvisaQueFaltaConfigurarYNoBloquea() {
-        val vm = PurchaseViewModel()
+        val vm = viewModelDePrueba()
         assertTrue(vm.uiState.value.avisoSinConfigurar)
         vm.actualizarBodega(capacidadKg = 3000.0, kgOcupados = 834.0)
         assertFalse(vm.uiState.value.avisoSinConfigurar)
     }
 
     @Test fun elAvisoSeActualizaAlEscribirElPeso() {
-        val vm = PurchaseViewModel()
+        val vm = viewModelDePrueba()
         vm.actualizarBodega(3000.0, 834.0)
         compraDe("25", vm)
         assertNull(vm.uiState.value.avisoCapacidad)           // 859 kg: 29 %
@@ -90,21 +102,24 @@ class AvisoCapacidadTest {
     }
 
     @Test fun confirmarConAvisoRegistraLaCompraYConservaElAviso() {
-        val vm = PurchaseViewModel()
+        // 3.134 kg: lo que leeria Room con la compra ya guardada (834 + 2.300).
+        val vm = viewModelDePrueba(ocupacion = OcupacionFalsa(3134.0))
         vm.actualizarBodega(3000.0, 834.0)
         compraDe("2300", vm)
         vm.confirmarCompra()
         val estado = vm.uiState.value
         assertTrue(estado.compraRegistrada)
         assertEquals(NivelAvisoCapacidad.SUPERADA, estado.avisoAlRegistrar!!.nivel)
-        // Si la ocupacion cambia despues (la compra ya se guardo), el aviso de esta compra no cambia.
-        vm.actualizarBodega(3000.0, 3134.0)
-        assertEquals(3134.0, estado.avisoAlRegistrar!!.nuevoTotalKg, 0.0)
-        assertEquals(834.0, vm.uiState.value.kgOcupados, 0.0)
+        // El aviso se fijo con la ocupacion de antes de guardar (834), no con la de despues.
+        assertEquals(3134.0, estado.avisoAlRegistrar.nuevoTotalKg, 0.0)
+        // Una compra ya registrada ignora cambios posteriores de la bodega.
+        vm.actualizarBodega(3000.0, 9999.0)
+        assertEquals(3134.0, vm.uiState.value.avisoAlRegistrar!!.nuevoTotalKg, 0.0)
+        assertEquals(3134.0, vm.uiState.value.kgOcupados, 0.0)
     }
 
     @Test fun reiniciarConservaLaBodegaPeroBorraElAviso() {
-        val vm = PurchaseViewModel()
+        val vm = viewModelDePrueba()
         vm.actualizarBodega(3000.0, 834.0)
         compraDe("2300", vm)
         vm.confirmarCompra()

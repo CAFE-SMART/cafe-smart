@@ -30,6 +30,7 @@ class GastosCiclo2Test {
             LaunchedEffect(Unit) {
                 nav.currentBackStackEntryFlow.first()
                 nav.navigate(Routes.HOME) { popUpTo(Routes.SPLASH) { inclusive = true } }
+                nav.usarGastosEnMemoria()
             }
         }
     }
@@ -49,7 +50,7 @@ class GastosCiclo2Test {
             }
         }
         compose.onNodeWithText("No hay sublotes disponibles").assertIsDisplayed()
-        compose.onNodeWithText("0 sublote(s) seleccionado(s)").assertIsDisplayed()
+        compose.onNodeWithText("Ningún sublote seleccionado").assertIsDisplayed()
         compose.onNodeWithText("Guardar selección").performClick()
         compose.runOnIdle { assertTrue(regreso) }
     }
@@ -85,13 +86,13 @@ class GastosCiclo2Test {
         compose.onAllNodes(hasSetTextAction())[0].performTextInput("Transporte compartido")
         compose.onAllNodes(hasSetTextAction())[2].performTextInput("12000")
         pulsar("Asociar a sublotes")
-        pulsar("Seleccionar…")
+        pulsar("Seleccionar sublotes")
         compose.runOnIdle { assertEquals(Routes.EXPENSE_LINK_BATCHES, nav.currentDestination?.route) }
         pulsar("Sublote 1")
         pulsar("Sublote 2")
-        compose.onNodeWithText("2 sublote(s) seleccionado(s)").assertIsDisplayed()
+        compose.onNodeWithText("2 sublotes seleccionados").assertIsDisplayed()
         pulsar("Sublote 2")
-        compose.onNodeWithText("1 sublote(s) seleccionado(s)").assertIsDisplayed()
+        compose.onNodeWithText("1 sublote seleccionado").assertIsDisplayed()
         pulsar("Sublote 2")
         compose.onNodeWithText("Guardar selección").performClick()
         compose.runOnIdle {
@@ -101,7 +102,7 @@ class GastosCiclo2Test {
             assertEquals(setOf(1L, 2L), modelo().uiState.value.formulario.asignaciones.keys)
             modelo().editar { it.copy(asignaciones = mapOf(1L to "5000", 2L to "7000")) }
         }
-        pulsar("2 sublote(s) seleccionado(s)")
+        pulsar("2 sublotes seleccionados")
         compose.onNodeWithText("Seleccionar sublotes").assertIsDisplayed()
         // La flecha real recorre el mismo retorno que BackHandler sin inyectar KEYCODE_BACK
         // en una ventana que Espresso puede encontrar temporalmente sin foco.

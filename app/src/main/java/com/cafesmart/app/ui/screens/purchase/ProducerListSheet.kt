@@ -21,6 +21,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.cafesmart.app.data.model.Productor
@@ -33,6 +34,7 @@ import com.cafesmart.app.ui.theme.AppTypography
 import com.cafesmart.app.ui.theme.BorderDefault
 import com.cafesmart.app.ui.theme.BorderField
 import com.cafesmart.app.ui.theme.CafesmartTheme
+import com.cafesmart.app.ui.theme.ErrorText
 import com.cafesmart.app.ui.theme.Primary
 import com.cafesmart.app.ui.theme.Spacing
 import com.cafesmart.app.ui.theme.SurfaceCard
@@ -60,6 +62,15 @@ fun ProducerListSheet(
     AppBottomSheet(onDismiss = onCerrar, skipPartiallyExpanded = true) {
         // Si hay un productor en edicion muestra el formulario; si no, la lista
         if (estado.productorEnEdicion != null) {
+            // Si no se pudo guardar el cambio en Room, se avisa arriba de la hoja (la hoja sigue abierta con lo escrito)
+            estado.errorProductor?.let {
+                Text(
+                    text = it,
+                    style = AppTypography.caption.copy(color = ErrorText),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.s20)
+                )
+            }
             // El mismo formulario de "Productor nuevo"
             NewProducerForm(
                 titulo = "Modificar productor",
