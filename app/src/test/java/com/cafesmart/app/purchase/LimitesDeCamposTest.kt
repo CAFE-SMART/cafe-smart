@@ -7,10 +7,22 @@ import com.cafesmart.app.viewmodel.purchase.ayudaNombre
 import com.cafesmart.app.viewmodel.purchase.limpiarNombre
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 
 // Topes de escritura y caracteres permitidos en los nombres (productor de Compras y registro de la cuenta).
+@OptIn(ExperimentalCoroutinesApi::class)
 class LimitesDeCamposTest {
+
+    // El ViewModel usa viewModelScope: se necesita un Main de prueba.
+    @Before fun preparar() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
+    @After fun limpiar() { Dispatchers.resetMain() }
 
     @Test fun unaPersonaSoloLlevaLetrasYEspacios() {
         assertEquals("Juan Perez", limpiarNombre("Juan123 Perez!!@"))
@@ -36,7 +48,7 @@ class LimitesDeCamposTest {
     }
 
     @Test fun alPasarDeNitACedulaElNombreSeLimpia() {
-        val vm = PurchaseViewModel()
+        val vm = viewModelDePrueba()
         vm.cambiarTipoDocumento(TipoDocumento.NIT)
         vm.cambiarNombre("Café 2000 S.A.S.")
         assertEquals("Café 2000 S.A.S.", vm.uiState.value.nuevoProductor.nombre)

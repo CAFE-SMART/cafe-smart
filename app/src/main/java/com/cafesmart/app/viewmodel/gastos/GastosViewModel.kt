@@ -20,6 +20,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.emitAll
 // Corrutinas, cambios de hilo y manejo de cancelación.
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -31,25 +37,52 @@ import kotlinx.coroutines.withContext
  * Único propietario del borrador, filtros y resultados. Las dos pantallas reciben estado
  * y emiten acciones; no escriben datos. Sobrevive a recomposiciones y rotaciones, no al proceso.
  * [repository] permite verificar fallos sin conectar servicios externos.
- * [sublotes] reutiliza por defecto los ejemplos del inventario mientras no exista persistencia.
+ * [sublotes] es una lista fija (ejemplos del inventario, para pruebas y vistas previas); con null, que es lo que usa
+ * la app, los sublotes con café disponible se leen del repositorio y se actualizan solos.
  *
  * ViewModel separa la lógica de presentación de las funciones Composable. Recibe eventos,
  * actualiza un estado y se comunica con el repositorio; no dibuja pantallas. El propietario HOME
  * permite compartir el borrador entre rutas y conservarlo durante cambios de configuración.
  *
- * @param repository Fuente de Gastos; por defecto es una demostración en memoria, sin guardado permanente.
- * @param sublotes Opciones disponibles para asociar; por defecto usa los ejemplos de Inventario.
+ * @param repository Fuente de Gastos; la app usa Room (RoomGastosRepository) y por defecto es una demostración en memoria.
+ * @param sublotes Opciones para asociar: una lista fija (por defecto, los ejemplos de Inventario) o null para leerlas del repositorio.
  */
 class GastosViewModel(
     private val repository: GastosRepository = DemoGastosRepository(),
-    sublotes: List<Sublote> = lotesEjemplo().flatMap { it.sublotesConExistencia }
+    sublotes: List<Sublote>? = lotesEjemplo().flatMap { it.sublotesConExistencia }
 ) : ViewModel() {
     // MutableStateFlow permite publicar cambios. uiState se expone como StateFlow de lectura
     // para que las pantallas observen el estado sin escribir directamente en este contenedor.
     private val mutableState = MutableStateFlow(
-        GastosUiState(gastos = repository.gastos.value, sublotes = sublotes)
+        GastosUiState(gastos = repository.gastos.value, sublotes = sublotes.orEmpty())
     )
     val uiState: StateFlow<GastosUiState> = mutableState
+
+    /** batchId de navegación representa Sublote.id; nunca Lote.id ni Gasto.id. */
+    fun observarGastosSublote(batchId: String?): Flow<GastosSubloteUiState> {
+        val id = batchId?.toLongOrNull()?.takeIf { it > 0 }
+            ?: return flowOf(GastosSubloteUiState(error = "El identificador del sublote no es válido."))
+        // Se guarda aparte para seguir mostrando el sublote si falla la consulta de sus gastos.
+        var conocido: Sublote? = null
+        return flow {
+            // Primero entre los sublotes ya cargados y, si no está (por ejemplo, está agotado), en la fuente.
+            val sublote = uiState.value.sublotes.find { it.id == id } ?: repository.buscarSublote(id)
+            if (sublote == null) {
+                emit(GastosSubloteUiState(error = "No se encontró este sublote en la fuente de inventario disponible."))
+                return@flow
+            }
+            conocido = sublote
+            emit(GastosSubloteUiState(sublote = sublote, cargando = true))
+            emitAll(repository.observarGastosSublote(id).map { GastosSubloteUiState(sublote = sublote, gastos = it) })
+        }.catch { error ->
+            if (error is CancellationException) throw error
+            emit(GastosSubloteUiState(sublote = conocido, error = "No se pudieron consultar los gastos. Inténtalo nuevamente.", recuperable = true))
+        }
+    }
+
+    /** Solo la demostración en memoria tiene datos de ejemplo; con Room no se inventan gastos en la base real. */
+    val permiteEjemplos: Boolean get() = repository is DemoGastosRepository
+
     // El contador y el ID del borrador viven en esta instancia; no se guardan en disco.
     private var siguienteId = (repository.gastos.value.maxOfOrNull { it.id } ?: 0L) + 1L
     private var idBorrador = siguienteId
@@ -60,22 +93,29 @@ class GastosViewModel(
         viewModelScope.launch {
             repository.gastos.collect { gastos -> mutableState.update { it.copy(gastos = gastos) } }
         }
+        // Con sublotes null (la app real) se leen de la fuente: una compra nueva aparece sin reabrir la pantalla.
+        if (sublotes == null) viewModelScope.launch {
+            repository.observarSublotesDisponibles().collect { lista -> mutableState.update { it.copy(sublotes = lista) } }
+        }
     }
 
     // ============================================================
     // 3. EVENTOS DE LOS CAMPOS
     // ============================================================
     /**
-     * Conserva el texto escrito; no borra caracteres inválidos para ocultar errores.
+     * Aplica los topes de escritura de ExpenseRules: concepto de 60 caracteres, descripción de 200
+     * y valores solo con dígitos (hasta 8). Lo que no cabe no entra al borrador.
      *
-     * Solo permite cambios en EDICION. update aplica la transformación recibida y elimina
+     * Solo permite cambios en EDICION. update aplica la transformación recibida, la normaliza y elimina
      * los errores anteriores; los valores se comprobarán de nuevo al solicitar confirmación.
      *
      * @param cambio Función que recibe el borrador actual y devuelve una copia con los campos editados.
      */
     fun editar(cambio: (GastoFormulario) -> GastoFormulario) {
         if (uiState.value.resultado != ResultadoGasto.EDICION) return
-        mutableState.update { it.copy(formulario = cambio(it.formulario), errores = GastoErrores()) }
+        mutableState.update {
+            it.copy(formulario = GastosValidation.normalizar(cambio(it.formulario)), errores = GastoErrores())
+        }
     }
 
     /** La selección se escribe en el mismo borrador que contiene los montos manuales. */

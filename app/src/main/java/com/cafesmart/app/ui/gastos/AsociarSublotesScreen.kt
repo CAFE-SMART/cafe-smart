@@ -31,7 +31,8 @@ fun AsociarSublotesScreen(
     val habilitado = estado.resultado == ResultadoGasto.EDICION
     Column(modifier.fillMaxSize().background(SurfaceScreen).safeDrawingPadding()) {
         GastosHeader("Seleccionar sublotes", onVolver)
-        Text("${estado.formulario.asignaciones.size} sublote(s) seleccionado(s)",
+        Text(if (estado.formulario.asignaciones.isEmpty()) "Ningún sublote seleccionado"
+            else etiquetaSeleccionSublotes(estado.formulario.asignaciones.size),
             style = AppTypography.valueStrong, color = Primary,
             modifier = Modifier.padding(horizontal = Spacing.s16, vertical = Spacing.s8))
         LazyColumn(Modifier.weight(1f).testTag("gastos_sublotes"), contentPadding = PaddingValues(Spacing.s16),

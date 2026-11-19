@@ -14,7 +14,7 @@ Inicio → Compra → Inventario → Secado → Gastos → Venta → Resultado f
 - Kotlin + Jetpack Compose
 - Navigation Compose
 - Arquitectura MVVM (ViewModel + StateFlow)
-- Room (almacenamiento local) — `AppDatabase` (versión 2) con `Negocio`, `Productor`, `Compra`, `Lote` y `Sublote`; Gasto, Secado y Venta se agregan después
+- Room (almacenamiento local) — `AppDatabase` (versión 3) con `Negocio`, `Productor`, `Compra`, `Lote`, `Sublote`, `Gasto` y `GastoSublote`; Secado y Venta se agregan después
 - Firebase Authentication (inicio de sesión y registro con correo y contraseña)
 - JUnit (pruebas unitarias)
 
@@ -31,7 +31,7 @@ Modelo de datos: [`docs/modelo-de-datos.md`](docs/modelo-de-datos.md).
 
 ## Navegación (Navigation Compose)
 Todo el grafo vive en `navigation/AppNavHost.kt` y los nombres de ruta en `navigation/Routes.kt`.
-Cada ruta corresponde a una pantalla del Figma (pestaña "Flujos"). Ya son reales: cuenta (inicio de sesión, registro y recuperar contraseña con Firebase), `home`, Compras (pasos 1 a 3 y `purchase_done`), el resumen de `inventory`, los tres de Gastos, Ajustes (`settings`, `settings_business` y `settings_warehouse`) y las Finanzas (`finance_summary` y `finance_history`).
+Cada ruta corresponde a una pantalla del Figma (pestaña "Flujos"). Ya son reales: cuenta (inicio de sesión, registro y recuperar contraseña con Firebase), `home`, Compras (pasos 1 a 3 y `purchase_done`), el resumen de `inventory`, los tres de Gastos y los Gastos del sublote (`inventory_batch_expenses`), Ajustes (`settings`, `settings_business` y `settings_warehouse`) y las Finanzas (`finance_summary` y `finance_history`).
 El resto (lo demás de Inventario, Ventas y Secado) son *placeholders* (`NavPlaceholder`) que se reemplazan por la pantalla real dentro de su `composable(...)`.
 
 **Flujo base:** `splash` → `login` → `home` → `inventory`
@@ -135,49 +135,53 @@ En cada pull request el workflow `CI` corre las pruebas y guarda el reporte:
 - Al final de esa página, en *Artifacts*, se descarga `reporte-pruebas-junit` (el HTML y los XML; se conserva 14 días).
 
 ### Archivos de prueba
-| Archivo | Qué prueba | Pruebas |
-|---|---|---|
-| `data/model/ModeloDatosTest.kt` | Cálculos del modelo de datos (merma del secado, valor en bodega, costos) | 12 |
-| `data/model/ReglasModeloTest.kt` | Validaciones de las entidades (sublotes, gastos, repartos) | 15 |
-| `purchase/PurchaseRulesTest.kt` | Reglas del registro de compra (productores, peso con punto de miles y coma decimal, precios) | 23 |
-| `purchase/PurchaseViewModelTest.kt` | Estado y pasos del flujo de compra | 24 |
-| `purchase/AvisoCapacidadTest.kt` | Avisos de capacidad en Compras (90 %, más de 100 % y compra registrada) | 10 |
-| `purchase/LimitesDeCamposTest.kt` | Nombre del productor (persona o empresa) y topes de escritura | 5 |
-| `sale/SaleRulesTest.kt` | Reglas de la venta (cantidad disponible, precio por kg y total) | 13 |
-| `sale/SaleViewModelTest.kt` | Estado del registro de venta (sublotes, cantidad escrita con su error, reiniciar) | 15 |
-| `sale/ClientesEjemploTest.kt` | Los clientes de ejemplo cumplen las reglas de documento | 4 |
-| `data/auth/AuthErrorTest.kt` | Traducción de los errores de Firebase a errores de la app | 8 |
-| `data/session/SesionInicialTest.kt` | Qué hace el Splash según la sesión y "Recordar mi cuenta" | 3 |
-| `data/finanzas/ClaveFinancieraTest.kt` | Clave financiera: reglas y hash con sal | 8 |
-| `data/finanzas/LimiteIntentosTest.kt` | 3 intentos fallidos en 15 minutos y bloqueo de 5 minutos | 9 |
-| `ui/auth/AuthErrorDialogDataTest.kt` | Textos y botones de los diálogos de error de cuenta | 7 |
-| `ui/auth/AuthViewModelFirebaseTest.kt` | Inicio de sesión y registro con un Firebase simulado | 7 |
-| `ui/auth/LoginValidationTest.kt` | Validaciones de inicio de sesión (correo y contraseña) | 15 |
-| `ui/auth/RecuperarContrasenaViewModelTest.kt` | Recuperar contraseña: validar el correo, enviar y reenviar el enlace | 11 |
-| `ui/auth/RequisitosContrasenaTest.kt` | Requisitos de la contraseña de la cuenta (mínimo 8, minúscula, mayúscula y número) y coincidencia | 5 |
-| `viewmodel/drying/MermaCalculatorTest.kt` | Porcentaje de merma del secado | 7 |
-| `viewmodel/gastos/GastosValidationTest.kt` | Validaciones del formulario de gastos | 19 |
-| `viewmodel/gastos/GastosViewModelTest.kt` | Estado de la lista y del registro de gastos | 8 |
-| `viewmodel/inventory/InventorySummaryTest.kt` | Resumen de inventario por tipo, orden y conversión a bultos | 19 |
-| `viewmodel/inventory/InventoryViewModelTest.kt` | Estado de la pantalla de resumen de inventario | 2 |
-| `viewmodel/inventory/WarehouseCapacityTest.kt` | Ocupación de la bodega y sus estados (normal, advertencia, crítica, sin capacidad) | 36 |
-| `viewmodel/finance/ProfitCalculatorTest.kt` | Utilidad de una venta (ingresos − costo de compra − gastos) | 25 |
-| `viewmodel/finance/ExpenseRulesTest.kt` | Validaciones de un gasto (concepto, tipo, valor, fecha, descripción) | 45 |
-| `viewmodel/finance/ResumenFinancieroTest.kt` | Resumen financiero (periodo, costo de venta, compras, gastos y merma) y su ViewModel | 19 |
-| `viewmodel/finance/HistorialFinancieroTest.kt` | Historial financiero (orden, filtro por tipo, días y paginación) | 15 |
-| `viewmodel/finance/AccesoFinancieroViewModelTest.kt` | Clave financiera: crear, ingresar, bloqueo y recuperación con la cuenta | 30 |
-| `data/negocio/NegocioRulesTest.kt` | Negocio que se guarda al registrarse (recorta nombre y teléfono) | 4 |
-| `viewmodel/settings/ProfileRulesTest.kt` | Perfil de Ajustes ("Sin nombre", correo y tipo de negocio) | 11 |
-| `viewmodel/settings/NombrePerfilRulesTest.kt` | Validación del nombre del perfil (Editar perfil) | 7 |
-| `viewmodel/settings/SettingsViewModelTest.kt` | Estado de Ajustes: pestañas, notificaciones, editar el nombre y cerrar sesión | 26 |
-| `viewmodel/settings/NegocioInfoRulesTest.kt` | Validación y guardado de Información de empresa (conserva capacidad y bulto) | 10 |
-| `viewmodel/settings/NegocioInfoViewModelTest.kt` | Estado de la pantalla Información de empresa | 7 |
-| `viewmodel/settings/CapacidadBodegaTest.kt` | Capacidad de bodega y peso por bulto (reglas, guardado y lectura en Inventario) | 13 |
-| `ExampleUnitTest.kt` | Prueba de ejemplo de Android Studio | 1 |
+| Archivo | Qué prueba                                                                                                                                                    | Pruebas |
+|---|---------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
+| `data/model/ModeloDatosTest.kt` | Cálculos del modelo de datos (merma del secado, valor en bodega, costos)                                                                                      | 12      |
+| `data/model/ReglasModeloTest.kt` | Validaciones de las entidades (sublotes, gastos, repartos)                                                                                                    | 15      |
+| `purchase/PurchaseRulesTest.kt` | Reglas del registro de compra (productores, peso con punto de miles y coma decimal, precios, total redondeado al peso)                                        | 25      |
+| `purchase/PurchaseViewModelTest.kt` | Estado y pasos del flujo de compra                                                                                                                            | 24      |
+| `purchase/AvisoCapacidadTest.kt` | Avisos de capacidad en Compras (90 %, más de 100 % y compra registrada)                                                                                       | 10      |
+| `purchase/LimitesDeCamposTest.kt` | Nombre del productor (persona o empresa) y topes de escritura                                                                                                 | 5       |
+| `purchase/PurchaseViewModelGuardadoTest.kt` | Compras en Room con repositorio falso: guardar la compra, avisos de bodega sin contar dos veces, productores, errores al guardar o leer, límite de reintentos | 20      |
+| `data/purchase/PurchaseRepositoryTest.kt` | Repositorio de compras con DAOs falsos: sublotes generados, lotes, total pagado, todo o nada y productores                                                    | 12      |
+| `data/inventario/OrigenOcupacionRoomTest.kt` | Kilos en bodega desde los sublotes (los agotados no suman)                                                                                                    | 4       |
+| `sale/SaleRulesTest.kt` | Reglas de la venta (cantidad disponible, precio por kg y total)                                                                                               | 13      |
+| `sale/SaleViewModelTest.kt` | Estado del registro de venta (sublotes, cantidad escrita con su error, reiniciar)                                                                             | 15      |
+| `sale/ClientesEjemploTest.kt` | Los clientes de ejemplo cumplen las reglas de documento                                                                                                       | 4       |
+| `data/auth/AuthErrorTest.kt` | Traducción de los errores de Firebase a errores de la app                                                                                                     | 8       |
+| `data/session/SesionInicialTest.kt` | Qué hace el Splash según la sesión y "Recordar mi cuenta"                                                                                                     | 3       |
+| `data/finanzas/ClaveFinancieraTest.kt` | Clave financiera: reglas y hash con sal                                                                                                                       | 8       |
+| `data/finanzas/LimiteIntentosTest.kt` | 3 intentos fallidos en 15 minutos y bloqueo de 5 minutos                                                                                                      | 9       |
+| `ui/auth/AuthErrorDialogDataTest.kt` | Textos y botones de los diálogos de error de cuenta                                                                                                           | 7       |
+| `ui/auth/AuthViewModelFirebaseTest.kt` | Inicio de sesión y registro con un Firebase simulado                                                                                                          | 7       |
+| `ui/auth/LoginValidationTest.kt` | Validaciones de inicio de sesión (correo y contraseña)                                                                                                        | 15      |
+| `ui/auth/RecuperarContrasenaViewModelTest.kt` | Recuperar contraseña: validar el correo, enviar y reenviar el enlace                                                                                          | 11      |
+| `ui/auth/RequisitosContrasenaTest.kt` | Requisitos de la contraseña de la cuenta (mínimo 8, minúscula, mayúscula y número) y coincidencia                                                             | 5       |
+| `viewmodel/drying/MermaCalculatorTest.kt` | Porcentaje de merma del secado                                                                                                                                | 7       |
+| `viewmodel/gastos/GastosValidationTest.kt` | Validaciones del formulario de gastos                                                                                                                         | 19      |
+| `viewmodel/gastos/GastosViewModelTest.kt` | Estado de la lista y del registro de gastos                                                                                                                   | 8       |
+| `viewmodel/inventory/InventorySummaryTest.kt` | Resumen de inventario por tipo, orden y conversión a bultos                                                                                                   | 19      |
+| `viewmodel/inventory/InventoryViewModelTest.kt` | Estado de la pantalla de resumen de inventario                                                                                                                | 2       |
+| `viewmodel/inventory/WarehouseCapacityTest.kt` | Ocupación de la bodega y sus estados (normal, advertencia, crítica, sin capacidad)                                                                            | 36      |
+| `viewmodel/finance/ProfitCalculatorTest.kt` | Utilidad de una venta (ingresos − costo de compra − gastos)                                                                                                   | 25      |
+| `viewmodel/finance/ExpenseRulesTest.kt` | Validaciones de un gasto (concepto, tipo, valor, fecha, descripción)                                                                                          | 45      |
+| `viewmodel/finance/ResumenFinancieroTest.kt` | Resumen financiero (periodo, costo de venta, compras, gastos y merma) y su ViewModel                                                                          | 19      |
+| `viewmodel/finance/HistorialFinancieroTest.kt` | Historial financiero (orden, filtro por tipo, días y paginación)                                                                                              | 15      |
+| `viewmodel/finance/AccesoFinancieroViewModelTest.kt` | Clave financiera: crear, ingresar, bloqueo y recuperación con la cuenta                                                                                       | 30      |
+| `data/negocio/NegocioRulesTest.kt` | Negocio que se guarda al registrarse (recorta nombre y teléfono)                                                                                              | 4       |
+| `viewmodel/settings/ProfileRulesTest.kt` | Perfil de Ajustes ("Sin nombre", correo y tipo de negocio)                                                                                                    | 11      |
+| `viewmodel/settings/NombrePerfilRulesTest.kt` | Validación del nombre del perfil (Editar perfil)                                                                                                              | 7       |
+| `viewmodel/settings/SettingsViewModelTest.kt` | Estado de Ajustes: pestañas, notificaciones, editar el nombre y cerrar sesión                                                                                 | 26      |
+| `viewmodel/settings/NegocioInfoRulesTest.kt` | Validación y guardado de Información de empresa (conserva capacidad y bulto)                                                                                  | 10      |
+| `viewmodel/settings/NegocioInfoViewModelTest.kt` | Estado de la pantalla Información de empresa                                                                                                                  | 7       |
+| `viewmodel/settings/CapacidadBodegaTest.kt` | Capacidad de bodega y peso por bulto (reglas, guardado y lectura en Inventario)                                                                               | 13      |
+| `ExampleUnitTest.kt` | Prueba de ejemplo de Android Studio                                                                                                                           | 1       |
 
-Total: 498 pruebas unitarias (37 archivos). El CI del proyecto corre `./gradlew testDebugUnitTest assembleDebug`.
+Total: 534 pruebas unitarias (40 archivos). El CI del proyecto corre `./gradlew testDebugUnitTest assembleDebug`.
 
-Las pruebas instrumentadas (`androidTest`: Room real en `data/local/AppDatabaseTest`, pantallas de Gastos y selector de fecha) compilan pero no corren en el CI: necesitan emulador. Para correr la de Room: `./gradlew connectedDebugAndroidTest --tests "*AppDatabaseTest"`. Ojo: ese comando desinstala la app del emulador al terminar (borra la sesión y el negocio guardado).
+Las pruebas instrumentadas (`androidTest`: Room real en `data/local/AppDatabaseTest` y `data/local/ComprasRoomTest`, pantallas de Gastos y selector de fecha) compilan pero no corren en el CI: necesitan emulador. Para correr una clase: clic derecho sobre ella en Android Studio → Run, o `./gradlew connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.cafesmart.app.data.local.ComprasRoomTest"` (Cubre el documento repetido que podría colarse. Aclaración:cambia la clase por la que se desea probar; `--tests` no funciona con esta tarea).
+Ojo: ese comando desinstala la app del emulador al terminar (borra la sesión y el negocio guardado).
 
 ## Flujo de trabajo en Git (trunk-based)
 - Un solo tronco: `main`, siempre compilable.

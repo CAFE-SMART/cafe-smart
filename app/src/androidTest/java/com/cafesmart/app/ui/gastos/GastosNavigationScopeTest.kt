@@ -75,6 +75,7 @@ class GastosNavigationScopeTest {
             LaunchedEffect(Unit) {
                 nav.currentBackStackEntryFlow.first()
                 nav.navigate(Routes.HOME) { popUpTo(Routes.SPLASH) { inclusive = true } }
+                nav.usarGastosEnMemoria()
             }
         }
         compose.onNodeWithText("Registrar gasto").performScrollTo().performClick()
@@ -162,6 +163,8 @@ class GastosNavigationScopeTest {
             }.getOrElse { "No se pudo leer la semántica: $it" }
             throw AssertionError("Fallo al reingresar a Home: $estado\n$semantica", fallo)
         }
+        // La sesión nueva tiene otra entrada de HOME: también ahí va el ViewModel en memoria, para no leer la base del dispositivo.
+        compose.runOnIdle { nav.usarGastosEnMemoria() }
         compose.onNodeWithText("Registrar gasto").performScrollTo().performClick()
         compose.runOnIdle {
             val nuevaEntrada = nav.getBackStackEntry(Routes.HOME)

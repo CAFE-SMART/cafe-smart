@@ -13,6 +13,32 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GastosViewModelTest {
+    @Test fun limitaDescripcionAlEditarSinPerderSeleccionNiMonto() = runTest {
+        val vm = GastosViewModel()
+        vm.editar { it.copy(concepto = "Transporte", monto = "12000") }
+        vm.alternarSublote(2)
+        vm.editar { it.copy(asignaciones = mapOf(2L to "12000"), descripcion = "x".repeat(250)) }
+        val form = vm.uiState.value.formulario
+        assertEquals("x".repeat(200), form.descripcion)
+        assertEquals("12000", form.monto)
+        assertEquals(mapOf(2L to "12000"), form.asignaciones)
+        vm.solicitarConfirmacion()
+        assertEquals(ResultadoGasto.CONFIRMACION, vm.uiState.value.resultado)
+    }
+
+    @Test fun repartoInvalidoNoPermiteGuardarYConservaLaSeleccion() = runTest {
+        val repo = DemoGastosRepository()
+        val vm = GastosViewModel(repo)
+        vm.editar { it.copy(concepto = "Transporte", monto = "12000", aplicaA = AplicaGasto.SUBLOTES,
+            asignaciones = mapOf(1L to "5000", 2L to "6000")) }
+        vm.solicitarConfirmacion()
+        vm.confirmar()
+        runCurrent()
+        assertEquals(ResultadoGasto.EDICION, vm.uiState.value.resultado)
+        assertNotNull(vm.uiState.value.errores.sublotes)
+        assertEquals(mapOf(1L to "5000", 2L to "6000"), vm.uiState.value.formulario.asignaciones)
+        assertTrue(repo.gastos.value.isEmpty())
+    }
     @Before fun preparar() { Dispatchers.setMain(StandardTestDispatcher()) }
     @After fun limpiar() { Dispatchers.resetMain() }
 
