@@ -28,7 +28,7 @@ class MontosGrandesComprasTest {
     private fun cafeMaximo() = CafeFormulario("Seco", Calidad.BUENA, peso = "99999", precio = "100000")
 
     private fun compraConCafes(cantidad: Int): PurchaseViewModel {
-        val vm = PurchaseViewModel()
+        val vm = viewModelDePrueba()
         vm.elegirModo(ModoProductor.SIN_REGISTRAR)
         vm.continuarPaso1()
         repeat(cantidad) { i ->
@@ -107,7 +107,7 @@ class MontosGrandesComprasTest {
     }
 
     @Test fun conPrecioPasadoDelMaximo_noSePuedeContinuar() {
-        val vm = PurchaseViewModel()
+        val vm = viewModelDePrueba()
         vm.elegirModo(ModoProductor.SIN_REGISTRAR)
         vm.continuarPaso1()
         vm.cambiarTipoCafe(0, "Seco"); vm.cambiarCalidad(0, Calidad.BUENA)
