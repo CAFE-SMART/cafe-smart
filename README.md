@@ -168,6 +168,7 @@ En cada pull request el workflow `CI` corre las pruebas y guarda el reporte:
 | `viewmodel/inventory/InventorySummaryTest.kt` | Resumen de inventario por tipo, orden y conversión a bultos                                                                                                   | 19      |
 | `viewmodel/inventory/InventoryListsTest.kt` | Datos de Lista por tipo (calidades de un tipo) y Sublotes del grupo: pesos, agotados y orden                                                                  | 12      |
 | `viewmodel/inventory/InventoryViewModelTest.kt` | Estado de Inventario con repositorio falso: resumen, estado vacío, cargando y compra nueva que aparece sola                                                   | 9       |
+| `viewmodel/inventory/DetalleSubloteViewModelTest.kt` | Detalle del sublote con repositorio falso: datos, actualización automática, no encontrado, agotado, tiempo en bodega, datos de calidad y bultos según el negocio | 16      |
 | `viewmodel/inventory/WarehouseCapacityTest.kt` | Ocupación de la bodega y sus estados (normal, advertencia, crítica, sin capacidad)                                                                            | 36      |
 | `viewmodel/finance/ProfitCalculatorTest.kt` | Utilidad de una venta (ingresos − costo de compra − gastos)                                                                                                   | 25      |
 | `viewmodel/finance/ExpenseRulesTest.kt` | Validaciones de un gasto (concepto, tipo, valor, fecha, descripción)                                                                                          | 45      |
@@ -183,7 +184,7 @@ En cada pull request el workflow `CI` corre las pruebas y guarda el reporte:
 | `viewmodel/settings/CapacidadBodegaTest.kt` | Capacidad de bodega y peso por bulto (reglas, guardado y lectura en Inventario)                                                                               | 13      |
 | `ExampleUnitTest.kt` | Prueba de ejemplo de Android Studio                                                                                                                           | 1       |
 
-Total: 604 pruebas unitarias (46 archivos). El CI del proyecto corre `./gradlew testDebugUnitTest assembleDebug`.
+Total: 616 pruebas unitarias (46 archivos). El CI del proyecto corre `./gradlew testDebugUnitTest assembleDebug`.
 
 Las pruebas instrumentadas (`androidTest`: Room real en `data/local/AppDatabaseTest`, `data/local/ComprasRoomTest` e `data/local/InventarioRoomTest`, pantallas de Gastos y selector de fecha) compilan pero no corren en el CI: necesitan emulador. Para correr una clase: clic derecho sobre ella en Android Studio → Run, o `./gradlew connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.cafesmart.app.data.local.ComprasRoomTest"` (Cubre el documento repetido que podría colarse. Aclaración:cambia la clase por la que se desea probar; `--tests` no funciona con esta tarea).
 Ojo: ese comando desinstala la app del emulador al terminar (borra la sesión y el negocio guardado).
