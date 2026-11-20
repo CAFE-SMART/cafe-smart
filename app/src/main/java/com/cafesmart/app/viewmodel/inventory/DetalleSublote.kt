@@ -11,6 +11,7 @@ import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.model.HUMEDAD_MAX_PORCENTAJE
 import com.cafesmart.app.data.model.HUMEDAD_MIN_PORCENTAJE
 import com.cafesmart.app.data.model.SubloteConLote
+import com.cafesmart.app.data.negocio.NegocioRepository
 import com.cafesmart.app.viewmodel.purchase.formatoDinero
 import com.cafesmart.app.viewmodel.purchase.formatoFecha
 import com.cafesmart.app.viewmodel.purchase.fechaDeHoy
@@ -50,6 +51,8 @@ data class DetalleSublote(
     val rangoHumedad: String,  // "Entre 8 y 15 %"
     val factorRendimiento: String, // "95" o "Sin dato"
     val rangoFactor: String,   // "Entre 70 y 140"
+    val humedadConDato: Boolean,
+    val factorConDato: Boolean,
     val agotado: Boolean,
 )
 
@@ -65,6 +68,11 @@ private fun textoHumedad(valor: Double): String =
     (if (valor % 1.0 == 0.0) valor.toLong().toString() else valor.toString().replace('.', ',')) + " %"
 
 private fun enteros(valor: Double) = valor.toInt()
+
+// Texto de ayuda bajo "Humedad" / "Factor de rendimiento" (Figma: "Sin dato · entre 8 y 14 %").
+// Con dato muestra solo el rango; sin dato antepone "Sin dato · " y el rango queda en minúscula.
+fun subtituloDatoCalidad(rango: String, conDato: Boolean): String =
+    if (conDato) rango else "Sin dato · ${rango.replaceFirstChar { it.lowercase() }}"
 
 /** Del modelo al texto de la pantalla. Función pura para probarla sin Room. */
 fun armarDetalle(
@@ -91,19 +99,29 @@ fun armarDetalle(
         rangoHumedad = "Entre ${enteros(HUMEDAD_MIN_PORCENTAJE)} y ${enteros(HUMEDAD_MAX_PORCENTAJE)} %",
         factorRendimiento = s.factorRendimiento?.toString() ?: "Sin dato",
         rangoFactor = "Entre $FACTOR_RENDIMIENTO_MIN y $FACTOR_RENDIMIENTO_MAX",
+        humedadConDato = s.humedadPorcentaje != null,
+        factorConDato = s.factorRendimiento != null,
         agotado = s.estaAgotado,
     )
 }
 
 // Lee un sublote de Room a través del repositorio y se actualiza solo cuando cambia el inventario
 // (por eso la pantalla no tiene botón de recargar). [batchId] es el texto que llega en la ruta.
+// Con [negocios] y [uid] usa los kg por bulto configurados en el negocio (como Inventario); sin ellos, KG_POR_BULTO.
 class DetalleSubloteViewModel(
     inventario: InventoryRepository,
     batchId: String,
+    negocios: NegocioRepository? = null,
+    uid: String? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DetalleSubloteUiState())
     val uiState: StateFlow<DetalleSubloteUiState> = _uiState
+
+    // Última lectura de Room y kg por bulto vigentes; cualquiera de los dos que cambie vuelve a armar el detalle.
+    private var leido = false
+    private var item: SubloteConLote? = null
+    private var pesoBulto = KG_POR_BULTO
 
     init {
         val id = batchId.toLongOrNull()
@@ -111,14 +129,30 @@ class DetalleSubloteViewModel(
             _uiState.value = DetalleSubloteUiState(cargando = false, noEncontrado = true)
         } else {
             viewModelScope.launch {
-                inventario.observarSublote(id).collect { item ->
-                    _uiState.value = if (item == null) {
-                        DetalleSubloteUiState(cargando = false, noEncontrado = true)
-                    } else {
-                        DetalleSubloteUiState(cargando = false, detalle = armarDetalle(item))
+                inventario.observarSublote(id).collect {
+                    leido = true
+                    item = it
+                    publicar()
+                }
+            }
+            if (negocios != null && uid != null) {
+                viewModelScope.launch {
+                    negocios.observar(uid).collect { negocio ->
+                        pesoBulto = negocio?.pesoBultoKg ?: KG_POR_BULTO
+                        publicar()
                     }
                 }
             }
+        }
+    }
+
+    private fun publicar() {
+        if (!leido) return // Todavía no llegó la primera lectura de Room: se sigue mostrando "cargando".
+        val actual = item
+        _uiState.value = if (actual == null) {
+            DetalleSubloteUiState(cargando = false, noEncontrado = true)
+        } else {
+            DetalleSubloteUiState(cargando = false, detalle = armarDetalle(actual, pesoBulto))
         }
     }
 }

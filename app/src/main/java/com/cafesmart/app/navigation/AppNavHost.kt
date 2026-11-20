@@ -468,6 +468,8 @@ fun AppNavHost(
             val batchId = entry.arguments?.getString(Routes.ARG_BATCH_ID).orEmpty()
             DetalleSubloteRoute(
                 inventario = inventario,
+                negocios = negocios,
+                uid = FirebaseSessionGateway.usuarioActual()?.uid,
                 batchId = batchId,
                 onBack = { navController.popBackStack() },
                 onVerGastos = { navController.navigateTo(Routes.inventoryBatchExpenses(batchId)) },

@@ -6,7 +6,12 @@ import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.model.Lote
 import com.cafesmart.app.data.model.LoteConSublotes
 import com.cafesmart.app.data.model.Sublote
+import com.cafesmart.app.data.local.NegocioEntity
 import com.cafesmart.app.data.model.TipoCafe
+import com.cafesmart.app.data.negocio.NegocioRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -14,7 +19,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -97,7 +101,6 @@ class DetalleSubloteViewModelTest {
     @Test fun conInventarioVacioDaNoEncontrado() {
         val estado = DetalleSubloteViewModel(InventarioFalso(emptyList()), "1").uiState.value
         assertTrue(estado.noEncontrado)
-        assertNotNull(estado)
     }
 
     // ── Campos del Figma: tiempo en bodega y datos de calidad ──
@@ -143,5 +146,52 @@ class DetalleSubloteViewModelTest {
             "Fecha de ingreso",
             armarDetalle(item(compraId = null, secadoId = 4), hoy = Fecha(3, 6, 2026)).etiquetaFecha,
         )
+    }
+
+    // ── Bultos según el negocio, "Sin dato" y sublote agotado ──
+
+    private class NegociosFalsos(inicial: NegocioEntity? = null) : NegocioRepository {
+        val datos = MutableStateFlow(listOfNotNull(inicial).associateBy { it.uid })
+        override suspend fun guardar(negocio: NegocioEntity) { datos.value = datos.value + (negocio.uid to negocio) }
+        override fun observar(uid: String): Flow<NegocioEntity?> = datos.map { it[uid] }
+    }
+
+    private fun negocio(pesoBultoKg: Double) = NegocioEntity(
+        uid = "u1", nombre = "Finca", tipo = "Finca", telefono = "3000000000",
+        pesoBultoKg = pesoBultoKg, creadoEn = 0L,
+    )
+
+    @Test fun sinNegocioLosBultosUsanElPesoPorDefecto() {
+        val d = DetalleSubloteViewModel(InventarioFalso(inventario(disponible = 81.4)), "7").uiState.value.detalle!!
+        assertEquals("2,0 bultos", d.pesoActualBultos) // 81,4 kg / 40,7 kg por bulto
+    }
+
+    @Test fun losBultosUsanElPesoDeBultoConfiguradoEnElNegocio() {
+        val negocios = NegociosFalsos(negocio(pesoBultoKg = 50.0))
+        val vm = DetalleSubloteViewModel(InventarioFalso(inventario(disponible = 100.0)), "7", negocios, "u1")
+        assertEquals("2,0 bultos", vm.uiState.value.detalle!!.pesoActualBultos) // 100 kg / 50 kg por bulto
+        // Si se cambia el peso del bulto en Ajustes, el detalle se actualiza solo.
+        negocios.datos.value = mapOf("u1" to negocio(pesoBultoKg = 25.0))
+        assertEquals("4,0 bultos", vm.uiState.value.detalle!!.pesoActualBultos)
+    }
+
+    @Test fun sinNegocioGuardadoSeUsaElPesoPorDefecto() {
+        val vm = DetalleSubloteViewModel(InventarioFalso(inventario(disponible = 81.4)), "7", NegociosFalsos(), "u1")
+        assertEquals("2,0 bultos", vm.uiState.value.detalle!!.pesoActualBultos)
+    }
+
+    @Test fun elTextoDeAyudaDeCalidadDependeDeSiHayDato() {
+        assertEquals("Sin dato · entre 8 y 15 %", subtituloDatoCalidad("Entre 8 y 15 %", conDato = false))
+        assertEquals("Sin dato · entre 70 y 140", subtituloDatoCalidad("Entre 70 y 140", conDato = false))
+        assertEquals("Entre 8 y 15 %", subtituloDatoCalidad("Entre 8 y 15 %", conDato = true))
+    }
+
+    @Test fun losIndicadoresDeDatoSiguenALosValoresOpcionales() {
+        val sin = armarDetalle(item(), hoy = Fecha(3, 6, 2026))
+        assertFalse(sin.humedadConDato)
+        assertFalse(sin.factorConDato)
+        val con = armarDetalle(item(humedad = 12.0, factor = 95), hoy = Fecha(3, 6, 2026))
+        assertTrue(con.humedadConDato)
+        assertTrue(con.factorConDato)
     }
 }
