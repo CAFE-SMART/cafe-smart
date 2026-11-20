@@ -99,4 +99,49 @@ class DetalleSubloteViewModelTest {
         assertTrue(estado.noEncontrado)
         assertNotNull(estado)
     }
+
+    // ── Campos del Figma: tiempo en bodega y datos de calidad ──
+
+    private fun item(humedad: Double? = null, factor: Int? = null, compraId: Long? = 7, secadoId: Long? = null) =
+        com.cafesmart.app.data.model.SubloteConLote(
+            Sublote(
+                id = 7, loteId = 1, compraId = compraId, secadoId = secadoId,
+                pesoInicialKg = 100.0, pesoDisponibleKg = 100.0, costoKg = 14_000,
+                fechaIngreso = Fecha(3, 6, 2026), humedadPorcentaje = humedad, factorRendimiento = factor,
+            ),
+            Lote(1, TipoCafe.VERDE, Calidad.REGULAR),
+        )
+
+    @Test fun tiempoEnBodegaDiceHoyUnDiaOVariosDias() {
+        val ingreso = Fecha(3, 6, 2026)
+        assertEquals("Hoy", textoTiempoEnBodega(ingreso, Fecha(3, 6, 2026)))
+        assertEquals("1 día", textoTiempoEnBodega(ingreso, Fecha(4, 6, 2026)))
+        assertEquals("12 días", textoTiempoEnBodega(ingreso, Fecha(15, 6, 2026)))
+        // Una fecha de ingreso futura (reloj del celular atrasado) no muestra días negativos.
+        assertEquals("Hoy", textoTiempoEnBodega(Fecha(10, 6, 2026), Fecha(3, 6, 2026)))
+    }
+
+    @Test fun sinHumedadNiFactorMuestraSinDatoYElRangoDelModelo() {
+        val d = armarDetalle(item(), hoy = Fecha(3, 6, 2026))
+        assertEquals("Sin dato", d.humedad)
+        assertEquals("Sin dato", d.factorRendimiento)
+        assertEquals("Entre 8 y 15 %", d.rangoHumedad)
+        assertEquals("Entre 70 y 140", d.rangoFactor)
+        assertEquals("Hoy", d.tiempoEnBodega)
+    }
+
+    @Test fun conHumedadYFactorLosMuestra() {
+        val d = armarDetalle(item(humedad = 12.5, factor = 95), hoy = Fecha(3, 6, 2026))
+        assertEquals("12,5 %", d.humedad)
+        assertEquals("95", d.factorRendimiento)
+        assertEquals("12 %", armarDetalle(item(humedad = 12.0), hoy = Fecha(3, 6, 2026)).humedad)
+    }
+
+    @Test fun laEtiquetaDeFechaDependeDeSiNacioDeUnaCompraODeUnSecado() {
+        assertEquals("Fecha de compra", armarDetalle(item(), hoy = Fecha(3, 6, 2026)).etiquetaFecha)
+        assertEquals(
+            "Fecha de ingreso",
+            armarDetalle(item(compraId = null, secadoId = 4), hoy = Fecha(3, 6, 2026)).etiquetaFecha,
+        )
+    }
 }
