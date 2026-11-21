@@ -81,9 +81,10 @@ fun AppTextField(
             textStyle = AppTypography.bodyLg,
             // TextMuted (#64748B) tiene contraste 4,8:1 sobre blanco; la guia pide minimo 4,5:1 (RNF-27)
             placeholder = { Text(text = placeholder, style = AppTypography.bodyLg.copy(color = TextMuted)) },
-            // Texto a la izquierda del campo, por ejemplo "$". null si no se pidio.
-            leadingIcon = if (leadingText != null) {
-                { Text(text = leadingText, style = AppTypography.valueStrongBold, modifier = Modifier.padding(start = Spacing.s4)) }
+            // Texto pegado al valor, por ejemplo "$". Va como prefix (mismo tamano que lo escrito) y no como
+            // leadingIcon, que reserva ancho de icono y lo hacia ver mas grande que los demas campos.
+            prefix = if (leadingText != null) {
+                { Text(text = "$leadingText ", style = AppTypography.bodyLg) }
             } else {
                 null
             },

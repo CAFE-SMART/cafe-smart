@@ -22,7 +22,7 @@ class SemillaDeEjemploTest {
         val yaGuardados = mutableListOf<Productor>()
         for (p in PRODUCTORES_SEMILLA) {
             assertNull(p.nombre, validarNombre(p.nombre, p.tipoDocumento))
-            assertNull(p.documento, validarDocumento(p.documento, p.tipoDocumento, yaGuardados))
+            assertNull(p.documento, validarDocumento(p.documento, p.tipoDocumento, yaGuardados.map { it.documento }))
             assertNull(p.telefono, validarTelefono(p.telefono))
             yaGuardados += Productor(nombre = p.nombre, documento = p.documento, tipoDocumento = p.tipoDocumento)
         }

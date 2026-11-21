@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -39,7 +40,6 @@ import com.cafesmart.app.ui.theme.Spacing
 import com.cafesmart.app.ui.theme.SurfaceCard
 import com.cafesmart.app.ui.theme.SurfaceSelected
 import com.cafesmart.app.ui.theme.TextMuted
-import com.cafesmart.app.viewmodel.purchase.ProductorEnPantalla
 import com.cafesmart.app.viewmodel.purchase.PurchaseUiState
 
 // Hoja "Ver más productores": busca, selecciona y modifica productores.
@@ -101,13 +101,43 @@ fun ProducerListSheet(
     }
 }
 
-// Titulo, barra de busqueda y lista desplazable
+// Titulo, barra de busqueda y lista desplazable de productores
 @Composable
 private fun ListaProductores(
     estado: PurchaseUiState,
     onBusquedaChange: (String) -> Unit,
     onProductorClick: (Productor) -> Unit,
     onEditar: (Productor) -> Unit
+) {
+    ListaPersonas(
+        titulo = "Productores",
+        busqueda = estado.busquedaLista,
+        onBusquedaChange = onBusquedaChange,
+        mensajeSinResultados = estado.mensajeSinResultadosLista
+    ) {
+        items(estado.productoresEnLista) { fila ->
+            ProducerRow(
+                nombre = fila.nombre,
+                documento = fila.documento,
+                elegido = fila.elegido,
+                onClick = { onProductorClick(fila.productor) },
+                onEditar = { onEditar(fila.productor) }
+            )
+        }
+    }
+}
+
+// Contenido de las hojas "Productores" y "Clientes": titulo, barra de busqueda y la lista desplazable.
+// Cada hoja pone sus filas en [filas]; el resto es igual para las dos.
+@Composable
+fun ListaPersonas(
+    titulo: String,
+    busqueda: String,
+    onBusquedaChange: (String) -> Unit,
+    // null cuando hay filas que mostrar
+    mensajeSinResultados: String?,
+    placeholder: String = PLACEHOLDER_BUSQUEDA,
+    filas: LazyListScope.() -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -117,41 +147,39 @@ private fun ListaProductores(
             .padding(start = Spacing.s20, end = Spacing.s20, bottom = Spacing.s28),
         verticalArrangement = Arrangement.spacedBy(Spacing.s12)
     ) {
-        Text(text = "Productores", style = AppTypography.titleModal)
-        ProducerSearchField(busqueda = estado.busquedaLista, onBusquedaChange = onBusquedaChange)
+        Text(text = titulo, style = AppTypography.titleModal)
+        ProducerSearchField(busqueda = busqueda, onBusquedaChange = onBusquedaChange, placeholder = placeholder)
 
-        val mensajeSinResultados = estado.mensajeSinResultadosLista
         if (mensajeSinResultados != null) {
             Text(text = mensajeSinResultados, style = AppTypography.bodyMd)
         } else {
-            // LazyColumn solo dibuja las filas visibles: sirve aunque haya muchos productores.
+            // LazyColumn solo dibuja las filas visibles: sirve aunque haya muchas.
             // heightIn limita el alto para que la lista se desplace dentro de la hoja.
             LazyColumn(
                 modifier = Modifier.heightIn(max = 400.dp),
-                verticalArrangement = Arrangement.spacedBy(Spacing.s8)
-            ) {
-                items(estado.productoresEnLista) { fila ->
-                    ProducerRow(
-                        fila = fila,
-                        onClick = { onProductorClick(fila.productor) },
-                        onEditar = { onEditar(fila.productor) }
-                    )
-                }
-            }
+                verticalArrangement = Arrangement.spacedBy(Spacing.s8),
+                content = filas
+            )
         }
     }
 }
 
-// Barra de busqueda: la usan la tarjeta "Productor registrado" y esta hoja
+const val PLACEHOLDER_BUSQUEDA = "Buscar por nombre, cédula o NIT"
+
+// Barra de busqueda: la usan las tarjetas "Productor registrado" y "Cliente registrado" y sus hojas
 @Composable
-fun ProducerSearchField(busqueda: String, onBusquedaChange: (String) -> Unit) {
+fun ProducerSearchField(
+    busqueda: String,
+    onBusquedaChange: (String) -> Unit,
+    placeholder: String = PLACEHOLDER_BUSQUEDA
+) {
     OutlinedTextField(
         value = busqueda,
         onValueChange = onBusquedaChange,
         // Campo de una sola linea.
         singleLine = true,
         textStyle = AppTypography.bodyLg,
-        placeholder = { Text(text = "Buscar por nombre, cédula o NIT", style = AppTypography.bodyLg.copy(color = TextMuted)) },
+        placeholder = { Text(text = placeholder, style = AppTypography.bodyLg.copy(color = TextMuted)) },
         // Lupa a la izquierda del campo.
         leadingIcon = {
             Icon(
@@ -172,10 +200,12 @@ fun ProducerSearchField(busqueda: String, onBusquedaChange: (String) -> Unit) {
     )
 }
 
-// Un productor: nombre, "Cédula 123...", "Editar" (opcional) y circulo de seleccion
+// Una persona (productor o cliente): nombre, "Cédula 123...", "Editar" (opcional) y circulo de seleccion
 @Composable
 fun ProducerRow(
-    fila: ProductorEnPantalla,
+    nombre: String,
+    documento: String,
+    elegido: Boolean,
     onClick: () -> Unit,
     // null: la fila no muestra "Editar"
     onEditar: (() -> Unit)? = null
@@ -184,10 +214,10 @@ fun ProducerRow(
         onClick = onClick,
         shape = AppShapes.medium,
         // Fondo azul claro cuando el productor esta elegido.
-        color = if (fila.elegido) SurfaceSelected else SurfaceCard,
+        color = if (elegido) SurfaceSelected else SurfaceCard,
         border = BorderStroke(
-            width = if (fila.elegido) 2.dp else 1.dp,
-            color = if (fila.elegido) Primary else BorderDefault
+            width = if (elegido) 2.dp else 1.dp,
+            color = if (elegido) Primary else BorderDefault
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -197,15 +227,15 @@ fun ProducerRow(
         ) {
             // weight(1f): el texto ocupa el espacio libre y deja el resto a la derecha
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = fila.nombre, style = AppTypography.valueStrong)
-                Text(text = fila.documento, style = AppTypography.bodyMd)
+                Text(text = nombre, style = AppTypography.valueStrong)
+                Text(text = documento, style = AppTypography.bodyMd)
             }
             if (onEditar != null) {
                 TextButton(onClick = onEditar) {
                     Text(text = "Editar", style = AppTypography.buttonLink)
                 }
             }
-            RadioCheck(selected = fila.elegido)
+            RadioCheck(selected = elegido)
         }
     }
 }
@@ -215,12 +245,9 @@ fun ProducerRow(
 private fun ProducerRowPreview() {
     CafesmartTheme {
         ProducerRow(
-            fila = ProductorEnPantalla(
-                productor = Productor(nombre = "Pepito Pérez", documento = "890301886"),
-                nombre = "Pepito Pérez",
-                documento = "Cédula 890301886",
-                elegido = true
-            ),
+            nombre = "Pepito Pérez",
+            documento = "Cédula 890301886",
+            elegido = true,
             onClick = {},
             onEditar = {}
         )

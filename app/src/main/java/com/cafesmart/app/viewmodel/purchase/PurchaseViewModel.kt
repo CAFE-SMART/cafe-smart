@@ -144,7 +144,7 @@ data class PurchaseUiState(
 
     // El error solo se muestra cuando el campo ya tiene algo escrito
     val documentoError: String?
-        get() = if (nuevoProductor.documento.isEmpty()) null else validarDocumento(nuevoProductor.documento, nuevoProductor.tipo, productores)
+        get() = if (nuevoProductor.documento.isEmpty()) null else validarDocumento(nuevoProductor.documento, nuevoProductor.tipo, productores.map { it.documento })
 
     val nombreError: String?
         get() = if (nuevoProductor.nombre.isEmpty()) null else validarNombre(nuevoProductor.nombre, nuevoProductor.tipo)
@@ -153,7 +153,7 @@ data class PurchaseUiState(
         get() = validarTelefono(nuevoProductor.telefono)
 
     val guardarNuevoHabilitado: Boolean
-        get() = productorValido(nuevoProductor, productores)
+        get() = productorValido(nuevoProductor, productores.map { it.documento })
 
     // ---------- Hoja "Productores" ----------
 
@@ -167,11 +167,11 @@ data class PurchaseUiState(
         get() = datosEdicion.tipo == TipoDocumento.NIT
 
     // Al modificar, el documento del propio productor no cuenta como repetido
-    private val productoresSinElEditado: List<Productor>
-        get() = productores.filter { it != productorEnEdicion }
+    private val documentosSinElEditado: List<String>
+        get() = productores.filter { it != productorEnEdicion }.map { it.documento }
 
     val edicionDocumentoError: String?
-        get() = validarDocumento(datosEdicion.documento, datosEdicion.tipo, productoresSinElEditado)
+        get() = validarDocumento(datosEdicion.documento, datosEdicion.tipo, documentosSinElEditado)
 
     val edicionNombreError: String?
         get() = validarNombre(datosEdicion.nombre, datosEdicion.tipo)
@@ -180,7 +180,7 @@ data class PurchaseUiState(
         get() = validarTelefono(datosEdicion.telefono)
 
     val guardarEdicionHabilitado: Boolean
-        get() = productorValido(datosEdicion, productoresSinElEditado)
+        get() = productorValido(datosEdicion, documentosSinElEditado)
 
     // Convierte un productor en la fila que muestra la vista
     private fun aPantalla(productor: Productor) = ProductorEnPantalla(
@@ -331,28 +331,22 @@ class PurchaseViewModel(
     }
 
     fun cambiarTipoDocumento(tipo: TipoDocumento) {
-        // Primero se copia el formulario y luego el estado con ese formulario.
-        // Al pasar de NIT a cédula, el nombre se vuelve a limpiar (una persona no lleva números ni puntos).
-        val actual = _uiState.value.nuevoProductor
-        val nuevo = actual.copy(tipo = tipo, nombre = normalizarEspacios(limpiarNombre(actual.nombre, tipo)))
-        _uiState.value = _uiState.value.copy(nuevoProductor = nuevo)
+        // Primero se cambia el formulario y luego el estado con ese formulario.
+        _uiState.value = _uiState.value.let { it.copy(nuevoProductor = it.nuevoProductor.conTipo(tipo)) }
     }
 
     // Solo numeros, sin puntos, comas ni espacios
     fun cambiarDocumento(texto: String) {
-        val nuevo = _uiState.value.nuevoProductor.copy(documento = limpiarDocumento(texto))
-        _uiState.value = _uiState.value.copy(nuevoProductor = nuevo)
+        _uiState.value = _uiState.value.let { it.copy(nuevoProductor = it.nuevoProductor.conDocumento(texto)) }
     }
 
     // Solo letras y espacios
     fun cambiarNombre(texto: String) {
-        val nuevo = _uiState.value.nuevoProductor.let { it.copy(nombre = limpiarNombre(texto, it.tipo)) }
-        _uiState.value = _uiState.value.copy(nuevoProductor = nuevo)
+        _uiState.value = _uiState.value.let { it.copy(nuevoProductor = it.nuevoProductor.conNombre(texto)) }
     }
 
     fun cambiarTelefono(texto: String) {
-        val nuevo = _uiState.value.nuevoProductor.copy(telefono = limpiarTelefono(texto))
-        _uiState.value = _uiState.value.copy(nuevoProductor = nuevo)
+        _uiState.value = _uiState.value.let { it.copy(nuevoProductor = it.nuevoProductor.conTelefono(texto)) }
     }
 
     // "Guardar productor": lo guarda en Room, lo agrega a la lista, lo deja elegido y activa Continuar
@@ -419,24 +413,19 @@ class PurchaseViewModel(
     }
 
     fun cambiarTipoEdicion(tipo: TipoDocumento) {
-        val actual = _uiState.value.datosEdicion
-        val datos = actual.copy(tipo = tipo, nombre = normalizarEspacios(limpiarNombre(actual.nombre, tipo)))
-        _uiState.value = _uiState.value.copy(datosEdicion = datos)
+        _uiState.value = _uiState.value.let { it.copy(datosEdicion = it.datosEdicion.conTipo(tipo)) }
     }
 
     fun cambiarDocumentoEdicion(texto: String) {
-        val datos = _uiState.value.datosEdicion.copy(documento = limpiarDocumento(texto))
-        _uiState.value = _uiState.value.copy(datosEdicion = datos)
+        _uiState.value = _uiState.value.let { it.copy(datosEdicion = it.datosEdicion.conDocumento(texto)) }
     }
 
     fun cambiarNombreEdicion(texto: String) {
-        val datos = _uiState.value.datosEdicion.let { it.copy(nombre = limpiarNombre(texto, it.tipo)) }
-        _uiState.value = _uiState.value.copy(datosEdicion = datos)
+        _uiState.value = _uiState.value.let { it.copy(datosEdicion = it.datosEdicion.conNombre(texto)) }
     }
 
     fun cambiarTelefonoEdicion(texto: String) {
-        val datos = _uiState.value.datosEdicion.copy(telefono = limpiarTelefono(texto))
-        _uiState.value = _uiState.value.copy(datosEdicion = datos)
+        _uiState.value = _uiState.value.let { it.copy(datosEdicion = it.datosEdicion.conTelefono(texto)) }
     }
 
     // "Guardar cambios": lo modifica en Room y reemplaza al productor en la lista y, si estaba elegido, tambien ahi

@@ -53,6 +53,8 @@ class PurchaseRulesTest {
         Productor(nombre = "Andy López", documento = "11140596")
     )
 
+    private val documentos = productores.map { it.documento }
+
     private val cafeCompleto = CafeFormulario(tipoCafe = "Verde", calidad = Calidad.BUENA, peso = "25", precio = "14000")
 
     // ---------- Paso 1 ----------
@@ -119,23 +121,23 @@ class PurchaseRulesTest {
 
     @Test
     fun cedula_de6a10Digitos_RF_COM_04() {
-        assertNull(validarDocumento("1234567890", TipoDocumento.CC, productores))
-        assertNotNull(validarDocumento("12345", TipoDocumento.CC, productores))
+        assertNull(validarDocumento("1234567890", TipoDocumento.CC, documentos))
+        assertNotNull(validarDocumento("12345", TipoDocumento.CC, documentos))
         assertEquals("1234567890", limpiarDocumento("1.234-567 890123"))
     }
 
     @Test
     fun nit_de9a10Digitos_RF_COM_04() {
-        assertNull(validarDocumento("9001234567", TipoDocumento.NIT, productores))
-        assertNull(validarDocumento("900123457", TipoDocumento.NIT, productores))
-        assertNotNull(validarDocumento("90012345", TipoDocumento.NIT, productores))
+        assertNull(validarDocumento("9001234567", TipoDocumento.NIT, documentos))
+        assertNull(validarDocumento("900123457", TipoDocumento.NIT, documentos))
+        assertNotNull(validarDocumento("90012345", TipoDocumento.NIT, documentos))
     }
 
     @Test
     fun documentoRepetido_RF_COM_04() {
         assertEquals(
             "Este documento ya está registrado. Verifica en tu lista.",
-            validarDocumento("123456789", TipoDocumento.CC, productores)
+            validarDocumento("123456789", TipoDocumento.CC, documentos)
         )
     }
 
@@ -197,6 +199,8 @@ class PurchaseRulesTest {
         assertNull(crearSublote(cafeCompleto.copy(tipoCafe = null)))
         assertNull(crearSublote(cafeCompleto.copy(calidad = null)))
         assertNull(crearSublote(cafeCompleto.copy(peso = "0")))
+        // Minimo 1 kg: 0,5 kg no es una compra de cafe.
+        assertNull(crearSublote(cafeCompleto.copy(peso = "0.5")))
         assertNull(crearSublote(cafeCompleto.copy(peso = "100000")))
         assertNull(crearSublote(cafeCompleto.copy(precio = "100001")))
         // RF-COM-10: minimo $1.000
@@ -210,6 +214,8 @@ class PurchaseRulesTest {
         assertNull(errorPrecio("100000"))
         assertNotNull(errorPrecio("100001"))
         assertNotNull(errorPeso(cafeCompleto.copy(peso = "0")))
+        assertNotNull(errorPeso(cafeCompleto.copy(peso = "0.999")))
+        assertNull(errorPeso(cafeCompleto.copy(peso = "1")))
         // Mientras escribe "14" no marca error; con 4 digitos ya revisa el minimo
         assertNull(errorPrecio("14"))
         assertNull(errorPrecio("1000"))
