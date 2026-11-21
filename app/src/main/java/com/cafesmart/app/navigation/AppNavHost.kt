@@ -14,6 +14,7 @@ import com.cafesmart.app.data.finanzas.SinDatosFinancieros
 import com.cafesmart.app.data.finanzas.FirebaseConfirmacionCuenta
 import com.cafesmart.app.data.finanzas.fechaDeHoy
 import com.cafesmart.app.ui.finance.AccesoFinancieroScreen
+import com.cafesmart.app.data.inventario.InventoryRepository
 import com.cafesmart.app.data.inventario.OrigenOcupacionRoom
 import com.cafesmart.app.data.local.AppDatabase
 import com.cafesmart.app.data.purchase.PurchaseRepository
@@ -170,6 +171,7 @@ fun AppNavHost(
     // Compras y bodega en Room: el repositorio guarda productores y compras; la ocupación suma los sublotes con existencia.
     val compras = remember { PurchaseRepository.de(context) }
     val ocupacion = remember { OrigenOcupacionRoom(AppDatabase.obtener(context).subloteDao()) }
+    val inventario = remember { InventoryRepository.de(context) }
     val scope = rememberCoroutineScope()
     val guardarNegocio: (RegistrationData) -> Unit = { data ->
         FirebaseSessionGateway.usuarioActual()?.uid?.let { uid ->
@@ -408,9 +410,14 @@ fun AppNavHost(
 
         // ── Inventario ──────────────────────────────────────
         composable(Routes.INVENTORY) {
-            // viewModel() ligado a esta entrada del NavHost (por ahora lee datos de ejemplo; luego, Room).
+            // viewModel() ligado a esta entrada del NavHost. Lee los sublotes de Room (InventoryRepository) y
+            // se actualiza solo cuando Compras guarda una compra nueva.
             val inventoryViewModel: InventoryViewModel = viewModel {
-                InventoryViewModel(negocios = negocios, uid = FirebaseSessionGateway.usuarioActual()?.uid)
+                InventoryViewModel(
+                    inventario = inventario,
+                    negocios = negocios,
+                    uid = FirebaseSessionGateway.usuarioActual()?.uid
+                )
             }
             val inventoryState by inventoryViewModel.uiState.collectAsState()
 
