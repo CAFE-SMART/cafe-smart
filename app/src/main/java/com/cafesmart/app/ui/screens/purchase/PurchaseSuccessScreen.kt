@@ -31,6 +31,7 @@ import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.purchase.productorSinRegistrar
 import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.ContinueButton
+import com.cafesmart.app.ui.components.ajustadoAlLargo
 import com.cafesmart.app.ui.components.AvisoCapacidadCard
 import com.cafesmart.app.ui.components.EstiloAviso
 import com.cafesmart.app.ui.theme.AppShapes
@@ -49,12 +50,57 @@ import com.cafesmart.app.viewmodel.purchase.PurchaseUiState
 
 // Compra registrada: circulo verde con chulito blanco, titulo negro centrado y resumen.
 // Vista (MVVM): no tiene logica ni estado propio.
+// La pantalla en si es PantallaRegistroExitoso, que tambien usa "Venta registrada".
 @Composable
 fun PurchaseSuccessScreen(
     estado: PurchaseUiState,
     onRegistrarNueva: () -> Unit,
     onIrAInventario: () -> Unit,
     modifier: Modifier = Modifier
+) {
+    PantallaRegistroExitoso(
+        titulo = "Compra registrada",
+        subtitulo = "La compra se guardó correctamente.",
+        tituloResumen = "Resumen de compra",
+        filas = listOf(
+            "Productor" to estado.productorTexto,
+            "Fecha" to estado.fechaResumenTexto,
+            "Total kg" to estado.totalKgTexto
+        ),
+        etiquetaTotal = "Total pagado",
+        total = estado.totalEstimadoTexto,
+        textoNueva = "Registrar nueva compra",
+        onRegistrarNueva = onRegistrarNueva,
+        onIrAInventario = onIrAInventario,
+        modifier = modifier,
+        // La compra dejo la bodega casi llena o la supero: se aconseja vender cafe para liberar espacio.
+        aviso = estado.avisoAlRegistrar?.let { aviso ->
+            {
+                AvisoCapacidadCard(
+                    titulo = aviso.tituloRegistrada, mensaje = aviso.mensajeRegistrada, estilo = EstiloAviso.ALERTA,
+                    modifier = Modifier.padding(bottom = Spacing.s20)
+                )
+            }
+        }
+    )
+}
+
+// Pantalla final de un registro (compra o venta): circulo verde con chulito, titulo, resumen y dos botones.
+// filas son las lineas "etiqueta, valor" del resumen; la ultima linea (el total) va resaltada en azul.
+@Composable
+fun PantallaRegistroExitoso(
+    titulo: String,
+    subtitulo: String,
+    tituloResumen: String,
+    filas: List<Pair<String, String>>,
+    etiquetaTotal: String,
+    total: String,
+    textoNueva: String,
+    onRegistrarNueva: () -> Unit,
+    onIrAInventario: () -> Unit,
+    modifier: Modifier = Modifier,
+    // Aviso opcional entre el subtitulo y el resumen
+    aviso: (@Composable () -> Unit)? = null
 ) {
     Column(
         modifier = modifier
@@ -85,46 +131,35 @@ fun PurchaseSuccessScreen(
                 )
             }
             Text(
-                text = "Compra registrada",
+                text = titulo,
                 // titleExito: titulo negro, Bold 24.
                 style = AppTypography.titleExito,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = Spacing.s20)
             )
             Text(
-                text = "La compra se guardó correctamente.",
+                text = subtitulo,
                 style = AppTypography.bodyMd,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = Spacing.s4, bottom = Spacing.s20)
             )
-            // La compra dejo la bodega casi llena o la supero: se aconseja vender cafe para liberar espacio.
-            estado.avisoAlRegistrar?.let {
-                AvisoCapacidadCard(
-                    titulo = it.tituloRegistrada, mensaje = it.mensajeRegistrada, estilo = EstiloAviso.ALERTA,
-                    modifier = Modifier.padding(bottom = Spacing.s20)
-                )
-            }
+            aviso?.invoke()
             Text(
-                text = "Resumen de compra",
+                text = tituloResumen,
                 style = AppTypography.labelSection,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = Spacing.s8)
             )
-            ResumenCompra(
-                productor = estado.productorTexto,
-                fecha = estado.fechaResumenTexto,
-                totalKg = estado.totalKgTexto,
-                totalPagado = estado.totalEstimadoTexto
-            )
+            ResumenRegistro(filas = filas, etiquetaTotal = etiquetaTotal, total = total)
         }
 
         Column(
             modifier = Modifier.padding(top = Spacing.s16),
             verticalArrangement = Arrangement.spacedBy(Spacing.s12)
         ) {
-            // Boton principal: empieza otra compra.
-            ContinueButton(text = "Registrar nueva compra", onClick = onRegistrarNueva)
+            // Boton principal: empieza otro registro.
+            ContinueButton(text = textoNueva, onClick = onRegistrarNueva)
             Button(
                 onClick = onIrAInventario,
                 shape = AppShapes.medium,
@@ -142,7 +177,7 @@ fun PurchaseSuccessScreen(
 
 // Surface recorta el fondo azul de la ultima fila con las esquinas redondeadas de la tarjeta
 @Composable
-private fun ResumenCompra(productor: String, fecha: String, totalKg: String, totalPagado: String) {
+private fun ResumenRegistro(filas: List<Pair<String, String>>, etiquetaTotal: String, total: String) {
     Surface(
         shape = AppShapes.medium,
         color = SurfaceCard,
@@ -151,11 +186,11 @@ private fun ResumenCompra(productor: String, fecha: String, totalKg: String, tot
     ) {
         Column {
             // Filas separadas por una linea.
-            FilaResumen(etiqueta = "Productor", valor = productor)
-            HorizontalDivider(color = BorderDefault)
-            FilaResumen(etiqueta = "Fecha", valor = fecha)
-            HorizontalDivider(color = BorderDefault)
-            FilaResumen(etiqueta = "Total kg", valor = totalKg)
+            filas.forEachIndexed { indice, (etiqueta, valor) ->
+                FilaResumen(etiqueta = etiqueta, valor = valor)
+                // Sin linea despues de la ultima fila: debajo viene la fila azul del total.
+                if (indice < filas.lastIndex) HorizontalDivider(color = BorderDefault)
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -164,11 +199,11 @@ private fun ResumenCompra(productor: String, fecha: String, totalKg: String, tot
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Ultima fila resaltada en azul.
-                Text(text = "Total pagado", style = AppTypography.labelField.copy(color = PrimaryDark))
+                Text(text = etiquetaTotal, style = AppTypography.labelField.copy(color = PrimaryDark))
                 // weight + TextAlign.End: si el valor es muy largo baja de linea en vez de cortarse
                 Text(
-                    text = totalPagado,
-                    style = AppTypography.displayValor,
+                    text = total,
+                    style = AppTypography.displayValor.ajustadoAlLargo(total),
                     textAlign = TextAlign.End,
                     modifier = Modifier.weight(1f)
                 )
