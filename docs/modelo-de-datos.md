@@ -68,7 +68,7 @@ erDiagram
 5. **"Sin registrar" = FK nula**, no un productor ficticio (Tony Café no registra nombre ni cédula, RN-V-01).
 6. **Dinero en `Long` (pesos enteros), kg en `Double`.** La app ya fuerza precios enteros; con `Long` los totales no pierden centavos.
 7. **Fechas con la clase `Fecha` existente** (minSdk 24, sin `LocalDate`). Para Room: convertir con `fechaAMilis` / `milisAFecha`, que ya están en `Formatters.kt`.
-8. **Room ya tiene `Negocio`, `Productor`, `Compra`, `Lote` y `Sublote`** (ver sección 5). Los ids (`Long = 0`) son `@PrimaryKey(autoGenerate = true)` y las relaciones son `@ForeignKey` con `RESTRICT`. Faltan las entidades de Gasto, Secado y Venta (con sus tablas intermedias) y las `@Relation`: las clases `*ConSublotes` / `*ConDetalle` siguen siendo vistas de lectura que Room llenará con `@Relation` cuando se conecten las pantallas.
+8. **Room ya tiene `Negocio`, `Productor`, `Compra`, `Lote`, `Sublote`, `Gasto` y `GastoSublote`** (ver sección 5). Los ids (`Long = 0`) son `@PrimaryKey(autoGenerate = true)` y las relaciones son `@ForeignKey` con `RESTRICT`. Faltan las entidades de Secado y Venta (con sus tablas intermedias) y las `@Relation`: las clases `*ConSublotes` / `*ConDetalle` siguen siendo vistas de lectura que Room llenará con `@Relation` cuando se conecten las pantallas.
 
 ## 4. Reglas que el modelo valida
 
@@ -117,7 +117,8 @@ Los archivos del paquete `data/model` compilan con la versión de Kotlin del pro
 - Se crea al terminar el registro (`AuthEvent.Registered`). Si una cuenta no lo tiene (o se reinstaló la app), se crea desde Ajustes → Información de empresa, que conserva capacidad, bulto y fecha de creación al editar.
 - `AppDatabase` (archivo `cafesmart.db`, versión 2, sin esquema exportado) es la base única. La versión 2 agrega `ProductorEntity`, `CompraEntity`, `LoteEntity` y `SubloteEntity` (en `data/local/`, cada una con su DAO: `insertar`, `listar`, `buscarPorId`). Además: `LoteDao.buscarPorTipoYCalidad`, `ProductorDao.buscarPorDocumento` y `ProductorDao.actualizar`.
 - Las entidades de Room son clases aparte de las data classes de `data/model` (que siguen validando las reglas). Enums como texto (nombre del enum), fechas en milisegundos UTC (`fechaAMilis`), dinero en `Long`.
-- Llaves foráneas con `RESTRICT`: `compra.productor_id`, `sublote.lote_id` y `sublote.compra_id`. `sublote.secado_id` queda sin llave foránea hasta que exista la tabla de Secado.
+- Llaves foráneas con `RESTRICT`: `compra.productor_id`, `sublote.lote_id`, `sublote.compra_id`, `gasto_sublote.gasto_id` y `gasto_sublote.sublote_id`. `sublote.secado_id` y `gasto.secado_id` quedan sin llave foránea hasta que exista la tabla de Secado.
+- **Gastos (la base sube a la versión 3):** `GastoEntity` y `GastoSubloteEntity` con `GastoDao`, que guarda el gasto y su reparto en una sola transacción (si un sublote del reparto no existe, no se guarda nada) y lee los gastos de un sublote con lo que le tocó (`montoAsignado`). El repositorio es `RoomGastosRepository` (`data/gastos/`); `gastosRegistrados()` entrega todos los gastos, con su monto completo, para el Resumen y el Historial financiero.
 - Índices únicos: `productor.documento` y `lote(tipo_cafe, calidad)`.
 - Si cambias el esquema mientras la app no esté publicada, desinstálala del emulador (borra también el Negocio: se vuelve a llenar en Ajustes → Información de empresa).
 

@@ -3,6 +3,7 @@ package com.cafesmart.app.data.local
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LoteDao {
@@ -24,4 +25,11 @@ interface LoteDao {
      */
     @Query("SELECT * FROM lote WHERE tipo_cafe = :tipoCafe AND calidad = :calidad LIMIT 1")
     suspend fun buscarPorTipoYCalidad(tipoCafe: String, calidad: String): LoteEntity?
+
+    /**
+     * Todos los lotes; emite de nuevo cada vez que la tabla cambia (Inventario se actualiza sin reiniciar).
+     * No es suspend: Room corre la consulta en su propio hilo y devuelve un Flow.
+     */
+    @Query("SELECT * FROM lote ORDER BY id")
+    fun observarTodos(): Flow<List<LoteEntity>>
 }

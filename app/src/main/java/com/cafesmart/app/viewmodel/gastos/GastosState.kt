@@ -24,7 +24,7 @@ import java.util.TimeZone
  * aporta copy, que permite cambiar un campo conservando el resto sin mutar el objeto anterior.
  *
  * @param concepto Texto obligatorio que se valida al continuar.
- * @param descripcion Detalle opcional.
+ * @param descripcion Detalle opcional, máximo 200 caracteres según ExpenseRules.
  * @param monto Texto del monto; todavía no se considera un Long válido.
  * @param fecha Fecha civil seleccionada; inicia con el día actual en Colombia.
  * @param tipo Categoría oficial elegida.
@@ -57,15 +57,24 @@ data class GastoFormulario(
  * @param monto Error del importe.
  * @param fecha Error de la fecha.
  * @param sublotes Error de selección, disponibilidad o suma del reparto.
+ * @param descripcion Error del límite de descripción.
  */
 data class GastoErrores(
     val concepto: String? = null,
     val monto: String? = null,
     val fecha: String? = null,
-    val sublotes: String? = null
+    val sublotes: String? = null,
+    val descripcion: String? = null
 ) {
     // any devuelve true si al menos uno de los mensajes no es null.
-    val hayErrores get() = listOf(concepto, monto, fecha, sublotes).any { it != null }
+    val hayErrores get() = listOf(concepto, monto, fecha, sublotes, descripcion).any { it != null }
+}
+
+/** Misma etiqueta en el formulario y en la pantalla de selección. */
+fun etiquetaSeleccionSublotes(cantidad: Int): String = when (cantidad) {
+    0 -> "Seleccionar sublotes"
+    1 -> "1 sublote seleccionado"
+    else -> "$cantidad sublotes seleccionados"
 }
 
 // ============================================================

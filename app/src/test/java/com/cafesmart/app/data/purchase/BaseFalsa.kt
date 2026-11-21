@@ -9,11 +9,16 @@ import com.cafesmart.app.data.local.ProductorEntity
 import com.cafesmart.app.data.local.SubloteDao
 import com.cafesmart.app.data.local.SubloteEntity
 import com.cafesmart.app.data.local.Transaccion
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 
 // DAOs falsos en memoria para probar los repositorios con JUnit, sin Room ni emulador.
 // Imitan lo que importa de la base real: ids que asigna la base y los índices únicos (productor.documento y
 // lote(tipo_cafe, calidad)), que aquí lanzan IllegalStateException al repetirse.
 // Los DAOs reales y sus consultas se prueban con Room real en androidTest (BusquedasDaoTest).
+// LoteDaoFalso y SubloteDaoFalso también imitan observarTodos(): emiten de nuevo cada vez que cambia `filas`,
+// como hace Room tras guardar, para probar que Inventario se actualiza solo.
 
 class ProductorDaoFalso : ProductorDao {
     var filas = listOf<ProductorEntity>()
@@ -53,7 +58,10 @@ class CompraDaoFalso : CompraDao {
 }
 
 class LoteDaoFalso : LoteDao {
-    var filas = listOf<LoteEntity>()
+    private val flujo = MutableStateFlow(listOf<LoteEntity>())
+    var filas: List<LoteEntity>
+        get() = flujo.value
+        set(valor) { flujo.value = valor }
     private var siguienteId = 1L
 
     fun copiarEstado() = filas to siguienteId
@@ -69,10 +77,14 @@ class LoteDaoFalso : LoteDao {
     override suspend fun buscarPorId(id: Long) = filas.firstOrNull { it.id == id }
     override suspend fun buscarPorTipoYCalidad(tipoCafe: String, calidad: String) =
         filas.firstOrNull { it.tipoCafe == tipoCafe && it.calidad == calidad }
+    override fun observarTodos(): Flow<List<LoteEntity>> = flujo.map { lista -> lista.sortedBy { it.id } }
 }
 
 class SubloteDaoFalso : SubloteDao {
-    var filas = listOf<SubloteEntity>()
+    private val flujo = MutableStateFlow(listOf<SubloteEntity>())
+    var filas: List<SubloteEntity>
+        get() = flujo.value
+        set(valor) { flujo.value = valor }
     private var siguienteId = 1L
     // Número de inserción (1, 2, 3...) que debe fallar; null = no falla. Sirve para probar que no queda nada a medias.
     var fallarEnInsercion: Int? = null
@@ -90,6 +102,7 @@ class SubloteDaoFalso : SubloteDao {
     }
     override suspend fun listar() = filas.sortedBy { it.id }
     override suspend fun buscarPorId(id: Long) = filas.firstOrNull { it.id == id }
+    override fun observarTodos(): Flow<List<SubloteEntity>> = flujo.map { lista -> lista.sortedBy { it.id } }
 }
 
 // Los cuatro DAOs falsos juntos y una transacción falsa: si el bloque lanza una excepción, devuelve todas las

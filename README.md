@@ -14,7 +14,7 @@ Inicio → Compra → Inventario → Secado → Gastos → Venta → Resultado f
 - Kotlin + Jetpack Compose
 - Navigation Compose
 - Arquitectura MVVM (ViewModel + StateFlow)
-- Room (almacenamiento local) — `AppDatabase` (versión 2) con `Negocio`, `Productor`, `Compra`, `Lote` y `Sublote`; Gasto, Secado y Venta se agregan después
+- Room (almacenamiento local) — `AppDatabase` (versión 3) con `Negocio`, `Productor`, `Compra`, `Lote`, `Sublote`, `Gasto` y `GastoSublote`; Secado y Venta se agregan después
 - Firebase Authentication (inicio de sesión y registro con correo y contraseña)
 - JUnit (pruebas unitarias)
 
@@ -31,7 +31,7 @@ Modelo de datos: [`docs/modelo-de-datos.md`](docs/modelo-de-datos.md).
 
 ## Navegación (Navigation Compose)
 Todo el grafo vive en `navigation/AppNavHost.kt` y los nombres de ruta en `navigation/Routes.kt`.
-Cada ruta corresponde a una pantalla del Figma (pestaña "Flujos"). Ya son reales: cuenta (inicio de sesión, registro y recuperar contraseña con Firebase), `home`, Compras (pasos 1 a 3 y `purchase_done`), el resumen de `inventory`, los tres de Gastos, Ajustes (`settings`, `settings_business` y `settings_warehouse`) y las Finanzas (`finance_summary` y `finance_history`).
+Cada ruta corresponde a una pantalla del Figma (pestaña "Flujos"). Ya son reales: cuenta (inicio de sesión, registro y recuperar contraseña con Firebase), `home`, Compras (pasos 1 a 3 y `purchase_done`), el resumen de `inventory`, los tres de Gastos y los Gastos del sublote (`inventory_batch_expenses`), Ajustes (`settings`, `settings_business` y `settings_warehouse`) y las Finanzas (`finance_summary` y `finance_history`).
 El resto (lo demás de Inventario, Ventas y Secado) son *placeholders* (`NavPlaceholder`) que se reemplazan por la pantalla real dentro de su `composable(...)`.
 
 **Flujo base:** `splash` → `login` → `home` → `inventory`
@@ -145,6 +145,8 @@ En cada pull request el workflow `CI` corre las pruebas y guarda el reporte:
 | `purchase/LimitesDeCamposTest.kt` | Nombre del productor (persona o empresa) y topes de escritura                                                                                                 | 5       |
 | `purchase/PurchaseViewModelGuardadoTest.kt` | Compras en Room con repositorio falso: guardar la compra, avisos de bodega sin contar dos veces, productores, errores al guardar o leer, límite de reintentos | 20      |
 | `data/purchase/PurchaseRepositoryTest.kt` | Repositorio de compras con DAOs falsos: sublotes generados, lotes, total pagado, todo o nada y productores                                                    | 12      |
+| `data/gastos/GastoMapeosTest.kt` | Mapeos de Gasto y GastoSublote entre Room y el modelo | 12      |
+| `data/inventario/InventoryRepositoryTest.kt` | Repositorio de inventario con DAOs falsos: lotes con sus sublotes, agotados y compras que llegan sin reiniciar                                                | 8       |
 | `data/inventario/OrigenOcupacionRoomTest.kt` | Kilos en bodega desde los sublotes (los agotados no suman)                                                                                                    | 4       |
 | `sale/SaleRulesTest.kt` | Reglas de la venta (cantidad disponible, precio por kg y total)                                                                                               | 13      |
 | `sale/SaleViewModelTest.kt` | Estado del registro de venta (sublotes, cantidad escrita con su error, reiniciar)                                                                             | 15      |
@@ -159,10 +161,13 @@ En cada pull request el workflow `CI` corre las pruebas y guarda el reporte:
 | `ui/auth/RecuperarContrasenaViewModelTest.kt` | Recuperar contraseña: validar el correo, enviar y reenviar el enlace                                                                                          | 11      |
 | `ui/auth/RequisitosContrasenaTest.kt` | Requisitos de la contraseña de la cuenta (mínimo 8, minúscula, mayúscula y número) y coincidencia                                                             | 5       |
 | `viewmodel/drying/MermaCalculatorTest.kt` | Porcentaje de merma del secado                                                                                                                                | 7       |
-| `viewmodel/gastos/GastosValidationTest.kt` | Validaciones del formulario de gastos                                                                                                                         | 19      |
-| `viewmodel/gastos/GastosViewModelTest.kt` | Estado de la lista y del registro de gastos                                                                                                                   | 8       |
+| `viewmodel/gastos/GastosValidationTest.kt` | Validaciones del formulario de gastos                                                                                                                         | 28      |
+| `viewmodel/gastos/GastosViewModelTest.kt` | Estado de la lista y del registro de gastos                                                                                                                   | 10      |
+| `viewmodel/gastos/GastosFuenteDeSublotesTest.kt` | Fuente de sublotes de Gastos | 7       |
+| `viewmodel/gastos/GastosSubloteTest.kt` | Gastos del sublote | 7       |
 | `viewmodel/inventory/InventorySummaryTest.kt` | Resumen de inventario por tipo, orden y conversión a bultos                                                                                                   | 19      |
-| `viewmodel/inventory/InventoryViewModelTest.kt` | Estado de la pantalla de resumen de inventario                                                                                                                | 2       |
+| `viewmodel/inventory/InventoryListsTest.kt` | Datos de Lista por tipo (calidades de un tipo) y Sublotes del grupo: pesos, agotados y orden                                                                  | 12      |
+| `viewmodel/inventory/InventoryViewModelTest.kt` | Estado de Inventario con repositorio falso: resumen, estado vacío, cargando y compra nueva que aparece sola                                                   | 9       |
 | `viewmodel/inventory/WarehouseCapacityTest.kt` | Ocupación de la bodega y sus estados (normal, advertencia, crítica, sin capacidad)                                                                            | 36      |
 | `viewmodel/finance/ProfitCalculatorTest.kt` | Utilidad de una venta (ingresos − costo de compra − gastos)                                                                                                   | 25      |
 | `viewmodel/finance/ExpenseRulesTest.kt` | Validaciones de un gasto (concepto, tipo, valor, fecha, descripción)                                                                                          | 45      |
@@ -178,9 +183,9 @@ En cada pull request el workflow `CI` corre las pruebas y guarda el reporte:
 | `viewmodel/settings/CapacidadBodegaTest.kt` | Capacidad de bodega y peso por bulto (reglas, guardado y lectura en Inventario)                                                                               | 13      |
 | `ExampleUnitTest.kt` | Prueba de ejemplo de Android Studio                                                                                                                           | 1       |
 
-Total: 534 pruebas unitarias (40 archivos). El CI del proyecto corre `./gradlew testDebugUnitTest assembleDebug`.
+Total: 604 pruebas unitarias (46 archivos). El CI del proyecto corre `./gradlew testDebugUnitTest assembleDebug`.
 
-Las pruebas instrumentadas (`androidTest`: Room real en `data/local/AppDatabaseTest` y `data/local/ComprasRoomTest`, pantallas de Gastos y selector de fecha) compilan pero no corren en el CI: necesitan emulador. Para correr una clase: clic derecho sobre ella en Android Studio → Run, o `./gradlew connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.cafesmart.app.data.local.ComprasRoomTest"` (Cubre el documento repetido que podría colarse. Aclaración:cambia la clase por la que se desea probar; `--tests` no funciona con esta tarea).
+Las pruebas instrumentadas (`androidTest`: Room real en `data/local/AppDatabaseTest`, `data/local/ComprasRoomTest` e `data/local/InventarioRoomTest`, pantallas de Gastos y selector de fecha) compilan pero no corren en el CI: necesitan emulador. Para correr una clase: clic derecho sobre ella en Android Studio → Run, o `./gradlew connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.cafesmart.app.data.local.ComprasRoomTest"` (Cubre el documento repetido que podría colarse. Aclaración:cambia la clase por la que se desea probar; `--tests` no funciona con esta tarea).
 Ojo: ese comando desinstala la app del emulador al terminar (borra la sesión y el negocio guardado).
 
 ## Flujo de trabajo en Git (trunk-based)
