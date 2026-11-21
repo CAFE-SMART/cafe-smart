@@ -1,18 +1,31 @@
 package com.cafesmart.app.viewmodel.sale
 
+import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.Cliente
-import com.cafesmart.app.data.model.aPesos
+import com.cafesmart.app.data.model.Fecha
+import com.cafesmart.app.data.model.SubloteConLote
+import com.cafesmart.app.data.model.TipoCafe
 import com.cafesmart.app.data.model.TipoDocumento
+import com.cafesmart.app.data.model.aPesos
 import com.cafesmart.app.data.sale.ModoCliente
 import com.cafesmart.app.data.sale.NuevoCliente
+import com.cafesmart.app.data.sale.SubloteElegido
+import com.cafesmart.app.viewmodel.inventory.redondearKg
 import com.cafesmart.app.viewmodel.purchase.CANTIDAD_RECIENTES
+import com.cafesmart.app.viewmodel.purchase.MENSAJE_PRECIO
+import com.cafesmart.app.viewmodel.purchase.PRECIO_MAX_KG
+import com.cafesmart.app.viewmodel.purchase.PRECIO_MIN_KG
 import com.cafesmart.app.viewmodel.purchase.coincideBusqueda
+import com.cafesmart.app.viewmodel.purchase.fechaAMilis
+import com.cafesmart.app.viewmodel.purchase.formatoDinero
+import com.cafesmart.app.viewmodel.purchase.formatoFecha
 import com.cafesmart.app.viewmodel.purchase.formatoKg
 import com.cafesmart.app.viewmodel.purchase.normalizarEspacios
+import com.cafesmart.app.viewmodel.purchase.precioValido
 import com.cafesmart.app.viewmodel.purchase.productorValido
-import com.cafesmart.app.viewmodel.purchase.validarTelefono
-import com.cafesmart.app.viewmodel.purchase.validarNombre
 import com.cafesmart.app.viewmodel.purchase.validarDocumento
+import com.cafesmart.app.viewmodel.purchase.validarNombre
+import com.cafesmart.app.viewmodel.purchase.validarTelefono
 
 // Reglas del registro de venta (validaciones y calculos), segun el Figma "Ventas - Paso 2 - Cafe":
 // la cantidad a vender no pasa de lo disponible en el sublote y el total sale de cantidad x precio.
@@ -137,3 +150,88 @@ fun errorCantidad(cantidadKg: Double?, disponibleKg: Double): String? =
 // aPesos es la regla unica del modelo para redondear dinero (los .5 suben).
 // Ejemplo (Figma, Paso 3): 150 kg x $20.000 = $3.000.000
 fun subtotal(cantidadKg: Double, precioKg: Double): Long = (cantidadKg * precioKg).aPesos()
+
+// ---------------- Paso 2: elegir el cafe ----------------
+
+// Orden de las pestanas del Figma (el enum TipoCafe tiene otro orden).
+val tiposParaVender = listOf(TipoCafe.VERDE, TipoCafe.SECO, TipoCafe.TRILLADO, TipoCafe.PASILLA)
+
+// Sublotes que se pueden vender de un tipo de cafe: los que todavia tienen cafe, agrupados por calidad
+// (buena, regular, mala) y dentro de cada calidad por numero de sublote.
+fun sublotesDelTipo(inventario: List<SubloteConLote>, tipo: TipoCafe): List<SubloteConLote> =
+    inventario
+        .filter { it.tipoCafe == tipo && !it.sublote.estaAgotado }
+        .sortedWith(compareBy({ it.calidad }, { it.sublote.id }))
+
+// "1 de 4 seleccionados"
+fun textoSeleccionados(seleccionados: Int, total: Int): String = "$seleccionados de $total seleccionados"
+
+const val MILIS_POR_DIA = 86_400_000L
+
+// Dias entre la fecha en que entro el cafe y hoy.
+fun diasDesde(fecha: Fecha, hoy: Fecha): Int = ((fechaAMilis(hoy) - fechaAMilis(fecha)) / MILIS_POR_DIA).toInt()
+
+// "Comprado hoy" / "Comprado hace 1 día" / "Comprado hace 6 días"
+fun textoComprado(dias: Int): String = when {
+    dias <= 0 -> "Comprado hoy"
+    dias == 1 -> "Comprado hace 1 día"
+    else -> "Comprado hace $dias días"
+}
+
+// "1 sublote · 200 kg" / "2 sublotes · 280 kg"
+fun resumenGrupo(cantidad: Int, kg: Double): String =
+    "$cantidad ${if (cantidad == 1) "sublote" else "sublotes"} · ${formatoKg(kg)}"
+
+// Costo promedio por kg de lo que se vende (promedio ponderado: pesa mas el sublote del que se vende mas).
+// Es solo una referencia para poner el precio. Sin kg devuelve 0.
+fun costoPromedio(elegidos: List<SubloteElegido>): Long {
+    val kg = elegidos.sumOf { it.cantidadKg }
+    if (kg <= 0.0) return 0
+    return (elegidos.sumOf { it.cantidadKg * it.sublote.sublote.costoKg } / kg).aPesos()
+}
+
+// Ayuda del campo de precio: "Entre $ 1.000 y $ 100.000. Costo promedio: $ 18.000 por kg."
+fun ayudaPrecio(costoPromedioKg: Long): String =
+    "Entre ${formatoDinero(PRECIO_MIN_KG.toDouble())} y ${formatoDinero(PRECIO_MAX_KG.toDouble())}. " +
+        "Costo promedio: ${formatoDinero(costoPromedioKg.toDouble())} por kg."
+
+// Error del campo precio de una calidad elegida (null si ya es valido): vacio pide escribirlo y fuera de rango da el rango.
+fun mensajePrecioPendiente(calidad: Calidad, texto: String): String? =
+    when {
+        precioValido(texto) -> null
+        texto.isEmpty() -> "Escribe el precio por kg de la calidad ${calidad.etiqueta.lowercase()}."
+        else -> MENSAJE_PRECIO
+    }
+
+// ---------------- Paso 3: confirmar ----------------
+
+// Fechas permitidas para una venta: desde el 1 de enero de 2026 hasta hoy (misma regla de la version web).
+val FECHA_MINIMA_VENTA = Fecha(1, 1, 2026)
+const val MENSAJE_FECHA_VENTA = "Solo puedes registrar ventas desde 2026 hasta hoy."
+
+// Ademas, la venta no puede ser de antes de que entrara el cafe que se vende.
+// Devuelve el mensaje de error, o null si la fecha sirve.
+fun errorFecha(fecha: Fecha, hoy: Fecha, elegidos: List<SubloteElegido>): String? {
+    if (fechaAMilis(fecha) > fechaAMilis(hoy) || fechaAMilis(fecha) < fechaAMilis(FECHA_MINIMA_VENTA)) return MENSAJE_FECHA_VENTA
+    val masReciente = elegidos.map { it.fechaIngreso }.maxByOrNull { fechaAMilis(it) } ?: return null
+    return if (fechaAMilis(fecha) < fechaAMilis(masReciente)) {
+        "La fecha no puede ser anterior a la entrada del café (${formatoFecha(masReciente)})."
+    } else {
+        null
+    }
+}
+
+// Una venta no puede ser de menos de 5 kg en total (misma regla de la version web: PESO_MINIMO_KG).
+const val VENTA_MINIMA_KG = 5.0
+
+// El error aparece cuando ya hay cafe elegido pero la suma de lo que se vende no llega al minimo.
+fun errorTotalKg(totalKg: Double, hayElegidos: Boolean): String? =
+    if (hayElegidos && totalKg < VENTA_MINIMA_KG) "La cantidad total a vender debe ser mínimo ${formatoKg(VENTA_MINIMA_KG)}." else null
+
+// Al confirmar la venta se descuenta de cada sublote lo que se vendio.
+// redondearKg evita restos como 0.0000001 al restar decimales; el sublote nunca queda en negativo.
+fun descontarVenta(inventario: List<SubloteConLote>, elegidos: List<SubloteElegido>): List<SubloteConLote> =
+    inventario.map { item ->
+        val vendido = elegidos.firstOrNull { it.id == item.sublote.id }?.cantidadKg ?: return@map item
+        item.copy(sublote = item.sublote.copy(pesoDisponibleKg = redondearKg(maxOf(0.0, item.sublote.pesoDisponibleKg - vendido))))
+    }

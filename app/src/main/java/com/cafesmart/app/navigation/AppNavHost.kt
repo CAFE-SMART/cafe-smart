@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -73,6 +74,7 @@ import com.cafesmart.app.ui.screens.PlaceholderScreen
 import com.cafesmart.app.ui.screens.SplashScreen
 import com.cafesmart.app.ui.screens.purchase.PurchaseFlow
 import com.cafesmart.app.ui.screens.sale.SaleStep1Flow
+import com.cafesmart.app.ui.screens.sale.SaleStep2Flow
 import com.cafesmart.app.data.model.TipoCafe
 import com.cafesmart.app.ui.inventory.InventoryScreen
 import com.cafesmart.app.ui.settings.NegocioInfoScreen
@@ -549,7 +551,13 @@ fun AppNavHost(
                 onSalir = { navController.popBackStack() }
             )
         }
-        composable(Routes.SALE_STEP2) { NavPlaceholder(navController, "Venta · Paso 2 · Café", Routes.SALE_STEP2, true, "Siguiente" to Routes.SALE_STEP3) }
+        composable(Routes.SALE_STEP2) { entrada ->
+            SaleStep2Flow(
+                viewModel = rememberSaleViewModel(navController, entrada),
+                onContinuar = { navController.navigateTo(Routes.SALE_STEP3) },
+                onVolver = { navController.popBackStack() }
+            )
+        }
         composable(Routes.SALE_STEP3) { NavPlaceholder(navController, "Venta · Paso 3 · Confirmar", Routes.SALE_STEP3, true, "Registrar venta" to Routes.SALE_DONE) }
         composable(Routes.SALE_DONE) {
             // "Atrás" del sistema lleva al inicio, no al paso 3 del formulario.
@@ -786,6 +794,16 @@ fun AppNavHost(
 private const val CLAVE_AVISO_AJUSTES = "aviso_ajustes"
 private const val AVISO_NEGOCIO_GUARDADO = "Datos del negocio guardados"
 private const val AVISO_CAPACIDAD_GUARDADA = "Capacidad de bodega guardada"
+
+/**
+ * ViewModel de la venta para los pasos 2 y 3 y la pantalla final: es el mismo que creo el paso 1
+ * (ligado a su entrada de la pila), asi el cliente y el cafe elegidos no se pierden entre pasos.
+ */
+@Composable
+private fun rememberSaleViewModel(navController: NavHostController, entrada: NavBackStackEntry): SaleViewModel {
+    val entradaPaso1 = remember(entrada) { navController.getBackStackEntry(Routes.SALE_STEP1) }
+    return viewModel(entradaPaso1)
+}
 
 /** Navega a una ruta sin duplicarla en la cima de la pila. */
 private fun NavHostController.navigateTo(route: String) =

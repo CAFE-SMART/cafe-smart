@@ -51,3 +51,25 @@ fun SaleStep1Flow(
         modifier = modifier
     )
 }
+
+@Composable
+fun SaleStep2Flow(
+    viewModel: SaleViewModel,
+    onContinuar: () -> Unit,
+    onVolver: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val estado by viewModel.uiState.collectAsState()
+
+    SaleStep2Screen(
+        estado = estado,
+        onTipoCafeChange = { viewModel.elegirTipoCafe(it) },
+        onAlternarTodos = { viewModel.alternarTodos() },
+        onAlternarSublote = { viewModel.alternarSublote(it) },
+        onCantidadChange = { subloteId, texto -> viewModel.escribirCantidad(subloteId, texto) },
+        onPrecioChange = { calidad, texto -> viewModel.cambiarPrecio(calidad, texto) },
+        onContinuar = onContinuar,
+        onBack = onVolver,
+        modifier = modifier
+    )
+}
