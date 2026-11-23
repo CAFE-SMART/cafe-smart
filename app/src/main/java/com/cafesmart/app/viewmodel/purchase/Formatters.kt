@@ -1,6 +1,7 @@
 package com.cafesmart.app.viewmodel.purchase
 
 import com.cafesmart.app.data.model.Fecha
+import com.cafesmart.app.data.model.aPesos
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
@@ -33,7 +34,9 @@ fun precioEnPantalla(digitos: String): String =
     if (digitos.isEmpty()) "" else formatoMiles(digitos.toLong())
 
 // 350000.0 -> "$ 350.000"
-fun formatoDinero(valor: Double): String = "$ " + formatoMiles(valor.toLong())
+// Redondea al peso más cercano con aPesos() (los .5 suben), la misma regla con la que Room guarda totalPagado.
+// Truncar con toLong() mostraba 1 peso menos que lo guardado (10,5 kg x $13.001: $136.510 en vez de $136.511).
+fun formatoDinero(valor: Double): String = "$ " + formatoMiles(valor.aPesos())
 
 // ---------------- Fechas (con Calendar, que existe en todas las versiones de Android) ----------------
 // La fecha de hoy (fechaDeHoy) esta en PurchaseRules.kt

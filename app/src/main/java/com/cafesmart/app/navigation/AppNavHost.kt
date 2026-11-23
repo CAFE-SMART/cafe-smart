@@ -14,7 +14,9 @@ import com.cafesmart.app.data.finanzas.SinDatosFinancieros
 import com.cafesmart.app.data.finanzas.FirebaseConfirmacionCuenta
 import com.cafesmart.app.data.finanzas.fechaDeHoy
 import com.cafesmart.app.ui.finance.AccesoFinancieroScreen
-import com.cafesmart.app.data.inventario.OcupacionDeEjemplo
+import com.cafesmart.app.data.inventario.OrigenOcupacionRoom
+import com.cafesmart.app.data.local.AppDatabase
+import com.cafesmart.app.data.purchase.PurchaseRepository
 import com.cafesmart.app.ui.finance.HistorialFinancieroScreen
 import com.cafesmart.app.ui.settings.CapacidadBodegaScreen
 import com.cafesmart.app.viewmodel.settings.CapacidadBodegaViewModel
@@ -165,6 +167,9 @@ fun AppNavHost(
 
     // Guarda el negocio del registro en Room (nombre, tipo y teléfono). Sin uid (modo demostración) no guarda.
     val negocios = remember { NegocioRepository.de(context) }
+    // Compras y bodega en Room: el repositorio guarda productores y compras; la ocupación suma los sublotes con existencia.
+    val compras = remember { PurchaseRepository.de(context) }
+    val ocupacion = remember { OrigenOcupacionRoom(AppDatabase.obtener(context).subloteDao()) }
     val scope = rememberCoroutineScope()
     val guardarNegocio: (RegistrationData) -> Unit = { data ->
         FirebaseSessionGateway.usuarioActual()?.uid?.let { uid ->
@@ -500,19 +505,22 @@ fun AppNavHost(
         // ── Compras ─────────────────────────────────────────
         // Los pasos 1-3 y la pantalla final los resuelve PurchaseFlow con el estado del ViewModel.
         composable(Routes.PURCHASE_STEP1) {
-            // viewModel() ligado a esta entrada del NavHost: se limpia al salir de la ruta.
-            val purchaseViewModel: PurchaseViewModel = viewModel()
+            // viewModel { } ligado a esta entrada del NavHost: se limpia al salir de la ruta.
+            val purchaseViewModel: PurchaseViewModel = viewModel { PurchaseViewModel(compras, ocupacion) }
             val estado by purchaseViewModel.uiState.collectAsState()
+
+            // Los productores guardados en Room se leen al abrir Compras.
+            LaunchedEffect(Unit) { purchaseViewModel.cargarProductores() }
 
             // La capacidad y la ocupacion de la bodega alimentan los avisos de capacidad; se actualizan solas.
             val uidActual = FirebaseSessionGateway.usuarioActual()?.uid
             LaunchedEffect(uidActual) {
-                val kgOcupados = OcupacionDeEjemplo.kgOcupados()
                 if (uidActual == null) {
-                    purchaseViewModel.actualizarBodega(0.0, kgOcupados)
+                    purchaseViewModel.actualizarBodega(0.0, ocupacion.kgOcupados())
                 } else {
+                    // Los kilos se leen en cada emision, para no usar un valor viejo si cambia la capacidad.
                     negocios.observar(uidActual).collect {
-                        purchaseViewModel.actualizarBodega(it?.capacidadBodegaKg ?: 0.0, kgOcupados)
+                        purchaseViewModel.actualizarBodega(it?.capacidadBodegaKg ?: 0.0, ocupacion.kgOcupados())
                     }
                 }
             }
@@ -737,10 +745,10 @@ fun AppNavHost(
         }
 
         // Ajustes · Capacidad de bodega: kilos que caben y peso del bulto (Negocio). Se abre desde Ajustes, Inicio e Inventario;
-        // al guardar vuelve a donde estaba. Los kilos ocupados hoy son de ejemplo hasta que Compras esté en Room.
+        // al guardar vuelve a donde estaba. Los kilos ocupados hoy salen de los sublotes guardados en Room.
         composable(Routes.SETTINGS_WAREHOUSE) {
             val capacidadViewModel: CapacidadBodegaViewModel = viewModel {
-                CapacidadBodegaViewModel(FirebaseSessionGateway, negocios, OcupacionDeEjemplo)
+                CapacidadBodegaViewModel(FirebaseSessionGateway, negocios, ocupacion)
             }
             val capacidadState by capacidadViewModel.uiState.collectAsState()
             LaunchedEffect(capacidadState.guardado) {

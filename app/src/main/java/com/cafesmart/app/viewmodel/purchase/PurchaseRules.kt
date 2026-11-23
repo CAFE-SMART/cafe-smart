@@ -14,6 +14,7 @@ import java.util.Calendar
 // para poder probarlas con JUnit.
 
 // Limites de peso y precio por kg
+const val PESO_MIN_KG = 1
 const val PESO_MAX_KG = 99_999
 const val PRECIO_MIN_KG = 1_000
 const val PRECIO_MAX_KG = 100_000
@@ -169,12 +170,21 @@ fun mensajePendientePaso1(modo: ModoProductor?, elegido: Productor?): String? =
         else -> null
     }
 
+// Cuando Room no logra guardar la compra (texto propuesto; falta confirmarlo con el equipo)
+const val MENSAJE_ERROR_GUARDAR_COMPRA = "No pudimos registrar la compra. Inténtalo de nuevo."
+// Cuando Room no logra guardar, modificar o leer productores (textos propuestos; falta confirmarlos con el equipo)
+const val MENSAJE_ERROR_GUARDAR_PRODUCTOR = "No pudimos guardar el productor. Inténtalo de nuevo."
+const val MENSAJE_ERROR_CARGAR_PRODUCTORES = "No pudimos cargar tus productores. Inténtalo de nuevo."
+// Tras varios fallos seguidos al confirmar, ya no se deja reintentar (texto propuesto; falta confirmarlo con el equipo)
+const val MAX_INTENTOS_GUARDAR_COMPRA = 3
+const val MENSAJE_ERROR_GUARDAR_COMPRA_AGOTADO = "No pudimos registrar la compra. Cancela e inténtalo más tarde."
+
 // RF-COM-02: cuando la busqueda no encuentra a nadie
 const val SIN_RESULTADOS = "Lo siento, no pudimos encontrarlo. Prueba con otro nombre o cédula."
 
 // ---------------- Paso 2: cafe ----------------
 
-const val MENSAJE_PESO = "Escribe un peso mayor a 0 y hasta 99.999 kg."
+const val MENSAJE_PESO = "Escribe un peso entre 1 y 99.999 kg."
 const val MENSAJE_PRECIO = "Escribe un valor entre $1.000 y $100.000 pesos colombianos."
 
 // RF-COM-09 (ajustado el 11 nov con Andrés): se escribe como en Colombia, con el punto para los miles y la coma
@@ -204,7 +214,7 @@ fun pesoEnPantalla(peso: String): String {
 }
 
 // Ayuda del campo Peso: el limite y como se escriben los decimales, siempre visible.
-const val AYUDA_PESO = "Hasta 99.999 kg. Decimales con coma: 12,5"
+const val AYUDA_PESO = "Entre 1 y 99.999 kg. Decimales con coma: 12,5"
 
 // RF-COM-10: precio por kg en pesos enteros, solo digitos
 fun limpiarPrecio(texto: String): String = texto.filter { it.isDigit() }.take(6)
@@ -216,10 +226,10 @@ fun pesoKg(cafe: CafeFormulario): Double? = cafe.peso.toDoubleOrNull()
 // Recibe el texto (no la tarjeta) para que Compras y Ventas usen las mismas reglas del precio.
 fun precioKg(texto: String): Double? = limpiarPrecio(texto).toDoubleOrNull()
 
-// Mayor a 0 y sin pasar del maximo.
+// Entre el peso minimo (1 kg) y el maximo.
 fun pesoValido(cafe: CafeFormulario): Boolean {
     val peso = pesoKg(cafe)
-    return peso != null && peso > 0 && peso <= PESO_MAX_KG
+    return peso != null && peso >= PESO_MIN_KG && peso <= PESO_MAX_KG
 }
 
 // Entre el precio minimo y el maximo.
@@ -232,7 +242,7 @@ fun precioValido(texto: String): Boolean {
 fun errorPeso(cafe: CafeFormulario): String? {
     // ?: return null: si el campo esta vacio no hay error que mostrar.
     val peso = pesoKg(cafe) ?: return null
-    return if (peso <= 0 || peso > PESO_MAX_KG) MENSAJE_PESO else null
+    return if (peso < PESO_MIN_KG || peso > PESO_MAX_KG) MENSAJE_PESO else null
 }
 
 // El minimo ($1.000) se revisa cuando ya hay 4 digitos, para no marcar error mientras se escribe

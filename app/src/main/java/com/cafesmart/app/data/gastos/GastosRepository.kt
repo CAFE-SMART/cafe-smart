@@ -6,11 +6,13 @@ package com.cafesmart.app.data.gastos
 // Modelos oficiales que transportan los datos del módulo.
 import com.cafesmart.app.data.model.Gasto
 import com.cafesmart.app.data.model.GastoSublote
+import com.cafesmart.app.data.model.Sublote
 import com.cafesmart.app.data.sample.gastosEjemplo
 // Flujos observables para publicar y leer el estado.
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 /** Resultado de lectura: conserva la identidad del gasto y solo el importe de la relación. */
@@ -41,6 +43,15 @@ interface GastosRepository {
      * @param reparto Relaciones con sublotes cuya suma debe respetar las reglas del gasto.
      */
     suspend fun guardar(gasto: Gasto, reparto: List<GastoSublote>)
+
+    /**
+     * Sublotes con café disponible: los que se pueden elegir al asociar un gasto. Por defecto no hay
+     * ninguno; la versión de demostración usa la lista que se le pasa al ViewModel y la de Room los lee de la base.
+     */
+    fun observarSublotesDisponibles(): Flow<List<Sublote>> = flowOf(emptyList())
+
+    /** Un sublote por su id, aunque esté agotado (la pantalla "Gastos del sublote" lo necesita); null si no existe. */
+    suspend fun buscarSublote(id: Long): Sublote? = null
 }
 
 // ============================================================
@@ -49,7 +60,7 @@ interface GastosRepository {
 /**
  * Demostración en memoria, aislada de Firebase y de los datos de los demás módulos.
  * Vive con el ViewModel y se pierde al destruir su propietario o terminar el proceso.
- * Pendiente: sustituir por el repositorio permanente y una fuente real de inventario.
+ * La app ya no la usa: guarda en Room con [RoomGastosRepository]. Se conserva para las pruebas y las vistas previas.
  *
  * registros conserva la lista observable y repartos conserva las asignaciones por ID.
  * Ambos viven solo en esta instancia: cerrar su sesión o terminar el proceso pierde los datos.
