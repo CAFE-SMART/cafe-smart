@@ -9,6 +9,7 @@ import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.model.SubloteConLote
 import com.cafesmart.app.data.model.TipoCafe
 import com.cafesmart.app.data.model.TipoDocumento
+import com.cafesmart.app.data.sale.ItemVenta
 import com.cafesmart.app.data.sale.ModoCliente
 import com.cafesmart.app.data.sale.ResultadoCliente
 import com.cafesmart.app.data.sale.VentaRepository
@@ -125,6 +126,10 @@ data class SaleUiState(
     val fecha: Fecha = hoy,
     // true cuando se confirma la venta: evita registrarla dos veces
     val ventaRegistrada: Boolean = false,
+    // true mientras se guarda la venta en Room: un segundo toque en "Confirmar venta" se ignora.
+    val guardando: Boolean = false,
+    // Mensaje cuando no se pudo guardar la venta; null si no hay error.
+    val errorAlGuardar: String? = null,
     // Aviso cuando no se pudo leer o guardar un cliente (null si todo va bien).
     val errorCliente: String? = null,
     // true mientras se guarda o modifica un cliente en Room: un segundo toque se ignora
@@ -394,6 +399,8 @@ data class SaleUiState(
 // Cuando Room no logra guardar, modificar o leer clientes (textos propuestos; falta confirmarlos con el equipo)
 const val MENSAJE_ERROR_CARGAR_CLIENTES = "No pudimos cargar tus clientes. Inténtalo de nuevo."
 const val MENSAJE_ERROR_GUARDAR_CLIENTE = "No pudimos guardar el cliente. Inténtalo de nuevo."
+// Cuando Room no logra registrar la venta, o ya no hay cafe suficiente (texto del Figma)
+const val MENSAJE_ERROR_GUARDAR_VENTA = "Hubo un problema al guardar tu venta. Inténtalo de nuevo."
 
 // ViewModel (MVVM): aqui esta la logica del registro de venta.
 // Guarda el estado en un StateFlow y recibe las acciones de la vista.
@@ -675,15 +682,36 @@ class SaleViewModel(
         _uiState.value = _uiState.value.copy(fecha = milisAFecha(millis))
     }
 
-    // "Confirmar venta": descuenta lo vendido del inventario y marca la venta como registrada.
-    // Si falta algo, o ya se registro, no hace nada (asi no se puede registrar dos veces).
-    // Temporal: cuando exista Room aqui se guardan la Venta y sus VentaSublote.
-    // Devuelve true solo si esta llamada registro la venta: un segundo toque no la registra otra vez.
-    fun confirmarVenta(): Boolean {
+    // "Regresar" en el aviso de error: lo quita sin registrar nada. La venta sigue lista para reintentar.
+    fun descartarErrorAlGuardar() {
+        _uiState.update { it.copy(errorAlGuardar = null) }
+    }
+
+    // "Confirmar venta": guarda la venta en Room (la Venta, su detalle y el descuento de kg, en una sola
+    // transaccion). El inventario no se toca aqui: baja solo cuando Room emite la lista nueva (observarInventario).
+    // Si falta algo, ya se esta guardando o ya se registro, no hace nada (asi no se guarda dos veces).
+    // Si falla (tambien SinCafeSuficienteException) no queda nada guardado y sale el error para reintentar.
+    fun confirmarVenta() {
         val estado = _uiState.value
-        if (!estado.puedeConfirmar) return false
-        _uiState.value = estado.copy(inventario = descontarVenta(estado.inventario, estado.elegidos), ventaRegistrada = true)
-        return true
+        if (!estado.puedeConfirmar || estado.guardando || estado.ventaRegistrada) return
+        // Cada sublote se vende al precio de su calidad, en pesos enteros.
+        val items = estado.elegidos.map {
+            ItemVenta(it.id, it.cantidadKg, (precioKg(estado.precios[it.calidad].orEmpty()) ?: 0.0).toLong())
+        }
+        _uiState.value = estado.copy(guardando = true, errorAlGuardar = null)
+        viewModelScope.launch {
+            try {
+                repositorio.registrarVenta(estado.clienteDeLaVenta?.id, estado.fecha, items)
+                _uiState.update { it.copy(ventaRegistrada = true) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorAlGuardar = MENSAJE_ERROR_GUARDAR_VENTA) }
+            } finally {
+                // Termine bien, con error o cancelado, el boton vuelve a poder tocarse.
+                _uiState.update { it.copy(guardando = false) }
+            }
+        }
     }
 }
 

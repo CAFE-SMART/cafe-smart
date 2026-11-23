@@ -22,6 +22,7 @@ import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.Cliente
 import com.cafesmart.app.data.sale.ModoCliente
 import com.cafesmart.app.data.sale.SubloteElegido
+import com.cafesmart.app.ui.components.AppErrorDialog
 import com.cafesmart.app.ui.components.CancelarSheet
 import com.cafesmart.app.ui.components.ContinueButton
 import com.cafesmart.app.ui.screens.purchase.PurchaseBottomBar
@@ -46,6 +47,8 @@ fun SaleStep3Screen(
     onFechaChange: (Long) -> Unit,
     onEditarCafe: () -> Unit,
     onConfirmar: () -> Unit,
+    // "Regresar" en el aviso de error: lo cierra sin registrar nada.
+    onDescartarError: () -> Unit,
     onCancelarVenta: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
@@ -102,7 +105,13 @@ fun SaleStep3Screen(
 
         PurchaseBottomBar {
             // Solo se activa cuando el ViewModel dice que la venta esta completa y la fecha sirve.
-            ContinueButton(text = "Confirmar venta", enabled = estado.puedeConfirmar, onClick = onConfirmar)
+            // Mientras se guarda queda bloqueado (con la ruedita) para no guardar dos veces.
+            ContinueButton(
+                text = "Confirmar venta",
+                enabled = estado.puedeConfirmar && !estado.guardando,
+                cargando = estado.guardando,
+                onClick = onConfirmar
+            )
             TextButton(
                 // "Cancelar" no borra nada todavia: primero pregunta con la hoja.
                 onClick = { mostrarCancelar = true },
@@ -118,6 +127,16 @@ fun SaleStep3Screen(
             fechaMilis = estado.fechaMilis,
             onFechaChange = onFechaChange,
             onCerrar = { mostrarCalendario = false }
+        )
+    }
+
+    // Si no se pudo guardar: "Reintentar" vuelve a confirmar y "Regresar" (o la x) cierra el aviso.
+    estado.errorAlGuardar?.let {
+        AppErrorDialog(
+            title = "No se pudo registrar",
+            message = it,
+            onRetry = onConfirmar,
+            onBack = onDescartarError
         )
     }
 
@@ -149,6 +168,7 @@ private fun SaleStep3Preview() {
             onFechaChange = {},
             onEditarCafe = {},
             onConfirmar = {},
+            onDescartarError = {},
             onCancelarVenta = {},
             onBack = {}
         )

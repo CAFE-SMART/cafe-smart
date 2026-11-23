@@ -6,9 +6,11 @@ import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.model.LoteConSublotes
 import com.cafesmart.app.data.sale.ItemVenta
 import com.cafesmart.app.data.sale.ResultadoCliente
+import com.cafesmart.app.data.sale.SinCafeSuficienteException
 import com.cafesmart.app.data.sale.VentaRepository
 import com.cafesmart.app.data.sale.clientesDeEjemplo
 import com.cafesmart.app.data.sale.sublotesParaVenderEjemplo
+import com.cafesmart.app.viewmodel.inventory.redondearKg
 import com.cafesmart.app.viewmodel.sale.SaleViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -71,8 +73,32 @@ class RepositorioDeVentasFalso(clientes: List<Cliente> = emptyList()) : VentaRep
         return ResultadoCliente.Guardado(cliente)
     }
 
+    // Si se da, registrarVenta se queda esperando hasta que se complete (un guardado lento) y se cuentan los intentos
+    // que llegaron. Sirve para probar el doble toque mientras se guarda.
+    var esperarAlRegistrar: CompletableDeferred<Unit>? = null
+    var intentosDeRegistrar = 0
+
+    // Inventario que esta venta descuenta (el mismo que lee el ViewModel). Sin inventario, solo anota la venta.
+    var inventario: InventarioDeVentasFalso? = null
+
+    // Imita a Room: todo o nada. Si algun sublote no alcanza lanza SinCafeSuficienteException y no queda nada
+    // guardado ni descontado; si alcanza, anota la venta, resta los kg y el inventario vuelve a emitir.
     override suspend fun registrarVenta(clienteId: Long?, fecha: Fecha, items: List<ItemVenta>): Long {
+        intentosDeRegistrar++
+        esperarAlRegistrar?.await()
         if (fallarAlRegistrar) throw IllegalStateException("fallo simulado")
+        inventario?.let { falso ->
+            val disponible = falso.lotes.value.flatMap { it.sublotes }.associate { it.id to it.pesoDisponibleKg }
+            items.firstOrNull { (disponible[it.subloteId] ?: 0.0) < it.pesoKg }
+                ?.let { throw SinCafeSuficienteException(it.subloteId) }
+            falso.lotes.value = falso.lotes.value.map { lote ->
+                lote.copy(sublotes = lote.sublotes.map { sublote ->
+                    val vendido = items.filter { it.subloteId == sublote.id }.sumOf { it.pesoKg }
+                    if (vendido == 0.0) sublote
+                    else sublote.copy(pesoDisponibleKg = redondearKg(maxOf(0.0, sublote.pesoDisponibleKg - vendido)))
+                })
+            }
+        }
         ventas += VentaGuardada(clienteId, fecha, items)
         return ventas.size.toLong()
     }
@@ -109,6 +135,8 @@ fun viewModelDeVentasDePrueba(
     repositorio: RepositorioDeVentasFalso = RepositorioDeVentasFalso(clientesDeEjemplo),
     inventario: InventarioDeVentasFalso = InventarioDeVentasFalso(),
 ): SaleViewModel {
+    // El repositorio descuenta de este mismo inventario, como Room lo hace con las tablas que lee Inventario.
+    if (repositorio.inventario == null) repositorio.inventario = inventario
     return SaleViewModel(repositorio, inventario).also {
         it.cargarClientes()
         it.observarInventario()
