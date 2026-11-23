@@ -1,5 +1,7 @@
 package com.cafesmart.app.data.purchase
 
+import com.cafesmart.app.data.local.ClienteDao
+import com.cafesmart.app.data.local.ClienteEntity
 import com.cafesmart.app.data.local.CompraDao
 import com.cafesmart.app.data.local.CompraEntity
 import com.cafesmart.app.data.local.LoteDao
@@ -9,6 +11,10 @@ import com.cafesmart.app.data.local.ProductorEntity
 import com.cafesmart.app.data.local.SubloteDao
 import com.cafesmart.app.data.local.SubloteEntity
 import com.cafesmart.app.data.local.Transaccion
+import com.cafesmart.app.data.local.VentaDao
+import com.cafesmart.app.data.local.VentaEntity
+import com.cafesmart.app.data.local.VentaSubloteEntity
+import com.cafesmart.app.data.sale.RoomVentaRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -115,13 +121,59 @@ class SubloteDaoFalso : SubloteDao {
     override fun observarTodos(): Flow<List<SubloteEntity>> = flujo.map { lista -> lista.sortedBy { it.id } }
 }
 
-// Los cuatro DAOs falsos juntos y una transacción falsa: si el bloque lanza una excepción, devuelve todas las
+class ClienteDaoFalso : ClienteDao {
+    var filas = listOf<ClienteEntity>()
+    private var siguienteId = 1L
+
+    fun copiarEstado() = filas to siguienteId
+    fun restaurar(estado: Pair<List<ClienteEntity>, Long>) { filas = estado.first; siguienteId = estado.second }
+
+    override suspend fun insertar(cliente: ClienteEntity): Long {
+        check(filas.none { it.documento == cliente.documento }) { "UNIQUE cliente.documento" }
+        val id = siguienteId++
+        filas = filas + cliente.copy(id = id)
+        return id
+    }
+    override suspend fun listar() = filas.sortedBy { it.id }
+    override suspend fun buscarPorId(id: Long) = filas.firstOrNull { it.id == id }
+    override suspend fun buscarPorDocumento(documento: String) = filas.firstOrNull { it.documento == documento }
+    override suspend fun actualizar(cliente: ClienteEntity) {
+        filas = filas.map { if (it.id == cliente.id) cliente else it }
+    }
+}
+
+class VentaDaoFalso : VentaDao {
+    var filas = listOf<VentaEntity>()
+    var detalles = listOf<VentaSubloteEntity>()
+    private var siguienteId = 1L
+
+    fun copiarEstado() = Triple(filas, detalles, siguienteId)
+    fun restaurar(estado: Triple<List<VentaEntity>, List<VentaSubloteEntity>, Long>) {
+        filas = estado.first; detalles = estado.second; siguienteId = estado.third
+    }
+
+    override suspend fun insertar(venta: VentaEntity): Long {
+        val id = siguienteId++
+        filas = filas + venta.copy(id = id)
+        return id
+    }
+    // Imita la llave primaria compuesta (venta_id, sublote_id) de la tabla real.
+    override suspend fun insertarDetalle(item: VentaSubloteEntity) {
+        check(detalles.none { it.ventaId == item.ventaId && it.subloteId == item.subloteId }) { "UNIQUE venta_sublote" }
+        detalles = detalles + item
+    }
+    override suspend fun listar() = filas.sortedBy { it.id }
+}
+
+// Los DAOs falsos juntos y una transacción falsa: si el bloque lanza una excepción, devuelve todas las
 // tablas a como estaban (lo que hace Room de verdad con withTransaction).
 class BaseFalsa {
     val productores = ProductorDaoFalso()
     val compras = CompraDaoFalso()
     val lotes = LoteDaoFalso()
     val sublotes = SubloteDaoFalso()
+    val clientes = ClienteDaoFalso()
+    val ventas = VentaDaoFalso()
 
     val transaccion = object : Transaccion {
         override suspend fun <T> ejecutar(bloque: suspend () -> T): T {
@@ -129,14 +181,19 @@ class BaseFalsa {
             val c = compras.copiarEstado()
             val l = lotes.copiarEstado()
             val s = sublotes.copiarEstado()
+            val cl = clientes.copiarEstado()
+            val v = ventas.copiarEstado()
             try {
                 return bloque()
             } catch (e: Throwable) {
                 productores.restaurar(p); compras.restaurar(c); lotes.restaurar(l); sublotes.restaurar(s)
+                clientes.restaurar(cl); ventas.restaurar(v)
                 throw e
             }
         }
     }
 
     fun repositorio() = RoomPurchaseRepository(productores, compras, lotes, sublotes, transaccion)
+
+    fun repositorioVentas() = RoomVentaRepository(clientes, ventas, sublotes, transaccion)
 }
