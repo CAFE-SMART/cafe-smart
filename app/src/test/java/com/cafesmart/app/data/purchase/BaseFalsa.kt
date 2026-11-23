@@ -93,6 +93,16 @@ class SubloteDaoFalso : SubloteDao {
     fun copiarEstado() = filas to siguienteId
     fun restaurar(estado: Pair<List<SubloteEntity>, Long>) { filas = estado.first; siguienteId = estado.second }
 
+    // Imita el UPDATE real de SubloteDao.descontar: 0 si no existe o no alcanza (con 0.0005 de tolerancia),
+    // y si alcanza deja el peso redondeado a 3 decimales (nunca negativo) y devuelve 1.
+    override suspend fun descontar(id: Long, kg: Double): Int {
+        val sublote = filas.firstOrNull { it.id == id } ?: return 0
+        if (sublote.pesoDisponibleKg < kg - 0.0005) return 0
+        val nuevo = maxOf(0.0, Math.round((sublote.pesoDisponibleKg - kg) * 1000.0) / 1000.0)
+        filas = filas.map { if (it.id == id) it.copy(pesoDisponibleKg = nuevo) else it }
+        return 1
+    }
+
     override suspend fun insertar(sublote: SubloteEntity): Long {
         inserciones++
         if (inserciones == fallarEnInsercion) throw IllegalStateException("fallo simulado al guardar el sublote $inserciones")
