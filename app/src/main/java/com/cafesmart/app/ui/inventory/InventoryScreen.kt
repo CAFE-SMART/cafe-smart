@@ -95,7 +95,7 @@ import com.cafesmart.app.viewmodel.purchase.formatoKg
 
 // Pantalla "Inventario · Resumen (Todos)" y "Inventario · Vacío" del Figma (ruta `inventory`).
 // Sin estado propio: recibe el estado y avisa con callbacks (igual que SettingsScreen). Los datos salen
-// de InventoryViewModel, que por ahora usa datos de ejemplo y luego leerá de Room.
+// de InventoryViewModel, que los lee de Room (InventoryRepository) y se actualiza solo.
 // Las pantallas siguientes (calidades de un tipo, sublotes, detalle) son otras tareas: aquí solo se avisa
 // con onTipoClick cuál tipo se tocó.
 
@@ -124,7 +124,11 @@ fun InventoryScreen(
         // Misma barra inferior que Inicio; aquí la pestaña activa es Inventario (el botón central).
         bottomBar = { AppBottomBar(selectedRoute = "inventario", onNavigate = onNavegar) }
     ) { innerPadding ->
-        if (estado.resumen.estaVacio) {
+        if (estado.cargando) {
+            // Room todavía no entregó la primera lectura: no se muestra nada para que no parpadee el
+            // estado vacío ("no tienes café") a quien sí tiene. Dura unos milisegundos.
+            Box(modifier = Modifier.fillMaxSize().padding(innerPadding))
+        } else if (estado.resumen.estaVacio) {
             EstadoVacio(
                 onRegistrarCompra = onRegistrarCompra,
                 modifier = Modifier.padding(innerPadding)

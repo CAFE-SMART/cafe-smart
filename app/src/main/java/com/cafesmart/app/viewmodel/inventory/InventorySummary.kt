@@ -96,8 +96,8 @@ fun ordenarTipos(tipos: List<ResumenTipo>, orden: OrdenInventario): List<Resumen
 // Se redondea a 3 decimales (1 g) para que el total y su texto salgan limpios.
 fun redondearKg(kg: Double): Double = Math.round(kg * 1000.0) / 1000.0
 
-// Fecha como número para compararla: 2026-11-03 -> 20261103.
-private fun Fecha.clave(): Int = anio * 10_000 + mes * 100 + dia
+// Fecha como número para compararla: 2026-11-03 -> 20261103. (internal: también la usa InventoryLists.kt)
+internal fun Fecha.clave(): Int = anio * 10_000 + mes * 100 + dia
 
 // ---------------- Textos que muestra la pantalla ----------------
 
