@@ -41,11 +41,8 @@ fun SaleStep1Flow(
         onDocumentoChange = { viewModel.cambiarDocumento(it) },
         onNombreChange = { viewModel.cambiarNombre(it) },
         onTelefonoChange = { viewModel.cambiarTelefono(it) },
-        // Con "Cliente nuevo", continuarPaso1 lo registra; luego se navega al paso 2.
-        onContinuar = {
-            viewModel.continuarPaso1()
-            onContinuar()
-        },
+        // Con "Cliente nuevo", continuarPaso1 lo guarda en Room y solo entonces se navega al paso 2.
+        onContinuar = { viewModel.continuarPaso1(alTerminar = onContinuar) },
         // La flecha del paso 1 sale del registro de venta.
         onBack = onSalir,
         modifier = modifier

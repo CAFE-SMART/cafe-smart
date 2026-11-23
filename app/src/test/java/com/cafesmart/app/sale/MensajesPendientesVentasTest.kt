@@ -12,11 +12,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 
 // Texto sobre "Continuar" que dice que falta en el paso 1 y en el paso 2 de Ventas.
 // Regla de oro: hay mensaje justo cuando el boton esta deshabilitado (salvo el minimo de kg, que ya se ve en rojo).
 class MensajesPendientesVentasTest {
+
+    @get:Rule val principal = PrincipalDeVentasRule()
 
     private fun SaleViewModel.paso1() = uiState.value.mensajePendientePaso1
     private fun SaleViewModel.paso2() = uiState.value.mensajePendientePaso2
@@ -25,18 +28,18 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso1_sinOpcionPideElegirUna() {
-        assertEquals("Por favor, selecciona una opción para continuar el proceso.", SaleViewModel().paso1())
+        assertEquals("Por favor, selecciona una opción para continuar el proceso.", viewModelDeVentasDePrueba().paso1())
     }
 
     @Test
     fun paso1_clienteRegistradoSinElegirPideElegirUno() {
-        val vm = SaleViewModel().apply { elegirModo(ModoCliente.REGISTRADO) }
+        val vm = viewModelDeVentasDePrueba().apply { elegirModo(ModoCliente.REGISTRADO) }
         assertEquals("Elige un cliente de la lista.", vm.paso1())
     }
 
     @Test
     fun paso1_clienteRegistradoElegidoNoTieneMensaje() {
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegirModo(ModoCliente.REGISTRADO)
             elegirCliente(clientesDeEjemplo.first())
         }
@@ -46,20 +49,20 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso1_sinRegistrarNoTieneMensaje() {
-        val vm = SaleViewModel().apply { elegirModo(ModoCliente.SIN_REGISTRAR) }
+        val vm = viewModelDeVentasDePrueba().apply { elegirModo(ModoCliente.SIN_REGISTRAR) }
         assertNull(vm.paso1())
     }
 
     @Test
     fun paso1_clienteNuevoVacioPideElDocumento() {
-        val vm = SaleViewModel().apply { elegirModo(ModoCliente.NUEVO) }
+        val vm = viewModelDeVentasDePrueba().apply { elegirModo(ModoCliente.NUEVO) }
         assertEquals(MENSAJE_REVISA_CAMPOS, vm.paso1())
         assertEquals("Escribe el documento del cliente.", vm.uiState.value.documentoError)
     }
 
     @Test
     fun paso1_clienteNuevoConDocumentoCortoMuestraSuError() {
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegirModo(ModoCliente.NUEVO)
             cambiarDocumento("123")
         }
@@ -69,7 +72,7 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso1_clienteNuevoConDocumentoBuenoPideElNombre() {
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegirModo(ModoCliente.NUEVO)
             cambiarDocumento("1112223334")
         }
@@ -79,7 +82,7 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso1_clienteNuevoEmpresaSinNombrePideElNombreDeLaEmpresa() {
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegirModo(ModoCliente.NUEVO)
             cambiarTipoDocumento(TipoDocumento.NIT)
             cambiarDocumento("800987654")
@@ -90,7 +93,7 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso1_clienteNuevoConSoloUnNombreMuestraSuError() {
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegirModo(ModoCliente.NUEVO)
             cambiarDocumento("1112223334")
             cambiarNombre("Juan")
@@ -101,7 +104,7 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso1_clienteNuevoConCelularMalMuestraSuError() {
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegirModo(ModoCliente.NUEVO)
             cambiarDocumento("1112223334")
             cambiarNombre("Juan Pérez")
@@ -113,7 +116,7 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso1_clienteNuevoCompletoNoTieneMensajeYElBotonSeHabilita() {
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegirModo(ModoCliente.NUEVO)
             cambiarDocumento("1112223334")
             cambiarNombre("Juan Pérez")
@@ -125,7 +128,7 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso1_clienteNuevoSinCelularEsValidoPorqueEsOpcional() {
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegirModo(ModoCliente.NUEVO)
             cambiarDocumento("1112223334")
             cambiarNombre("Juan Pérez")
@@ -136,7 +139,7 @@ class MensajesPendientesVentasTest {
     @Test
     fun paso1_documentoYaRegistradoAvisa() {
         val repetido = clientesDeEjemplo.first().documento
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegirModo(ModoCliente.NUEVO)
             cambiarDocumento(repetido)
         }
@@ -146,7 +149,7 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso1_hayMensajeJustoCuandoElBotonEstaDeshabilitado() {
-        val vm = SaleViewModel()
+        val vm = viewModelDeVentasDePrueba()
         val pasos = listOf<(SaleViewModel) -> Unit>(
             { },
             { it.elegirModo(ModoCliente.REGISTRADO) },
@@ -169,19 +172,19 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso2_sinSubloteElegidoPideElegirUno() {
-        assertEquals("Elige al menos un sublote para continuar.", SaleViewModel().paso2())
+        assertEquals("Elige al menos un sublote para continuar.", viewModelDeVentasDePrueba().paso2())
     }
 
     @Test
     fun paso2_conSubloteSinPrecioPideElPrecioDeEsaCalidad() {
-        val vm = SaleViewModel().apply { elegir(5) }
+        val vm = viewModelDeVentasDePrueba().apply { elegir(5) }
         assertEquals(MENSAJE_REVISA_CAMPOS, vm.paso2())
         assertEquals("Escribe el precio por kg de la calidad buena.", vm.uiState.value.grupos.first { it.precio != null }.precio!!.error)
     }
 
     @Test
     fun paso2_conPrecioFueraDeRangoMuestraElRango() {
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegir(5)
             cambiarPrecio(Calidad.BUENA, "500000")
         }
@@ -191,7 +194,7 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso2_conSubloteYPrecioBuenoNoTieneMensaje() {
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegir(5)
             cambiarPrecio(Calidad.BUENA, "20000")
         }
@@ -201,7 +204,7 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso2_cantidadQuePasaDeLoDisponibleAvisa() {
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegir(5)
             cambiarPrecio(Calidad.BUENA, "20000")
             escribirCantidad(5L, "9999")
@@ -213,7 +216,7 @@ class MensajesPendientesVentasTest {
     @Test
     fun paso2_siFaltaElMinimoDeKgElMensajeNoSeRepite() {
         // Menos de 5 kg: el aviso rojo de arriba ya lo explica, asi que debajo del boton no se repite.
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegir(5)
             cambiarPrecio(Calidad.BUENA, "20000")
             escribirCantidad(5L, "2")
@@ -225,7 +228,7 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso2_conDosCalidadesPideElPrecioDeLaQueFalta() {
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegir(5, 8)
             cambiarPrecio(Calidad.BUENA, "20000")
         }
@@ -236,7 +239,7 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso2_alQuitarElSubloteVuelveAPedirElegirUno() {
-        val vm = SaleViewModel().apply { elegir(5) }
+        val vm = viewModelDeVentasDePrueba().apply { elegir(5) }
         vm.elegir(5)
         assertEquals("Elige al menos un sublote para continuar.", vm.paso2())
     }
@@ -256,14 +259,14 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso2_conSubloteSinPrecio_elCampoDelPrecioMuestraQueFalta() {
-        val vm = SaleViewModel().apply { elegir(5) }
+        val vm = viewModelDeVentasDePrueba().apply { elegir(5) }
         val precio = vm.uiState.value.grupos.first { it.precio != null }.precio!!
         assertEquals("Escribe el precio por kg de la calidad buena.", precio.error)
     }
 
     @Test
     fun paso2_alEscribirElPrecio_elCampoYaNoSeMarca() {
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegir(5)
             cambiarPrecio(Calidad.BUENA, "20000")
         }
@@ -272,7 +275,7 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso1_conUnCampoMarcado_elErrorExactoEstaSoloEnElCampoYAbajoVaElAvisoGeneral() {
-        val vm = SaleViewModel().apply { elegirModo(ModoCliente.NUEVO) }
+        val vm = viewModelDeVentasDePrueba().apply { elegirModo(ModoCliente.NUEVO) }
         assertEquals("Escribe el documento del cliente.", vm.uiState.value.documentoError)
         assertEquals(MENSAJE_REVISA_CAMPOS, vm.paso1())
         vm.cambiarDocumento("1112223334")
@@ -283,7 +286,7 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso2_cantidadVaciaSinCampoEnRojoDiceQueEscribirla() {
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegir(5)
             cambiarPrecio(Calidad.BUENA, "20000")
             escribirCantidad(5L, "")
@@ -293,7 +296,7 @@ class MensajesPendientesVentasTest {
 
     @Test
     fun paso2_cantidadQuePasaDeLoDisponible_marcaElCampoYAbajoVaElAvisoGeneral() {
-        val vm = SaleViewModel().apply {
+        val vm = viewModelDeVentasDePrueba().apply {
             elegir(5)
             cambiarPrecio(Calidad.BUENA, "20000")
             escribirCantidad(5L, "9999")

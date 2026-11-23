@@ -3,14 +3,17 @@ package com.cafesmart.app.sale
 import com.cafesmart.app.data.sale.ModoCliente
 import com.cafesmart.app.viewmodel.sale.SaleViewModel
 import org.junit.Assert.assertFalse
+import org.junit.Rule
 import org.junit.Test
 
 // Un documento con formato invalido no deja avanzar al paso 2, aunque el nombre y el celular esten bien.
 class DocumentoInvalidoVentasTest {
 
+    @get:Rule val principal = PrincipalDeVentasRule()
+
     @Test
     fun cedulaDeCincoNumeros_conNombreYCelularValidos_continuarSigueDeshabilitado() {
-        val vm = SaleViewModel()
+        val vm = viewModelDeVentasDePrueba()
         vm.elegirModo(ModoCliente.NUEVO)
         vm.cambiarDocumento("12345")
         vm.cambiarNombre("Juan Pérez")

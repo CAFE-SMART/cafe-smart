@@ -4,10 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.cafesmart.app.data.model.Cliente
 import com.cafesmart.app.data.model.TipoDocumento
@@ -28,7 +31,9 @@ import com.cafesmart.app.ui.screens.purchase.CamposPersona
 import com.cafesmart.app.ui.screens.purchase.ProducerRow
 import com.cafesmart.app.ui.screens.purchase.PurchaseBottomBar
 import com.cafesmart.app.ui.screens.purchase.PurchaseHeader
+import com.cafesmart.app.ui.theme.AppTypography
 import com.cafesmart.app.ui.theme.CafesmartTheme
+import com.cafesmart.app.ui.theme.ErrorText
 import com.cafesmart.app.ui.theme.Spacing
 import com.cafesmart.app.ui.theme.SurfaceScreen
 import com.cafesmart.app.viewmodel.sale.SaleUiState
@@ -159,6 +164,15 @@ fun SaleStep1Screen(
 
         // Pie fijo abajo con el boton Continuar.
         PurchaseBottomBar {
+            // Si no se pudo leer o guardar un cliente en Room (texto propuesto, falta confirmarlo con el equipo)
+            estado.errorCliente?.let {
+                Text(
+                    text = it,
+                    style = AppTypography.caption.copy(color = ErrorText),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
             PendingMessage(mensaje = estado.mensajePendientePaso1)
             ContinueButton(
                 text = "Continuar",

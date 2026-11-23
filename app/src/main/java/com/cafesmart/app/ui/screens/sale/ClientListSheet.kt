@@ -1,13 +1,21 @@
 package com.cafesmart.app.ui.screens.sale
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import com.cafesmart.app.data.model.Cliente
 import com.cafesmart.app.data.model.TipoDocumento
 import com.cafesmart.app.ui.components.AppBottomSheet
 import com.cafesmart.app.ui.screens.purchase.ListaPersonas
 import com.cafesmart.app.ui.screens.purchase.NewProducerForm
 import com.cafesmart.app.ui.screens.purchase.ProducerRow
+import com.cafesmart.app.ui.theme.AppTypography
+import com.cafesmart.app.ui.theme.ErrorText
+import com.cafesmart.app.ui.theme.Spacing
 import com.cafesmart.app.viewmodel.sale.SaleUiState
 
 // Hoja "Ver más clientes": busca, elige y modifica clientes registrados.
@@ -31,6 +39,15 @@ fun ClientListSheet(
     AppBottomSheet(onDismiss = onCerrar, skipPartiallyExpanded = true) {
         // Si hay un cliente en modificacion muestra el formulario; si no, la lista
         if (estado.clienteEnEdicion != null) {
+            // Si no se pudo guardar el cambio en Room, se avisa arriba de la hoja (la hoja sigue abierta con lo escrito)
+            estado.errorCliente?.let {
+                Text(
+                    text = it,
+                    style = AppTypography.caption.copy(color = ErrorText),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.s20)
+                )
+            }
             NewProducerForm(
                 titulo = "Modificar cliente",
                 esEmpresa = estado.edicionEsEmpresa,

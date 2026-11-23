@@ -4,6 +4,7 @@ import com.cafesmart.app.viewmodel.sale.SaleViewModel
 import com.cafesmart.app.viewmodel.sale.errorTotalKg
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Rule
 import org.junit.Test
 
 // La suma de kg con decimales no debe quedar en 4.999999... cuando es de 5 kg: ese error de la computadora
@@ -11,9 +12,11 @@ import org.junit.Test
 // Sublotes de ejemplo (cafe seco): 5 (200 kg), 6 (100 kg) y 8 (150 kg) tienen kg de sobra.
 class TotalKgDecimalesVentasTest {
 
+    @get:Rule val principal = PrincipalDeVentasRule()
+
     @Test
     fun cincoKgExactosSumadosEnTresSublotes_dan5ExactoYNoErrorDeMinimo() {
-        val vm = SaleViewModel()
+        val vm = viewModelDeVentasDePrueba()
         vm.elegir(5, 6, 8)
         vm.cambiarCantidad(5, 0.1)
         vm.cambiarCantidad(6, 4.1)
@@ -26,7 +29,7 @@ class TotalKgDecimalesVentasTest {
 
     @Test
     fun cuatroKgConNueveDecimalesSiSigueSiendoError() {
-        val vm = SaleViewModel()
+        val vm = viewModelDeVentasDePrueba()
         vm.elegir(5, 6)
         vm.cambiarCantidad(5, 0.5)
         vm.cambiarCantidad(6, 4.4)

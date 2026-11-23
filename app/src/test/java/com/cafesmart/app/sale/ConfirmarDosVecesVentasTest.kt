@@ -5,11 +5,14 @@ import com.cafesmart.app.viewmodel.sale.SaleViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 
 // confirmarVenta() avisa si esta llamada registro la venta. Asi la pantalla solo navega una vez aunque
 // la persona toque "Confirmar" dos veces seguidas.
 class ConfirmarDosVecesVentasTest {
+
+    @get:Rule val principal = PrincipalDeVentasRule()
 
     // Una venta lista para confirmar: cliente nuevo valido, el sublote 5 (calidad buena) y su precio.
     private fun SaleViewModel.dejarListaParaConfirmar() {
@@ -20,7 +23,7 @@ class ConfirmarDosVecesVentasTest {
 
     @Test
     fun laPrimeraConfirmacionRegistraYDevuelveTrue() {
-        val vm = SaleViewModel()
+        val vm = viewModelDeVentasDePrueba()
         vm.dejarListaParaConfirmar()
         assertTrue(vm.confirmarVenta())
         assertTrue(vm.uiState.value.ventaRegistrada)
@@ -28,7 +31,7 @@ class ConfirmarDosVecesVentasTest {
 
     @Test
     fun laSegundaConfirmacionNoHaceNadaYDevuelveFalse() {
-        val vm = SaleViewModel()
+        val vm = viewModelDeVentasDePrueba()
         vm.dejarListaParaConfirmar()
         vm.confirmarVenta()
         val inventarioDespuesDeLaPrimera = vm.uiState.value.inventario
@@ -40,7 +43,7 @@ class ConfirmarDosVecesVentasTest {
 
     @Test
     fun confirmarSinPoderConfirmar_devuelveFalseYNoRegistra() {
-        val vm = SaleViewModel()
+        val vm = viewModelDeVentasDePrueba()
         assertFalse(vm.confirmarVenta())
         assertFalse(vm.uiState.value.ventaRegistrada)
     }
