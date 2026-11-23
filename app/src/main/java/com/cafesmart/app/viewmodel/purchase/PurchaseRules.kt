@@ -14,6 +14,7 @@ import java.util.Calendar
 // para poder probarlas con JUnit.
 
 // Limites de peso y precio por kg
+const val PESO_MIN_KG = 1
 const val PESO_MAX_KG = 99_999
 const val PRECIO_MIN_KG = 1_000
 const val PRECIO_MAX_KG = 100_000
@@ -24,18 +25,20 @@ const val PRECIO_MAX_KG = 100_000
 // const val: valor fijo que se conoce al compilar.
 const val CANTIDAD_RECIENTES = 2
 
-// Devuelve los productores cuyo nombre o documento (cedula o NIT) contienen lo que se busco.
+// true cuando el nombre o el documento (cedula o NIT) contienen lo que se busco.
+// Productores y clientes se buscan igual, por eso la regla esta aparte.
+// trim() quita los espacios de las puntas; ignoreCase ignora mayusculas.
+fun coincideBusqueda(nombre: String, documento: String, busqueda: String): Boolean =
+    nombre.contains(busqueda.trim(), ignoreCase = true) || documento.contains(busqueda.trim())
+
+// Devuelve los productores cuyo nombre o documento contienen lo que se busco.
 fun filtrarProductores(productores: List<Productor>, busqueda: String): List<Productor> =
     // isBlank: esta vacio o solo tiene espacios. Sin busqueda se devuelven todos.
     if (busqueda.isBlank()) {
         productores
     } else {
         // filter crea una lista nueva solo con los que cumplen la condicion.
-        // it es cada productor; trim() quita espacios; ignoreCase ignora mayusculas.
-        productores.filter {
-            it.nombre.contains(busqueda.trim(), ignoreCase = true) ||
-                it.documento.contains(busqueda.trim())
-        }
+        productores.filter { coincideBusqueda(it.nombre, it.documento, busqueda) }
     }
 
 // Sin busqueda muestra solo los ultimos registrados ("Recientes"), salvo que se pida ver todos
@@ -87,6 +90,18 @@ fun limpiarDocumento(texto: String): String = texto.filter { it.isDigit() }.take
 // Deja solo digitos, maximo 10.
 fun limpiarTelefono(texto: String): String = texto.filter { it.isDigit() }.take(10)
 
+// Lo que se escribe en el formulario de una persona (productor o cliente): cada campo se limpia al escribirlo.
+// Son funciones de extension: se leen como "formulario.conDocumento(texto)" y devuelven un formulario nuevo.
+// Al cambiar de tipo, el nombre se limpia otra vez (una persona no lleva numeros ni puntos; una empresa si).
+fun NuevoProductor.conTipo(tipo: TipoDocumento): NuevoProductor =
+    copy(tipo = tipo, nombre = normalizarEspacios(limpiarNombre(nombre, tipo)))
+
+fun NuevoProductor.conDocumento(texto: String): NuevoProductor = copy(documento = limpiarDocumento(texto))
+
+fun NuevoProductor.conNombre(texto: String): NuevoProductor = copy(nombre = limpiarNombre(texto, tipo))
+
+fun NuevoProductor.conTelefono(texto: String): NuevoProductor = copy(telefono = limpiarTelefono(texto))
+
 // Cada validacion devuelve el mensaje de error, o null si el valor es valido
 
 // RF-COM-05: persona = nombre y apellido; empresa = su nombre
@@ -105,14 +120,14 @@ fun validarNombre(nombre: String, tipo: TipoDocumento): String? {
 }
 
 // RF-COM-04: cedula de 6 a 10 digitos, NIT de 9 a 10, y que no este repetido
-// Recibe la lista de productores para detectar documentos repetidos.
-fun validarDocumento(documento: String, tipo: TipoDocumento, productores: List<Productor>): String? =
+// Recibe los documentos ya registrados (de productores o de clientes) para detectar repetidos.
+fun validarDocumento(documento: String, tipo: TipoDocumento, documentosRegistrados: List<String>): String? =
     when {
         documento.isEmpty() -> "Escribe solo números, sin puntos, comas ni espacios."
         tipo == TipoDocumento.CC && documento.length < 6 -> "La cédula debe tener entre 6 y 10 números."
         tipo == TipoDocumento.NIT && documento.length < 9 -> "El NIT debe tener 9 o 10 números."
-        // any: true si algun productor ya tiene este documento.
-        productores.any { it.documento == documento } -> "Este documento ya está registrado. Verifica en tu lista."
+        // contains: true si este documento ya esta en la lista.
+        documento in documentosRegistrados -> "Este documento ya está registrado. Verifica en tu lista."
         else -> null
     }
 
@@ -125,9 +140,9 @@ fun validarTelefono(telefono: String): String? =
     }
 
 // El formulario es valido cuando ninguna validacion devuelve mensaje de error.
-fun productorValido(datos: NuevoProductor, productores: List<Productor>): Boolean =
+fun productorValido(datos: NuevoProductor, documentosRegistrados: List<String>): Boolean =
     validarNombre(datos.nombre, datos.tipo) == null &&
-        validarDocumento(datos.documento, datos.tipo, productores) == null &&
+        validarDocumento(datos.documento, datos.tipo, documentosRegistrados) == null &&
         validarTelefono(datos.telefono) == null
 
 // Convierte lo escrito en el formulario en un Productor.
@@ -169,7 +184,7 @@ const val SIN_RESULTADOS = "Lo siento, no pudimos encontrarlo. Prueba con otro n
 
 // ---------------- Paso 2: cafe ----------------
 
-const val MENSAJE_PESO = "Escribe un peso mayor a 0 y hasta 99.999 kg."
+const val MENSAJE_PESO = "Escribe un peso entre 1 y 99.999 kg."
 const val MENSAJE_PRECIO = "Escribe un valor entre $1.000 y $100.000 pesos colombianos."
 
 // RF-COM-09 (ajustado el 11 nov con Andrés): se escribe como en Colombia, con el punto para los miles y la coma
@@ -199,7 +214,7 @@ fun pesoEnPantalla(peso: String): String {
 }
 
 // Ayuda del campo Peso: el limite y como se escriben los decimales, siempre visible.
-const val AYUDA_PESO = "Hasta 99.999 kg. Decimales con coma: 12,5"
+const val AYUDA_PESO = "Entre 1 y 99.999 kg. Decimales con coma: 12,5"
 
 // RF-COM-10: precio por kg en pesos enteros, solo digitos
 fun limpiarPrecio(texto: String): String = texto.filter { it.isDigit() }.take(6)
@@ -211,10 +226,10 @@ fun pesoKg(cafe: CafeFormulario): Double? = cafe.peso.toDoubleOrNull()
 // Recibe el texto (no la tarjeta) para que Compras y Ventas usen las mismas reglas del precio.
 fun precioKg(texto: String): Double? = limpiarPrecio(texto).toDoubleOrNull()
 
-// Mayor a 0 y sin pasar del maximo.
+// Entre el peso minimo (1 kg) y el maximo.
 fun pesoValido(cafe: CafeFormulario): Boolean {
     val peso = pesoKg(cafe)
-    return peso != null && peso > 0 && peso <= PESO_MAX_KG
+    return peso != null && peso >= PESO_MIN_KG && peso <= PESO_MAX_KG
 }
 
 // Entre el precio minimo y el maximo.
@@ -227,7 +242,7 @@ fun precioValido(texto: String): Boolean {
 fun errorPeso(cafe: CafeFormulario): String? {
     // ?: return null: si el campo esta vacio no hay error que mostrar.
     val peso = pesoKg(cafe) ?: return null
-    return if (peso <= 0 || peso > PESO_MAX_KG) MENSAJE_PESO else null
+    return if (peso < PESO_MIN_KG || peso > PESO_MAX_KG) MENSAJE_PESO else null
 }
 
 // El minimo ($1.000) se revisa cuando ya hay 4 digitos, para no marcar error mientras se escribe

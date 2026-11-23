@@ -38,5 +38,11 @@ class OrigenOcupacionRoomTest {
     @Test fun cuentaElPesoQueQuedaNoElInicial() = runBlocking {
         guardar(120.5)   // entró con 1.000 kg y quedan 120,5
         assertEquals(120.5, origen.kgOcupados(), 0.0)
+
+    }
+    @Test fun losDecimalesSeSumanSinRuido() = runBlocking {
+        guardar(0.1, 0.2)
+        assertEquals(0.3, origen.kgOcupados(), 0.0)
     }
 }
+
