@@ -176,8 +176,8 @@ fun SaleStep1Screen(
             PendingMessage(mensaje = estado.mensajePendientePaso1)
             ContinueButton(
                 text = "Continuar",
-                // El boton solo se activa cuando el ViewModel lo permite.
-                enabled = estado.continuarPaso1Habilitado,
+                // El boton solo se activa cuando el ViewModel lo permite, y no mientras se guarda el cliente.
+                enabled = estado.continuarPaso1Habilitado && !estado.guardandoCliente,
                 onClick = onContinuar
             )
         }

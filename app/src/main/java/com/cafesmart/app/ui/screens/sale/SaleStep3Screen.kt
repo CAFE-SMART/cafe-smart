@@ -1,5 +1,6 @@
 package com.cafesmart.app.ui.screens.sale
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -56,6 +57,9 @@ fun SaleStep3Screen(
     var mostrarCalendario by rememberSaveable { mutableStateOf(false) }
     var mostrarCancelar by rememberSaveable { mutableStateOf(false) }
 
+    // Mientras se guarda la venta, el "atras" del sistema no sale de la pantalla.
+    BackHandler(enabled = estado.guardando) {}
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -66,7 +70,13 @@ fun SaleStep3Screen(
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
         ) {
-            PurchaseHeader(paso = 3, pregunta = "Confirma tu venta", onBack = onBack, titulo = "Registro de venta")
+            // La flecha no responde mientras se guarda la venta.
+            PurchaseHeader(
+                paso = 3,
+                pregunta = "Confirma tu venta",
+                onBack = { if (!estado.guardando) onBack() },
+                titulo = "Registro de venta"
+            )
 
             Column(
                 modifier = Modifier.padding(horizontal = Spacing.s20, vertical = Spacing.s16),
@@ -115,6 +125,8 @@ fun SaleStep3Screen(
             TextButton(
                 // "Cancelar" no borra nada todavia: primero pregunta con la hoja.
                 onClick = { mostrarCancelar = true },
+                // No se puede cancelar mientras se guarda la venta.
+                enabled = !estado.guardando,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
                 Text(text = "Cancelar", style = AppTypography.labelSection)
