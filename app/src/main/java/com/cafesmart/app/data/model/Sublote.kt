@@ -10,8 +10,8 @@ const val EPSILON_KG = 0.0005
 // Rangos de los "Datos de calidad" (Figma), definidos por el equipo.
 const val HUMEDAD_MIN_PORCENTAJE = 8.0
 const val HUMEDAD_MAX_PORCENTAJE = 15.0
-const val FACTOR_RENDIMIENTO_MIN = 70
-const val FACTOR_RENDIMIENTO_MAX = 140
+const val FACTOR_RENDIMIENTO_MIN = 80
+const val FACTOR_RENDIMIENTO_MAX = 120
 
 // SUBLOTE: unidad real del inventario. Cada "Café N" de una compra crea un sublote con su propio
 // tipo, calidad, peso, precio y fecha de entrada (HU-01). Sobre él se calculan gastos, merma y utilidad.
@@ -34,7 +34,7 @@ data class Sublote(
     val costoKg: Long,                 // $/kg. Comprado: precio de compra. Seco de secado: costo trasladado
     val fechaIngreso: Fecha,
     val humedadPorcentaje: Double? = null,   // opcional, entre 8 y 15 (Figma: "Datos de calidad")
-    val factorRendimiento: Int? = null       // opcional, entre 70 y 140 (Figma: "Datos de calidad")
+    val factorRendimiento: Int? = null       // opcional, entre 80 y 120 (Figma: "Datos de calidad")
 ) {
     init {
         require(compraId == null || secadoId == null) {
