@@ -31,8 +31,6 @@ data class DetalleSubloteUiState(
     val noEncontrado: Boolean = false,
     val detalle: DetalleSublote? = null,
 )
-
-/** Los datos que muestra la pantalla, ya convertidos a texto. */
 data class DetalleSublote(
     val id: Long,
     val codigo: String,        // "Sublote #12"
@@ -69,7 +67,7 @@ private fun textoHumedad(valor: Double): String =
 
 private fun enteros(valor: Double) = valor.toInt()
 
-// Texto de ayuda bajo "Humedad" / "Factor de rendimiento" (Figma: "Sin dato · entre 8 y 14 %").
+// Texto de ayuda bajo "Humedad" / "Factor de rendimiento" (Figma: "Sin dato · entre 8 y 15 %").
 // Con dato muestra solo el rango; sin dato antepone "Sin dato · " y el rango queda en minúscula.
 fun subtituloDatoCalidad(rango: String, conDato: Boolean): String =
     if (conDato) rango else "Sin dato · ${rango.replaceFirstChar { it.lowercase() }}"
