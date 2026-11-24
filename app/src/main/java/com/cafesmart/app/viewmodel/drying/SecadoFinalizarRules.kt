@@ -9,8 +9,6 @@ import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.viewmodel.inventory.clave
 import com.cafesmart.app.viewmodel.inventory.redondearKg
 import com.cafesmart.app.viewmodel.purchase.formatoKg
-import com.cafesmart.app.viewmodel.purchase.limpiarPeso
-import com.cafesmart.app.viewmodel.sale.cantidadDesdeTexto
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -31,9 +29,6 @@ const val MENSAJE_FECHA_FIN_FUTURA = "La fecha de finalización no puede ser fut
 
 // "Entre los tres, máximo 290 kg."
 fun mensajeMaximoKilosSecos(enviadosKg: Double): String = "Entre los tres, máximo ${formatoKg(enviadosKg)}."
-
-// Lo que se escribe en el campo de una calidad: vacio vale 0 (el campo es opcional).
-fun kilosSecosDesdeTexto(texto: String): Double = cantidadDesdeTexto(limpiarPeso(texto)) ?: 0.0
 
 // Suma de los kilos secos de las tres calidades (redondeada a gramos). Una calidad que falta en el mapa vale 0.
 fun kilosSecosTotal(kilos: Map<Calidad, Double>): Double = redondearKg(kilos.values.sum())

@@ -18,7 +18,6 @@ import com.cafesmart.app.viewmodel.drying.errorFechaFin
 import com.cafesmart.app.viewmodel.drying.errorKilosSecos
 import com.cafesmart.app.viewmodel.drying.factorDesdeTexto
 import com.cafesmart.app.viewmodel.drying.factorValido
-import com.cafesmart.app.viewmodel.drying.kilosSecosDesdeTexto
 import com.cafesmart.app.viewmodel.drying.kilosSecosTotal
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -48,14 +47,6 @@ class SecadoFinalizarRulesTest {
     @Test
     fun kilosSecosTotal_noArrastraRestosDeDecimales() {
         assertEquals(0.3, kilosSecosTotal(kilos(0.1, 0.2)), 0.0)
-    }
-
-    @Test
-    fun kilosSecosDesdeTexto_vacioVale0() {
-        assertEquals(0.0, kilosSecosDesdeTexto(""), 0.0)
-        assertEquals(118.0, kilosSecosDesdeTexto("118"), 0.0)
-        assertEquals(12.5, kilosSecosDesdeTexto("12,5"), 0.0)
-        assertEquals(1500.0, kilosSecosDesdeTexto("1.500"), 0.0)
     }
 
     @Test
