@@ -55,6 +55,7 @@ import com.cafesmart.app.viewmodel.drying.CUERPO_CANCELAR_SECADO
 import com.cafesmart.app.viewmodel.drying.SecadoEnCursoEnPantalla
 import com.cafesmart.app.viewmodel.drying.TITULO_CANCELAR_SECADO
 import com.cafesmart.app.viewmodel.drying.SecadosEnCursoUiState
+import kotlinx.coroutines.runBlocking
 
 // Paso 4 de Secado: Secados en curso (Figma "Secado · Paso 4 · En curso").
 // Vista (MVVM): sin logica ni estado propio. Recibe el estado y avisa con callbacks.
@@ -204,13 +205,13 @@ fun IconoDeSecado() {
 @Composable
 private fun Paso4Preview() {
     val repositorio = SecadoRepositoryEjemplo()
-    val verde = repositorio.inventario().first { it.tipoCafe == TipoCafe.VERDE }
-    repositorio.iniciarSecado(Fecha(3, 6, 2026), listOf(EnvioASecar(verde.sublote.id, 1.0)))
+    val verde = runBlocking { repositorio.inventario() }.first { it.tipoCafe == TipoCafe.VERDE }
+    runBlocking { repositorio.iniciarSecado(Fecha(3, 6, 2026), listOf(EnvioASecar(verde.sublote.id, 1.0))) }
     CafesmartTheme {
         SecadoStep4Screen(
             estado = SecadosEnCursoUiState(
-                secados = repositorio.secadosEnCurso(),
-                inventario = repositorio.inventario(),
+                secados = runBlocking { repositorio.secadosEnCurso() },
+                inventario = runBlocking { repositorio.inventario() },
                 hoy = Fecha(6, 6, 2026)
             ),
             onElegir = {}, onFinalizar = {}, onPedirCancelar = {},

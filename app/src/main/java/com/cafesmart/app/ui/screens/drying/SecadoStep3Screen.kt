@@ -22,6 +22,7 @@ import com.cafesmart.app.ui.theme.CafesmartTheme
 import com.cafesmart.app.ui.theme.Spacing
 import com.cafesmart.app.ui.theme.SurfaceScreen
 import com.cafesmart.app.viewmodel.drying.SecadoUiState
+import kotlinx.coroutines.runBlocking
 
 // Paso 3 de Secado: Secado iniciado. Circulo verde con chulito, resumen y los botones
 // "Ver secados en curso" / "Ir a inventario".
@@ -90,7 +91,7 @@ fun SecadoStep3Screen(
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
 private fun Paso3Preview() {
-    val inventario = SecadoRepositoryEjemplo().inventario()
+    val inventario = runBlocking { SecadoRepositoryEjemplo().inventario() }
     val verdes = inventario.filter { it.tipoCafe.name == "VERDE" }
     CafesmartTheme {
         SecadoStep3Screen(

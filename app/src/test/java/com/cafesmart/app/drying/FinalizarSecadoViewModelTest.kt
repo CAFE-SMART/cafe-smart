@@ -17,7 +17,12 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.Assert.assertNotNull
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 
 class FinalizarSecadoViewModelTest {
 
@@ -28,12 +33,23 @@ class FinalizarSecadoViewModelTest {
     private val inicio = Fecha(3, 6, 2026)
     private val hoy = Fecha(10, 6, 2026)
 
-    private val secadoId: Long = repositorio.iniciarSecado(
-        inicio,
-        listOf(EnvioASecar(1, 120.0), EnvioASecar(2, 80.0), EnvioASecar(3, 60.0), EnvioASecar(4, 30.0))
-    ).id
+    // El ViewModel usa viewModelScope: se crea en @Before, cuando la regla ya puso el dispatcher de prueba.
+    @get:Rule
+    val main = MainDispatcherRule()
 
-    private val vm = FinalizarSecadoViewModel(repositorio, secadoId, hoy)
+    private var secadoId: Long = 0
+    private lateinit var vm: FinalizarSecadoViewModel
+
+    @Before
+    fun crearSecadoYViewModel() {
+        runBlocking {
+            secadoId = repositorio.iniciarSecado(
+                inicio,
+                listOf(EnvioASecar(1, 120.0), EnvioASecar(2, 80.0), EnvioASecar(3, 60.0), EnvioASecar(4, 30.0))
+            ).id
+        }
+        vm = FinalizarSecadoViewModel(repositorio, secadoId, hoy)
+    }
     private val estado get() = vm.uiState.value
 
     private fun llenarFigma() {
@@ -46,7 +62,7 @@ class FinalizarSecadoViewModelTest {
     // ---------- Estado inicial ----------
 
     @Test
-    fun alEmpezar_fechaEsHoy_gastosNo_yNoSePuedeConfirmar() {
+    fun alEmpezar_fechaEsHoy_gastosNo_yNoSePuedeConfirmar() = runTest {
         assertEquals(secadoId, estado.secado?.secado?.id)
         assertEquals(hoy, estado.fechaFin)
         assertFalse(estado.huboGastos)
@@ -59,7 +75,7 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun secadoQueNoEstaEnCurso_noSePuedeConfirmar() {
+    fun secadoQueNoEstaEnCurso_noSePuedeConfirmar() = runTest {
         val vm = FinalizarSecadoViewModel(repositorio, 99, hoy)
         assertNull(vm.uiState.value.secado)
         vm.escribirKilos(Calidad.BUENA, "10")
@@ -72,7 +88,7 @@ class FinalizarSecadoViewModelTest {
     // ---------- Kilos ----------
 
     @Test
-    fun kilos_seLimpianComoElPesoDeCompras() {
+    fun kilos_seLimpianComoElPesoDeCompras() = runTest {
         vm.escribirKilos(Calidad.BUENA, "12,5abc")
         assertEquals("12.5", estado.kilosBuena)
         assertEquals("12,5", estado.kilosEnPantalla(Calidad.BUENA))
@@ -80,14 +96,14 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun kilos_ceroEnTodosDiceQueEscribaAlMenosUnaCalidad() {
+    fun kilos_ceroEnTodosDiceQueEscribaAlMenosUnaCalidad() = runTest {
         vm.escribirKilos(Calidad.BUENA, "0")
         assertEquals(MENSAJE_KILOS_SIN_CAFE, estado.errorKilos)
         assertFalse(estado.kilosValidos)
     }
 
     @Test
-    fun kilos_laSumaPasaDeLoEnviadoDiceElMaximo() {
+    fun kilos_laSumaPasaDeLoEnviadoDiceElMaximo() = runTest {
         vm.escribirKilos(Calidad.BUENA, "150")
         vm.escribirKilos(Calidad.REGULAR, "100")
         vm.escribirKilos(Calidad.MALA, "41")
@@ -98,7 +114,7 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun kilos_sumaIgualAlEnviadoEsValida() {
+    fun kilos_sumaIgualAlEnviadoEsValida() = runTest {
         vm.escribirKilos(Calidad.BUENA, "150")
         vm.escribirKilos(Calidad.REGULAR, "100")
         vm.escribirKilos(Calidad.MALA, "40")
@@ -109,7 +125,7 @@ class FinalizarSecadoViewModelTest {
 
     // ---------- Secado de 60 kg: rango de 48 a 60 kg ----------
 
-    private fun vmDe60Kg(): FinalizarSecadoViewModel {
+    private suspend fun vmDe60Kg(): FinalizarSecadoViewModel {
         // Repositorio propio: el de la clase ya envio todos los sublotes verdes.
         val repo60 = repositorioDePrueba()
         val id = repo60.iniciarSecado(inicio, listOf(EnvioASecar(3, 60.0))).id
@@ -117,7 +133,7 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun de60Kg_losCamposVienenVaciosYLaAyudaMuestraElRango() {
+    fun de60Kg_losCamposVienenVaciosYLaAyudaMuestraElRango() = runTest {
         val vm60 = vmDe60Kg()
         val e = vm60.uiState.value
         assertEquals("", e.kilosEnPantalla(Calidad.BUENA))
@@ -127,7 +143,7 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun de60Kg_40mas10mas5_confirmaConMermaDe5kg() {
+    fun de60Kg_40mas10mas5_confirmaConMermaDe5kg() = runTest {
         val vm60 = vmDe60Kg()
         vm60.escribirKilos(Calidad.BUENA, "40")
         vm60.escribirKilos(Calidad.REGULAR, "10")
@@ -144,7 +160,7 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun de60Kg_debajoDelMinimoNoSePuedeConfirmar() {
+    fun de60Kg_debajoDelMinimoNoSePuedeConfirmar() = runTest {
         val vm60 = vmDe60Kg()
         vm60.escribirKilos(Calidad.BUENA, "40")
         vm60.escribirKilos(Calidad.REGULAR, "5")
@@ -161,7 +177,7 @@ class FinalizarSecadoViewModelTest {
     // ---------- Factor ----------
 
     @Test
-    fun factor_fronterasYTextos() {
+    fun factor_fronterasYTextos() = runTest {
         llenarFigma()
         listOf("79" to false, "80" to true, "120" to true, "121" to false).forEach { (texto, valido) ->
             vm.escribirFactor(texto)
@@ -180,13 +196,13 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun factor_nacaVacio() {
+    fun factor_nacaVacio() = runTest {
         assertEquals("", estado.factorTexto)
         assertEquals("", estado.factorEnPantalla)
     }
 
     @Test
-    fun confirmar_sinFactorFinalizaYGuardaNull() {
+    fun confirmar_sinFactorFinalizaYGuardaNull() = runTest {
         vm.escribirKilos(Calidad.BUENA, "140")
         vm.escribirKilos(Calidad.REGULAR, "118")
         vm.escribirKilos(Calidad.MALA, "12")
@@ -200,7 +216,7 @@ class FinalizarSecadoViewModelTest {
     // ---------- Fecha ----------
 
     @Test
-    fun fecha_fronteras() {
+    fun fecha_fronteras() = runTest {
         llenarFigma()
         vm.cambiarFecha(Fecha(2, 6, 2026))
         assertEquals(MENSAJE_FECHA_FIN_ANTES_DEL_INICIO, estado.errorFecha)
@@ -219,7 +235,7 @@ class FinalizarSecadoViewModelTest {
     // ---------- Paso 5: resumen ----------
 
     @Test
-    fun resumen_casoDelFigma() {
+    fun resumen_casoDelFigma() = runTest {
         llenarFigma()
         val r = estado.resumen!!
         assertEquals("290 kg", r.entradaTexto)
@@ -232,7 +248,7 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun resumen_usaLosKilosDeLasTresCalidades() {
+    fun resumen_usaLosKilosDeLasTresCalidades() = runTest {
         vm.escribirKilos(Calidad.BUENA, "250")
         assertEquals("40 kg", estado.resumen!!.mermaKgTexto)
         vm.escribirKilos(Calidad.REGULAR, "10")
@@ -242,7 +258,7 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun formatoMermaPorcentaje_unDecimalConComa() {
+    fun formatoMermaPorcentaje_unDecimalConComa() = runTest {
         assertEquals("6,9 %", formatoMermaPorcentaje(6.896))
         assertEquals("0,0 %", formatoMermaPorcentaje(0.0))
     }
@@ -250,7 +266,7 @@ class FinalizarSecadoViewModelTest {
     // ---------- Confirmar y Paso 6 ----------
 
     @Test
-    fun confirmar_finalizaYGuardaElResultado() {
+    fun confirmar_finalizaYGuardaElResultado() = runTest {
         llenarFigma()
         vm.confirmar()
         val r = estado.resultado!!
@@ -265,7 +281,7 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun paso6_resumenFinalConCalidadesYFecha() {
+    fun paso6_resumenFinalConCalidadesYFecha() = runTest {
         llenarFigma()
         vm.cambiarFecha(Fecha(5, 6, 2026))
         vm.confirmar()
@@ -281,7 +297,7 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun paso6_soloMuestraLasCalidadesConKg() {
+    fun paso6_soloMuestraLasCalidadesConKg() = runTest {
         vm.escribirKilos(Calidad.REGULAR, "250")
         vm.escribirFactor("100")
         vm.confirmar()
@@ -289,14 +305,14 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun paso6_sinConfirmarNoHayResumenFinal() {
+    fun paso6_sinConfirmarNoHayResumenFinal() = runTest {
         assertNull(estado.resumenFinal)
         assertNull(estado.fechaFinResumenTexto)
         assertFalse(estado.finalizado)
     }
 
     @Test
-    fun confirmarDosVeces_soloFinalizaUna() {
+    fun confirmarDosVeces_soloFinalizaUna() = runTest {
         llenarFigma()
         vm.confirmar()
         val primero = estado.resultado
@@ -308,7 +324,7 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun confirmar_incompletoNoHaceNada() {
+    fun confirmar_incompletoNoHaceNada() = runTest {
         vm.escribirKilos(Calidad.BUENA, "140")
         vm.confirmar()   // los kilos no llegan al minimo
         assertNull(estado.resultado)
@@ -317,7 +333,7 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun confirmar_conFactorFueraDeRangoNoFinaliza() {
+    fun confirmar_conFactorFueraDeRangoNoFinaliza() = runTest {
         llenarFigma()
         vm.escribirFactor("121")
         vm.confirmar()
@@ -326,7 +342,7 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun confirmar_conFechaFuturaNoFinaliza() {
+    fun confirmar_conFechaFuturaNoFinaliza() = runTest {
         // El repositorio no valida "no futura": esa regla es de este ViewModel.
         llenarFigma()
         vm.cambiarFecha(Fecha(11, 6, 2026))
@@ -336,7 +352,7 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun gastos_noCambianElResultado() {
+    fun gastos_noCambianElResultado() = runTest {
         llenarFigma()
         vm.elegirGastos(true)
         assertTrue(estado.huboGastos)
@@ -347,7 +363,7 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun despuesDeConfirmarNoSePuedeEditar() {
+    fun despuesDeConfirmarNoSePuedeEditar() = runTest {
         llenarFigma()
         vm.confirmar()
         vm.escribirKilos(Calidad.BUENA, "1")
@@ -358,5 +374,63 @@ class FinalizarSecadoViewModelTest {
         assertEquals("92", estado.factorTexto)
         assertEquals(hoy, estado.fechaFin)
         assertFalse(estado.huboGastos)
+    }
+
+    // ---------- Estado cargando y callbacks (el repositorio es suspend) ----------
+
+    @Test
+    fun alCrear_empiezaCargandoYTerminaAlLlegarElSecado() = runTest {
+        val lento = RepositorioConPuerta(repositorio)
+        val vmLento = FinalizarSecadoViewModel(lento, secadoId, hoy)
+        // Mientras llega, el secado es null pero NO esta "ya no en curso": la pantalla espera.
+        assertTrue(vmLento.uiState.value.cargando)
+        assertNull(vmLento.uiState.value.secado)
+        lento.puerta.complete(Unit)
+        assertFalse(vmLento.uiState.value.cargando)
+        assertEquals(secadoId, vmLento.uiState.value.secado?.secado?.id)
+    }
+
+    @Test
+    fun secadoQueNoExiste_terminaDeCargarConSecadoNull() = runTest {
+        val otro = FinalizarSecadoViewModel(repositorio, 99, hoy)
+        assertFalse(otro.uiState.value.cargando)
+        assertNull(otro.uiState.value.secado)
+    }
+
+    @Test
+    fun confirmar_llamaOnConfirmadoUnaVezSiSaleBien() = runTest {
+        llenarFigma()
+        var llamadas = 0
+        var finalizadoAlAvisar = false
+        vm.confirmar {
+            llamadas++
+            finalizadoAlAvisar = estado.finalizado
+        }
+        assertEquals(1, llamadas)
+        // Cuando avisa, el resultado ya esta en el estado.
+        assertTrue(finalizadoAlAvisar)
+        // Un segundo toque no vuelve a finalizar ni a llamar.
+        vm.confirmar { llamadas++ }
+        assertEquals(1, llamadas)
+    }
+
+    @Test
+    fun confirmar_noLlamaOnConfirmadoSiElRepositorioRechaza() = runTest {
+        llenarFigma()
+        // El secado se cancela por otro lado: el repositorio ya no lo puede finalizar.
+        repositorio.cancelarSecado(secadoId)
+        var llamadas = 0
+        vm.confirmar { llamadas++ }
+        assertEquals(0, llamadas)
+        assertFalse(estado.finalizado)
+        assertFalse(estado.bloqueado)
+        assertNotNull(estado.errorAlConfirmar)
+    }
+
+    @Test
+    fun confirmar_incompletoNoLlamaOnConfirmado() = runTest {
+        var llamadas = 0
+        vm.confirmar { llamadas++ }
+        assertEquals(0, llamadas)
     }
 }

@@ -6,7 +6,17 @@ import com.cafesmart.app.data.model.Lote
 import com.cafesmart.app.data.model.Sublote
 import com.cafesmart.app.data.model.SubloteConLote
 import com.cafesmart.app.data.model.TipoCafe
+import com.cafesmart.app.data.secado.SecadoRepository
 import com.cafesmart.app.data.secado.SecadoRepositoryEjemplo
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
 
 // Ayudas para las pruebas de Secado (no son pruebas).
 
@@ -46,3 +56,31 @@ fun inventarioFigma(): List<SubloteConLote> = listOf(
 )
 
 fun repositorioDePrueba(inventario: List<SubloteConLote> = inventarioFigma()) = SecadoRepositoryEjemplo(inventario)
+
+// Los ViewModels usan viewModelScope (Dispatchers.Main), que en JUnit no existe. Esta regla pone un dispatcher de prueba
+// "sin cola" (Unconfined): lo que lanza viewModelScope.launch corre enseguida, asi los tests se leen igual que antes.
+@OptIn(ExperimentalCoroutinesApi::class)
+class MainDispatcherRule(private val dispatcher: TestDispatcher = UnconfinedTestDispatcher()) : TestWatcher() {
+    override fun starting(description: Description) = Dispatchers.setMain(dispatcher)
+    override fun finished(description: Description) = Dispatchers.resetMain()
+}
+
+// Como assertThrows, pero para llamadas suspend al repositorio. Devuelve la excepcion para revisar su mensaje.
+suspend fun assertFalla(bloque: suspend () -> Unit): IllegalArgumentException {
+    try {
+        bloque()
+    } catch (e: IllegalArgumentException) {
+        return e
+    }
+    throw AssertionError("Se esperaba IllegalArgumentException y no fallo.")
+}
+
+// Repositorio que no entrega inventario ni secados en curso hasta que se abre la puerta: simula a Room tardando.
+// Sirve para probar el estado "cargando" de los ViewModels.
+class RepositorioConPuerta(
+    private val real: SecadoRepository,
+    val puerta: CompletableDeferred<Unit> = CompletableDeferred()
+) : SecadoRepository by real {
+    override suspend fun inventario() = puerta.await().let { real.inventario() }
+    override suspend fun secadosEnCurso() = puerta.await().let { real.secadosEnCurso() }
+}

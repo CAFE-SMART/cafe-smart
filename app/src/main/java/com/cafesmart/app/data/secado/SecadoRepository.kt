@@ -28,23 +28,24 @@ data class EnvioASecar(
 )
 
 // Repositorio (MVVM): de donde salen los datos de Secado y donde se guardan los cambios.
+// Todas las funciones son suspend (como las de Room): los ViewModels las llaman dentro de viewModelScope.launch.
 // Hoy solo existe la version de ejemplo (en memoria). Cuando exista la tarjeta "Secado conectado a Room",
 // se agrega otra clase que cumpla esta misma interfaz y el ViewModel no cambia.
 interface SecadoRepository {
     // Sublotes con cafe disponible, de todos los tipos. La pantalla se queda solo con el verde.
-    fun inventario(): List<SubloteConLote>
+    suspend fun inventario(): List<SubloteConLote>
 
     // Inicia un secado: le resta a cada sublote lo que se envia y devuelve el secado EN_CURSO.
     // Lanza IllegalArgumentException si el envio no es valido (sin sublotes, repetido, no es verde o pasa de lo disponible).
-    fun iniciarSecado(fechaInicio: Fecha, envios: List<EnvioASecar>): Secado
+    suspend fun iniciarSecado(fechaInicio: Fecha, envios: List<EnvioASecar>): Secado
 
     // Secados EN_CURSO, el de inicio mas reciente primero. Sus resultantes van vacios (todavia no hay cafe seco).
-    fun secadosEnCurso(): List<SecadoConDetalle>
+    suspend fun secadosEnCurso(): List<SecadoConDetalle>
 
     // Finaliza un secado: crea un sublote seco por cada calidad con kg > 0 y marca el secado FINALIZADO.
     // Valida todo antes de cambiar algo. Lanza IllegalArgumentException si el secado no existe o no esta EN_CURSO,
     // si la fecha de fin es anterior al inicio, si los kilos secos no son validos o si el factor (opcional; null = sin factor) no esta entre 80 y 120.
-    fun finalizarSecado(
+    suspend fun finalizarSecado(
         secadoId: Long,
         fechaFin: Fecha,
         kilosSecos: Map<Calidad, Double>,
@@ -53,7 +54,7 @@ interface SecadoRepository {
 
     // Cancela un secado EN_CURSO y devuelve al inventario el cafe que se habia enviado.
     // Lanza IllegalArgumentException si el secado no existe o no esta EN_CURSO.
-    fun cancelarSecado(secadoId: Long)
+    suspend fun cancelarSecado(secadoId: Long)
 }
 
 // Lo que guarda la version de ejemplo de cada secado: el secado, sus envios (con el sublote como estaba
@@ -78,9 +79,9 @@ class SecadoRepositoryEjemplo(
     private var ultimoLoteId = inventarioInicial.maxOfOrNull { it.lote.id } ?: 0L
     private var secados: List<RegistroSecado> = emptyList()
 
-    override fun inventario(): List<SubloteConLote> = inventario
+    override suspend fun inventario(): List<SubloteConLote> = inventario
 
-    override fun iniciarSecado(fechaInicio: Fecha, envios: List<EnvioASecar>): Secado {
+    override suspend fun iniciarSecado(fechaInicio: Fecha, envios: List<EnvioASecar>): Secado {
         require(envios.isNotEmpty()) { "Elige al menos un sublote para secar." }
         require(envios.map { it.subloteId }.toSet().size == envios.size) { "Un sublote no puede repetirse en el secado." }
         envios.forEach { envio ->
@@ -104,13 +105,13 @@ class SecadoRepositoryEjemplo(
         return secado
     }
 
-    override fun secadosEnCurso(): List<SecadoConDetalle> =
+    override suspend fun secadosEnCurso(): List<SecadoConDetalle> =
         secados
             .filter { it.secado.estado == EstadoSecado.EN_CURSO }
             .sortedWith(compareByDescending<RegistroSecado> { it.secado.fechaInicio.clave() }.thenByDescending { it.secado.id })
             .map { it.conDetalle() }
 
-    override fun finalizarSecado(
+    override suspend fun finalizarSecado(
         secadoId: Long,
         fechaFin: Fecha,
         kilosSecos: Map<Calidad, Double>,
@@ -163,7 +164,7 @@ class SecadoRepositoryEjemplo(
         return nuevo.conDetalle()
     }
 
-    override fun cancelarSecado(secadoId: Long) {
+    override suspend fun cancelarSecado(secadoId: Long) {
         val registro = enCurso(secadoId)
         // Se valida todo antes de cambiar nada: cada sublote enviado debe seguir en el inventario.
         registro.enviados.forEach { e ->

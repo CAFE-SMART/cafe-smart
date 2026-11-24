@@ -18,6 +18,8 @@ import java.math.BigDecimal
 // Textos propuestos (no estan en el Figma; falta confirmarlos con el equipo).
 const val MENSAJE_ELEGIR_SUBLOTE_SECADO = "Elige al menos un sublote para continuar."
 const val MENSAJE_SIN_CAFE_VERDE = "No tienes café verde disponible para secar."
+// Decision de la estudiante: se muestra debajo de "Iniciar secado" cuando el repositorio rechaza el inicio.
+const val MENSAJE_NO_SE_PUDO_INICIAR_SECADO = "No se pudo iniciar el secado. Revisa el café disponible e intenta de nuevo."
 
 // Sublotes que se pueden secar: solo cafe verde y con cafe disponible,
 // ordenados por calidad (buena, regular, mala) y dentro de cada calidad por numero de sublote.

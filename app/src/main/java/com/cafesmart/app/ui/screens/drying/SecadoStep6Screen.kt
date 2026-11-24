@@ -40,6 +40,7 @@ import com.cafesmart.app.ui.theme.WarningBg
 import com.cafesmart.app.ui.theme.WarningText
 import com.cafesmart.app.viewmodel.drying.CalidadSecada
 import com.cafesmart.app.viewmodel.drying.FinalizarSecadoUiState
+import kotlinx.coroutines.runBlocking
 
 // Paso 6 de Secado: Secado registrado (Figma "Secado · Paso 6 · Registrado").
 // Vista (MVVM): sin logica ni estado propio. Muestra el resultado que guardo el ViewModel al confirmar el paso 5.
@@ -155,9 +156,11 @@ private fun CalidadResultante(item: CalidadSecada, modifier: Modifier = Modifier
 @Composable
 private fun Paso6Preview() {
     val repositorio = SecadoRepositoryEjemplo()
-    val verde = repositorio.inventario().first { it.tipoCafe == TipoCafe.VERDE }
-    val id = repositorio.iniciarSecado(Fecha(3, 6, 2026), listOf(EnvioASecar(verde.sublote.id, 1.0))).id
-    val resultado = repositorio.finalizarSecado(id, Fecha(6, 6, 2026), mapOf(Calidad.BUENA to 0.6, Calidad.MALA to 0.2), 92)
+    val verde = runBlocking { repositorio.inventario() }.first { it.tipoCafe == TipoCafe.VERDE }
+    val id = runBlocking { repositorio.iniciarSecado(Fecha(3, 6, 2026), listOf(EnvioASecar(verde.sublote.id, 1.0))) }.id
+    val resultado = runBlocking {
+        repositorio.finalizarSecado(id, Fecha(6, 6, 2026), mapOf(Calidad.BUENA to 0.6, Calidad.MALA to 0.2), 92)
+    }
     CafesmartTheme {
         SecadoStep6Screen(
             estado = FinalizarSecadoUiState(
