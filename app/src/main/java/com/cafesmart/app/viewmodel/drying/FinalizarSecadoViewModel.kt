@@ -117,7 +117,7 @@ data class FinalizarSecadoUiState(
 
     // "Entre los tres, máximo 290 kg." siempre visible como ayuda
     val ayudaKilos: String?
-        get() = secado?.let { mensajeMaximoKilosSecos(it.pesoEnviadoKg) }
+        get() = secado?.let { ayudaKilosSecos(it.pesoEnviadoKg) }
 
     val errorFactor: String?
         get() = errorFactor(factorTexto)
@@ -234,7 +234,8 @@ class FinalizarSecadoViewModel(
         val estado = _uiState.value
         if (!estado.puedeConfirmar) return
         val secado = estado.secado ?: return
-        val factor = factorDesdeTexto(estado.factorTexto) ?: return
+        // Opcional: con el campo vacio queda null y se guarda sin factor.
+        val factor = factorDesdeTexto(estado.factorTexto)
         _uiState.value = estado.copy(bloqueado = true, errorAlConfirmar = null)
         try {
             val kilos = estado.kilosSecos

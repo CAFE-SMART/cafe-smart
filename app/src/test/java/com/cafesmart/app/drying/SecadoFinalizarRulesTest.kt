@@ -15,7 +15,9 @@ import com.cafesmart.app.viewmodel.drying.MENSAJE_KILOS_SIN_CAFE
 import com.cafesmart.app.viewmodel.drying.costoKgSeco
 import com.cafesmart.app.viewmodel.drying.errorFactor
 import com.cafesmart.app.viewmodel.drying.errorFechaFin
+import com.cafesmart.app.viewmodel.drying.ayudaKilosSecos
 import com.cafesmart.app.viewmodel.drying.errorKilosSecos
+import com.cafesmart.app.viewmodel.drying.minimoKilosSecos
 import com.cafesmart.app.viewmodel.drying.factorDesdeTexto
 import com.cafesmart.app.viewmodel.drying.factorValido
 import com.cafesmart.app.viewmodel.drying.kilosSecosTotal
@@ -56,7 +58,7 @@ class SecadoFinalizarRulesTest {
 
     @Test
     fun errorKilosSecos_camposVaciosValen0YBastaUnaCalidad() {
-        assertNull(errorKilosSecos(kilos(mala = 5.0), 290.0))
+        assertNull(errorKilosSecos(kilos(mala = 250.0), 290.0))
     }
 
     @Test
@@ -79,6 +81,36 @@ class SecadoFinalizarRulesTest {
     fun errorKilosSecos_sumaMayorDiceElMaximo() {
         assertEquals("Entre los tres, máximo 290 kg.", errorKilosSecos(kilos(150.0, 100.0, 41.0), 290.0))
         assertEquals("Entre los tres, máximo 12,5 kg.", errorKilosSecos(kilos(13.0), 12.5))
+    }
+
+    // Con 60 kg enviados el rango valido es de 48 a 60 kg (PORCENTAJE_MINIMO_SECO = 80 %).
+    @Test
+    fun errorKilosSecos_justoEnElMinimoEsValido() {
+        assertNull(errorKilosSecos(kilos(40.0, 5.0, 3.0), 60.0))
+    }
+
+    @Test
+    fun errorKilosSecos_pocoDebajoDelMinimoDiceElMinimo() {
+        assertEquals("Entre los tres, mínimo 48 kg.", errorKilosSecos(kilos(40.0, 5.0, 2.9), 60.0))
+        assertEquals("Entre los tres, mínimo 48 kg.", errorKilosSecos(kilos(mala = 1.0), 60.0))
+    }
+
+    @Test
+    fun errorKilosSecos_igualAlEnviadoEsValidoYPorEncimaEsError() {
+        assertNull(errorKilosSecos(kilos(40.0, 10.0, 10.0), 60.0))
+        assertEquals("Entre los tres, máximo 60 kg.", errorKilosSecos(kilos(40.0, 10.0, 10.1), 60.0))
+    }
+
+    @Test
+    fun errorKilosSecos_noExigeLaMismaCantidadQueLoEnviado() {
+        assertNull(errorKilosSecos(kilos(40.0, 10.0, 5.0), 60.0))
+    }
+
+    @Test
+    fun minimoYAyuda_muestranElRango() {
+        assertEquals(48.0, minimoKilosSecos(60.0), 0.0)
+        assertEquals("Entre los tres, entre 48 y 60 kg.", ayudaKilosSecos(60.0))
+        assertEquals("Entre los tres, entre 232 y 290 kg.", ayudaKilosSecos(290.0))
     }
 
     // ---------- Factor de rendimiento ----------
@@ -110,10 +142,11 @@ class SecadoFinalizarRulesTest {
     }
 
     @Test
-    fun factor_vacioEsObligatorioPeroSinErrorEnRojo() {
+    fun factor_vacioEsOpcionalYValido() {
         assertNull(errorFactor(""))
         assertNull(errorFactor("  "))
-        assertFalse(factorValido(""))
+        assertTrue(factorValido(""))
+        assertTrue(factorValido("  "))
         assertNull(factorDesdeTexto(""))
     }
 
@@ -121,7 +154,7 @@ class SecadoFinalizarRulesTest {
     fun factor_losTextosSonLosAcordados() {
         assertEquals("Escribe solo números.", MENSAJE_FACTOR_NO_NUMERICO)
         assertEquals("Recuerda: El factor de rendimiento que escribas debe estar entre 80 y 120.", MENSAJE_FACTOR_FUERA_DE_RANGO)
-        assertEquals("Entre 80 y 120.", AYUDA_FACTOR)
+        assertEquals("Opcional. Entre 80 y 120.", AYUDA_FACTOR)
     }
 
     // ---------- Fecha de fin ----------

@@ -92,7 +92,7 @@ class FinalizarSecadoViewModelTest {
         vm.escribirKilos(Calidad.REGULAR, "100")
         vm.escribirKilos(Calidad.MALA, "41")
         assertEquals("Entre los tres, máximo 290 kg.", estado.errorKilos)
-        assertEquals("Entre los tres, máximo 290 kg.", estado.ayudaKilos)
+        assertEquals("Entre los tres, entre 232 y 290 kg.", estado.ayudaKilos)
         assertFalse(estado.puedeConfirmar.also { vm.escribirFactor("92") })
         assertNull(estado.resumen)
     }
@@ -105,6 +105,57 @@ class FinalizarSecadoViewModelTest {
         assertNull(estado.errorKilos)
         assertTrue(estado.kilosValidos)
         assertEquals("0 kg", estado.resumen!!.mermaKgTexto)
+    }
+
+    // ---------- Secado de 60 kg: rango de 48 a 60 kg ----------
+
+    private fun vmDe60Kg(): FinalizarSecadoViewModel {
+        // Repositorio propio: el de la clase ya envio todos los sublotes verdes.
+        val repo60 = repositorioDePrueba()
+        val id = repo60.iniciarSecado(inicio, listOf(EnvioASecar(3, 60.0))).id
+        return FinalizarSecadoViewModel(repo60, id, hoy)
+    }
+
+    @Test
+    fun de60Kg_losCamposVienenVaciosYLaAyudaMuestraElRango() {
+        val vm60 = vmDe60Kg()
+        val e = vm60.uiState.value
+        assertEquals("", e.kilosEnPantalla(Calidad.BUENA))
+        assertEquals("", e.kilosEnPantalla(Calidad.REGULAR))
+        assertEquals("", e.kilosEnPantalla(Calidad.MALA))
+        assertEquals("Entre los tres, entre 48 y 60 kg.", e.ayudaKilos)
+    }
+
+    @Test
+    fun de60Kg_40mas10mas5_confirmaConMermaDe5kg() {
+        val vm60 = vmDe60Kg()
+        vm60.escribirKilos(Calidad.BUENA, "40")
+        vm60.escribirKilos(Calidad.REGULAR, "10")
+        vm60.escribirKilos(Calidad.MALA, "5")
+        vm60.escribirFactor("92")
+        val e = vm60.uiState.value
+        // 55 de 60 kg: no hace falta igualar lo enviado.
+        assertNull(e.errorKilos)
+        assertTrue(e.puedeConfirmar)
+        assertEquals("5 kg", e.resumen!!.mermaKgTexto)
+        assertEquals("8,3 %", e.resumen!!.mermaPorcentajeTexto)
+        vm60.confirmar()
+        assertTrue(vm60.uiState.value.finalizado)
+    }
+
+    @Test
+    fun de60Kg_debajoDelMinimoNoSePuedeConfirmar() {
+        val vm60 = vmDe60Kg()
+        vm60.escribirKilos(Calidad.BUENA, "40")
+        vm60.escribirKilos(Calidad.REGULAR, "5")
+        vm60.escribirKilos(Calidad.MALA, "2,9")
+        vm60.escribirFactor("92")
+        val e = vm60.uiState.value
+        assertEquals("Entre los tres, mínimo 48 kg.", e.errorKilos)
+        assertFalse(e.puedeConfirmar)
+        // Justo en el minimo (48 kg) si se puede.
+        vm60.escribirKilos(Calidad.MALA, "3")
+        assertTrue(vm60.uiState.value.puedeConfirmar)
     }
 
     // ---------- Factor ----------
@@ -121,10 +172,29 @@ class FinalizarSecadoViewModelTest {
         assertEquals(MENSAJE_FACTOR_NO_NUMERICO, estado.errorFactor)
         assertEquals("92,5", estado.factorEnPantalla)
         assertFalse(estado.puedeConfirmar)
+        // Vacio es valido: el factor es opcional.
         vm.escribirFactor("")
         assertNull(estado.errorFactor)
-        assertFalse(estado.puedeConfirmar)
-        assertEquals("Entre 80 y 120.", estado.ayudaFactor)
+        assertTrue(estado.puedeConfirmar)
+        assertEquals("Opcional. Entre 80 y 120.", estado.ayudaFactor)
+    }
+
+    @Test
+    fun factor_nacaVacio() {
+        assertEquals("", estado.factorTexto)
+        assertEquals("", estado.factorEnPantalla)
+    }
+
+    @Test
+    fun confirmar_sinFactorFinalizaYGuardaNull() {
+        vm.escribirKilos(Calidad.BUENA, "140")
+        vm.escribirKilos(Calidad.REGULAR, "118")
+        vm.escribirKilos(Calidad.MALA, "12")
+        assertTrue(estado.puedeConfirmar)
+        vm.confirmar()
+        assertTrue(estado.finalizado)
+        assertNull(estado.resultado!!.secado.factorRendimiento)
+        assertTrue(repositorio.inventario().filter { it.sublote.secadoId == secadoId }.all { it.sublote.factorRendimiento == null })
     }
 
     // ---------- Fecha ----------
@@ -163,11 +233,11 @@ class FinalizarSecadoViewModelTest {
 
     @Test
     fun resumen_usaLosKilosDeLasTresCalidades() {
-        vm.escribirKilos(Calidad.BUENA, "140")
-        assertEquals("150 kg", estado.resumen!!.mermaKgTexto)
-        vm.escribirKilos(Calidad.REGULAR, "118")
-        assertEquals("32 kg", estado.resumen!!.mermaKgTexto)
-        vm.escribirKilos(Calidad.MALA, "12")
+        vm.escribirKilos(Calidad.BUENA, "250")
+        assertEquals("40 kg", estado.resumen!!.mermaKgTexto)
+        vm.escribirKilos(Calidad.REGULAR, "10")
+        assertEquals("30 kg", estado.resumen!!.mermaKgTexto)
+        vm.escribirKilos(Calidad.MALA, "10")
         assertEquals("20 kg", estado.resumen!!.mermaKgTexto)
     }
 
@@ -212,7 +282,7 @@ class FinalizarSecadoViewModelTest {
 
     @Test
     fun paso6_soloMuestraLasCalidadesConKg() {
-        vm.escribirKilos(Calidad.REGULAR, "100")
+        vm.escribirKilos(Calidad.REGULAR, "250")
         vm.escribirFactor("100")
         vm.confirmar()
         assertEquals(listOf(Calidad.REGULAR), estado.calidadesSecadas.map { it.calidad })
@@ -240,7 +310,7 @@ class FinalizarSecadoViewModelTest {
     @Test
     fun confirmar_incompletoNoHaceNada() {
         vm.escribirKilos(Calidad.BUENA, "140")
-        vm.confirmar()   // falta el factor
+        vm.confirmar()   // los kilos no llegan al minimo
         assertNull(estado.resultado)
         assertEquals(1, repositorio.secadosEnCurso().size)
         assertFalse(estado.bloqueado)

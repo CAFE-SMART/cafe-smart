@@ -43,12 +43,12 @@ interface SecadoRepository {
 
     // Finaliza un secado: crea un sublote seco por cada calidad con kg > 0 y marca el secado FINALIZADO.
     // Valida todo antes de cambiar algo. Lanza IllegalArgumentException si el secado no existe o no esta EN_CURSO,
-    // si la fecha de fin es anterior al inicio, si los kilos secos no son validos o si el factor no esta entre 80 y 120.
+    // si la fecha de fin es anterior al inicio, si los kilos secos no son validos o si el factor (opcional; null = sin factor) no esta entre 80 y 120.
     fun finalizarSecado(
         secadoId: Long,
         fechaFin: Fecha,
         kilosSecos: Map<Calidad, Double>,
-        factorRendimiento: Int
+        factorRendimiento: Int?
     ): SecadoConDetalle
 
     // Cancela un secado EN_CURSO y devuelve al inventario el cafe que se habia enviado.
@@ -114,7 +114,7 @@ class SecadoRepositoryEjemplo(
         secadoId: Long,
         fechaFin: Fecha,
         kilosSecos: Map<Calidad, Double>,
-        factorRendimiento: Int
+        factorRendimiento: Int?
     ): SecadoConDetalle {
         // Primero se valida todo; mientras no pase, no se modifica nada.
         val registro = enCurso(secadoId)
@@ -123,7 +123,7 @@ class SecadoRepositoryEjemplo(
         }
         val enviadoKg = redondearKg(registro.enviados.sumOf { it.envio.pesoEnviadoKg })
         errorKilosSecos(kilosSecos, enviadoKg)?.let { throw IllegalArgumentException(it) }
-        errorFactorEntero(factorRendimiento)?.let { throw IllegalArgumentException(it) }
+        factorRendimiento?.let { errorFactorEntero(it) }?.let { throw IllegalArgumentException(it) }
 
         val kgSecosTotal = kilosSecosTotal(kilosSecos)
         val costoKg = costoKgSeco(registro.enviados, kgSecosTotal)
