@@ -1,18 +1,12 @@
 package com.cafesmart.app.ui.screens.drying
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -23,20 +17,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.cafesmart.app.data.sale.SubloteElegido
 import com.cafesmart.app.data.secado.SecadoRepositoryEjemplo
-import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.ContinueButton
 import com.cafesmart.app.ui.screens.purchase.PurchaseBottomBar
 import com.cafesmart.app.ui.screens.purchase.PurchaseDatePickerDialog
-import com.cafesmart.app.ui.theme.AppShapes
 import com.cafesmart.app.ui.theme.AppTypography
-import com.cafesmart.app.ui.theme.BorderDefault
 import com.cafesmart.app.ui.theme.CafesmartTheme
-import com.cafesmart.app.ui.theme.Primary
 import com.cafesmart.app.ui.theme.Spacing
-import com.cafesmart.app.ui.theme.SurfaceCard
 import com.cafesmart.app.ui.theme.SurfaceScreen
 import com.cafesmart.app.viewmodel.drying.SecadoUiState
 
@@ -70,7 +58,7 @@ fun SecadoStep2Screen(
                 modifier = Modifier.padding(horizontal = Spacing.s20, vertical = Spacing.s16),
                 verticalArrangement = Arrangement.spacedBy(Spacing.s12)
             ) {
-                TarjetaFechaDeInicio(fecha = estado.fechaTexto, onCambiar = { mostrarCalendario = true })
+                TarjetaFecha(etiqueta = "Fecha de inicio", fecha = estado.fechaTexto, onCambiar = { mostrarCalendario = true })
 
                 Text(
                     text = "Café a secar",
@@ -102,31 +90,6 @@ fun SecadoStep2Screen(
             onFechaChange = onFechaChange,
             onCerrar = { mostrarCalendario = false }
         )
-    }
-}
-
-// Tarjeta con el icono de calendario, la fecha de inicio y "Cambiar"
-@Composable
-private fun TarjetaFechaDeInicio(fecha: String, onCambiar: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(SurfaceCard, AppShapes.medium)
-            .border(1.dp, BorderDefault, AppShapes.medium)
-            .padding(start = Spacing.s16, top = Spacing.s8, end = Spacing.s4, bottom = Spacing.s8),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.s12)
-    ) {
-        Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-            Icon(imageVector = AppIcons.Calendar, contentDescription = null, tint = Primary, modifier = Modifier.size(20.dp))
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = "Fecha de inicio", style = AppTypography.caption)
-            Text(text = fecha, style = AppTypography.valueStrong)
-        }
-        TextButton(onClick = onCambiar) {
-            Text(text = "Cambiar", style = AppTypography.buttonLink)
-        }
     }
 }
 
