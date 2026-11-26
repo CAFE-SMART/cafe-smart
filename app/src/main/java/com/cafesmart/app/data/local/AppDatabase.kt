@@ -5,8 +5,9 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-// Base de datos local de la app. Tiene Negocio, Productor, Compra, Lote, Sublote, Gasto y GastoSublote.
-// Las demás entidades (Secado, Venta...) se agregan aquí mismo, en la lista entities, con su DAO abstracto.
+// Base de datos local de la app. Tiene Negocio, Productor, Compra, Lote, Sublote, Gasto, GastoSublote,
+// Secado y SecadoSublote.
+// Las demás entidades (Venta...) se agregan aquí mismo, en la lista entities, con su DAO abstracto.
 // Al agregar entidades o cambiar columnas hay que subir version. Mientras la app no esté publicada,
 // basta con desinstalarla en el emulador; después habrá que escribir una migración.
 
@@ -19,8 +20,10 @@ import androidx.room.RoomDatabase
         SubloteEntity::class,
         GastoEntity::class,
         GastoSubloteEntity::class,
+        SecadoEntity::class,
+        SecadoSubloteEntity::class,
     ],
-    version = 3,
+    version = 5,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -31,6 +34,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun loteDao(): LoteDao
     abstract fun subloteDao(): SubloteDao
     abstract fun gastoDao(): GastoDao
+    abstract fun secadoDao(): SecadoDao
 
     companion object {
         private const val NOMBRE = "cafesmart.db"
