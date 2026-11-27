@@ -57,7 +57,9 @@ import com.cafesmart.app.viewmodel.gastos.*
 @Composable
 fun ListaGastosScreen(estado: GastosUiState, onBack: () -> Unit, onRegistrar: () -> Unit,
     onFiltro: (FiltroGasto) -> Unit, modifier: Modifier = Modifier, onActualizar: () -> Unit = {},
-    onCargarEjemplos: (() -> Unit)? = null) {
+    onCargarEjemplos: (() -> Unit)? = null,
+    // true solo con el repositorio de demostración (en memoria). Con Room los gastos sí se guardan.
+    demostracion: Boolean = false) {
     // fillMaxSize ocupa el área recibida; background aplica el fondo y safeDrawingPadding
     // respeta los espacios del sistema que aún no haya consumido el contenedor.
     Column(modifier.fillMaxSize().background(SurfaceScreen).safeDrawingPadding()) {
@@ -108,8 +110,11 @@ fun ListaGastosScreen(estado: GastosUiState, onBack: () -> Unit, onRegistrar: ()
                     }
                 }
             }
-            // Este aviso recuerda el límite real del repositorio: los datos son temporales en memoria.
-            item { Text("Demostración: los gastos son temporales y se pierden al cerrar la sesión o el proceso.", style = AppTypography.helper) }
+            // Este aviso solo es cierto con la demostración en memoria: con Room los gastos persisten.
+            if (demostracion) item {
+                Text("Demostración: los gastos son temporales y se pierden al cerrar la sesión o el proceso.",
+                    style = AppTypography.helper, modifier = Modifier.testTag("gastos_lista_aviso_demo"))
+            }
         }
     }
 }

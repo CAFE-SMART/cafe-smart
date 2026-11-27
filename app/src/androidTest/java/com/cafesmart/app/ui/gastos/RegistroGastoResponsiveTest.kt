@@ -79,7 +79,13 @@ class RegistroGastoResponsiveTest {
         monto().performClick().assertIsFocused()
         monto().assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("50.000.000")))
         compose.onNodeWithTag("gastos_monto").assertWidthIsAtLeast(300.dp)
-        compose.onNode(hasText("$") and hasAnyAncestor(hasTestTag("gastos_monto")), useUnmergedTree = true).assertExists()
+        // Desde el PR #28 (Ventas) AppTextField dibuja el símbolo como prefix "$ " (con espacio); antes era un ícono
+        // con el texto exacto "$". Bajo gastos_monto también está la etiqueta "Monto ($)", así que se busca el nodo
+        // cuyo texto, sin espacios, es exactamente "$": el prefijo, no la etiqueta.
+        val simboloPesos = SemanticsMatcher("texto \"$\" sin espacios") { nodo ->
+            nodo.config.getOrElse(SemanticsProperties.Text) { emptyList() }.any { it.text.trim() == "$" }
+        }
+        compose.onNode(simboloPesos and hasAnyAncestor(hasTestTag("gastos_monto")), useUnmergedTree = true).assertExists()
     }
 
     @Test fun selectorTieneTextoOscuroYContrasteEnCeroUnoYVarios() {

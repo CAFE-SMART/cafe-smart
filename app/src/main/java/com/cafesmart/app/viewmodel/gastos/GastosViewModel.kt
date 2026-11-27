@@ -118,6 +118,19 @@ class GastosViewModel(
         }
     }
 
+    /**
+     * "Registrar gasto" desde Gastos del sublote (Figma): borrador nuevo asociado SOLO a [sublote], con su monto por
+     * escribir. Se asocia aunque la lista de sublotes disponibles todavía no haya llegado de Room (así nunca queda
+     * general sin avisar); al guardar, la validación vuelve a comprobar que siga disponible y, si no, lo dice.
+     * Un sublote agotado no admite gastos nuevos: devuelve false y no toca el borrador en curso.
+     */
+    fun nuevoRegistroParaSublote(sublote: Sublote): Boolean {
+        if (uiState.value.resultado == ResultadoGasto.GUARDANDO || sublote.estaAgotado) return false
+        nuevoRegistro()
+        editar { it.copy(aplicaA = AplicaGasto.SUBLOTES, asignaciones = mapOf(sublote.id to "")) }
+        return true
+    }
+
     /** La selección se escribe en el mismo borrador que contiene los montos manuales. */
     fun alternarSublote(id: Long) {
         if (uiState.value.sublotes.none { it.id == id }) return
