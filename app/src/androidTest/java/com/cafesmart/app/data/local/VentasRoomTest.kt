@@ -37,7 +37,8 @@ class VentasRoomTest {
 
     // Crea un lote, una compra y un sublote con los kg dados; devuelve el id del sublote.
     private suspend fun crearSublote(kg: Double): Long {
-        val loteId = db.loteDao().insertar(LoteEntity(tipoCafe = TipoCafe.SECO.name, calidad = Calidad.BUENA.name))
+        val loteId = db.loteDao().buscarPorTipoYCalidad(TipoCafe.SECO.name, Calidad.BUENA.name)?.id
+            ?: db.loteDao().insertar(LoteEntity(tipoCafe = TipoCafe.SECO.name, calidad = Calidad.BUENA.name))
         val compraId = db.compraDao().insertar(CompraEntity(fecha = fecha, totalPagado = 0))
         return db.subloteDao().insertar(
             SubloteEntity(

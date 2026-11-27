@@ -48,6 +48,7 @@ abstract class AppDatabase : RoomDatabase() {
         fun obtener(context: Context): AppDatabase =
             instancia ?: synchronized(this) {
                 instancia ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NOMBRE)
+                    .addMigrations(MIGRACION_3_4)
                     .build()
                     .also { instancia = it }
             }
