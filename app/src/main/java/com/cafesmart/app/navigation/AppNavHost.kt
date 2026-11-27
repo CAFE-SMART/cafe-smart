@@ -793,7 +793,7 @@ fun AppNavHost(
                     onRecargar = { resumenViewModel.recargar(); graficasViewModel.cargar() },
                     onAvisoOculto = resumenViewModel::ocultarAviso,
                     onHistorial = { navController.navigateTo(Routes.FINANCE_HISTORY) },
-                    graficas = { GraficasFinancieras(graficas) },
+                    graficas = { GraficasFinancieras(graficas, soloGastos = true) },
                 )
             } else {
                 AccesoFinancieroScreen(

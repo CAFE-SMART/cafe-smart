@@ -60,24 +60,26 @@ internal val ColorUtilidad = Primary
 const val TEXTO_GRAFICAS_VACIAS = "Cuando registres ventas o gastos, aquí verás cómo cambian mes a mes."
 
 @Composable
-fun GraficasFinancieras(estado: GraficasUiState, modifier: Modifier = Modifier) {
+fun GraficasFinancieras(estado: GraficasUiState, modifier: Modifier = Modifier, soloGastos: Boolean = false) {
     Surface(
         shape = AppShapes.medium, color = SurfaceCard, border = BorderStroke(1.dp, BorderDefault),
         modifier = modifier.fillMaxWidth().testTag("graficas_financieras"),
     ) {
         Column(Modifier.padding(Spacing.s16), verticalArrangement = Arrangement.spacedBy(Spacing.s12)) {
             Text("Últimos ${if (estado.serie.isEmpty()) 6 else estado.serie.size} meses", style = AppTypography.labelField)
+            if (soloGastos) Text("Se muestran los gastos registrados. Ingresos y utilidad estarán disponibles cuando se conecten ventas y compras.",
+                style = AppTypography.helper.copy(color = TextSecondary))
             when {
                 estado.cargando -> Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Primary)
                 }
                 estado.error != null -> Text(estado.error, style = AppTypography.bodyMd.copy(color = ErrorText),
                     modifier = Modifier.testTag("graficas_error"))
-                estado.vacia -> Text(TEXTO_GRAFICAS_VACIAS, style = AppTypography.bodyMd.copy(color = TextSecondary),
+                estado.vacia -> Text(if (soloGastos) "Cuando registres gastos, aquí verás cómo cambian mes a mes." else TEXTO_GRAFICAS_VACIAS, style = AppTypography.bodyMd.copy(color = TextSecondary),
                     modifier = Modifier.testTag("graficas_vacias"))
                 else -> {
-                    Leyenda()
-                    Barras(estado.serie)
+                    Leyenda(soloGastos)
+                    Barras(estado.serie, soloGastos)
                     Text("Escala: hasta ${formatoDinero(maximoDeLaSerie(estado.serie).toDouble())}",
                         style = AppTypography.helper.copy(color = TextMuted), modifier = Modifier.testTag("graficas_escala"))
                 }
@@ -87,9 +89,9 @@ fun GraficasFinancieras(estado: GraficasUiState, modifier: Modifier = Modifier) 
 }
 
 @Composable
-private fun Leyenda() {
+private fun Leyenda(soloGastos: Boolean) {
     Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s12), verticalAlignment = Alignment.CenterVertically) {
-        listOf("Ingresos" to ColorIngresos, "Gastos" to ColorGastos, "Utilidad" to ColorUtilidad).forEach { (texto, color) ->
+        (if (soloGastos) listOf("Gastos" to ColorGastos) else listOf("Ingresos" to ColorIngresos, "Gastos" to ColorGastos, "Utilidad" to ColorUtilidad)).forEach { (texto, color) ->
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s6), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(10.dp).background(color, CircleShape))
                 Text(texto, style = AppTypography.helper)
@@ -108,11 +110,11 @@ fun descripcionGrafica(serie: List<MesFinanciero>): String = serie.joinToString(
 fun alturaRelativa(valor: Long, escala: Long): Float = if (escala <= 0) 0f else valor.toFloat() / escala
 
 @Composable
-private fun Barras(serie: List<MesFinanciero>) {
+private fun Barras(serie: List<MesFinanciero>, soloGastos: Boolean) {
     val maximo = maximoDeLaSerie(serie)
     // Si alguna utilidad es negativa, se reserva espacio debajo de la línea del cero.
     val minimo = serie.minOfOrNull { it.utilidadPesos }?.coerceAtMost(0L) ?: 0L
-    val descripcion = descripcionGrafica(serie)
+    val descripcion = if (soloGastos) serie.joinToString(". ") { "${etiquetaMes(it)}: gastos ${formatoDinero(it.gastosPesos.toDouble())}" } else descripcionGrafica(serie)
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.s6)) {
         Canvas(
             Modifier.fillMaxWidth().height(160.dp)
@@ -127,7 +129,7 @@ private fun Barras(serie: List<MesFinanciero>) {
             drawLine(BorderDefault, Offset(0f, cero), Offset(size.width, cero), strokeWidth = 2f)
             serie.forEachIndexed { i, mes ->
                 val inicio = i * anchoGrupo + anchoBarra * 0.5f
-                listOf(mes.ingresosPesos to ColorIngresos, mes.gastosPesos to ColorGastos, mes.utilidadPesos to ColorUtilidad)
+                (if (soloGastos) listOf(mes.gastosPesos to ColorGastos) else listOf(mes.ingresosPesos to ColorIngresos, mes.gastosPesos to ColorGastos, mes.utilidadPesos to ColorUtilidad))
                     .forEachIndexed { j, (valor, color) ->
                         val alto = size.height * (abs(valor) / total)
                         if (alto <= 0f) return@forEachIndexed

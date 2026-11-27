@@ -110,6 +110,10 @@ fun ResumenFinancieroScreen(
                 style = AppTypography.bodyLg.copy(color = TextSecondary)
             )
             SelectorDePeriodo(estado.periodo, onPeriodo)
+            if (graficas != null) {
+                Text("Mes a mes", style = AppTypography.titleCard)
+                graficas()
+            }
             val resumen = estado.resumen
             when {
                 resumen != null -> Contenido(resumen, estado.periodo, onHistorial)
@@ -117,10 +121,6 @@ fun ResumenFinancieroScreen(
                 else -> Box(Modifier.fillMaxWidth().padding(Spacing.s28), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Primary)
                 }
-            }
-            if (graficas != null && resumen != null) {
-                Text("Mes a mes", style = AppTypography.titleCard)
-                graficas()
             }
         }
     }

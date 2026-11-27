@@ -29,4 +29,13 @@ class GraficasFinancierasUiTest {
         compose.onNodeWithText("Oct 2026").assertIsDisplayed()
         compose.onNodeWithText("Nov").assertIsDisplayed()
     }
+
+    @Test fun origenParcialSoloMuestraGastos() {
+        val serie = listOf(MesFinanciero(2026, 11, 0, 90000, 0))
+        compose.setContent { CafesmartTheme { GraficasFinancieras(GraficasUiState(cargando = false, serie = serie), soloGastos = true) } }
+        compose.onNodeWithTag("graficas_canvas").assertIsDisplayed()
+        compose.onNodeWithText("Gastos").assertIsDisplayed()
+        compose.onNodeWithText("Ingresos").assertDoesNotExist()
+        compose.onNodeWithText("Utilidad").assertDoesNotExist()
+    }
 }
