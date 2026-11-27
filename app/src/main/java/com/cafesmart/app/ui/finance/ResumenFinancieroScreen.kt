@@ -88,6 +88,8 @@ fun ResumenFinancieroScreen(
     onRecargar: () -> Unit,
     onAvisoOculto: () -> Unit = {},
     onHistorial: () -> Unit = {},
+    // Gráficas financieras (ciclo 3, Amelia): se dibujan aquí, dentro de la pantalla protegida por la clave.
+    graficas: (@Composable () -> Unit)? = null,
 ) {
   Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().background(SurfaceScreen)) {
@@ -115,6 +117,10 @@ fun ResumenFinancieroScreen(
                 else -> Box(Modifier.fillMaxWidth().padding(Spacing.s28), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Primary)
                 }
+            }
+            if (graficas != null && resumen != null) {
+                Text("Mes a mes", style = AppTypography.titleCard)
+                graficas()
             }
         }
     }
