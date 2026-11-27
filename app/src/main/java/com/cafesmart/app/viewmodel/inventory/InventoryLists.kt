@@ -30,7 +30,7 @@ data class ResumenCalidad(
 
 // Las calidades que existen de un tipo de café (solo las que ya se compraron alguna vez: un lote se crea con
 // la primera compra). Mismas reglas de orden que el resumen: por la fecha del último ingreso y las calidades
-// sin café al final; si dos empatan se queda el orden de Calidad (Buena, Regular, Mala).
+// sin café al final; si dos empatan, "Más reciente" usa el orden de Calidad (Buena, Regular, Mala) y "Más antiguo" el inverso.
 fun resumirCalidades(
     lotes: List<LoteConSublotes>,
     tipo: TipoCafe,
@@ -51,7 +51,8 @@ fun resumirCalidades(
     val (conCafe, sinCafe) = filas.partition { it.ultimoIngreso != null }
     val ordenadas = when (orden) {
         OrdenInventario.MAS_RECIENTE -> conCafe.sortedByDescending { it.ultimoIngreso?.clave() ?: 0 }
-        OrdenInventario.MAS_ANTIGUO -> conCafe.sortedBy { it.ultimoIngreso?.clave() ?: 0 }
+        // Es la lista de "Más reciente" al revés: así el botón también se nota cuando las fechas empatan.
+        OrdenInventario.MAS_ANTIGUO -> conCafe.sortedByDescending { it.ultimoIngreso?.clave() ?: 0 }.reversed()
     }
     return ordenadas + sinCafe
 }

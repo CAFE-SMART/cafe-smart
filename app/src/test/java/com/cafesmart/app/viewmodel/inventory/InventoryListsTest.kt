@@ -89,6 +89,11 @@ class InventoryListsTest {
             listOf(Calidad.BUENA, Calidad.REGULAR, Calidad.MALA),
             resumirCalidades(lotes, TipoCafe.SECO).map { it.calidad },
         )
+        // Con la misma fecha, "Más antiguo" también cambia el orden.
+        assertEquals(
+            listOf(Calidad.MALA, Calidad.REGULAR, Calidad.BUENA),
+            resumirCalidades(lotes, TipoCafe.SECO, OrdenInventario.MAS_ANTIGUO).map { it.calidad },
+        )
     }
 
     // ── Sublotes del grupo: sublotesDelLote ────────────────

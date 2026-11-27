@@ -82,12 +82,13 @@ fun resumirInventario(
 }
 
 // Ordena por la fecha del último ingreso. Los tipos sin café van siempre al final.
-// sortedBy es estable: si dos tipos empatan se queda el orden de TIPOS_EN_INVENTARIO.
+// El orden es estable: si dos tipos empatan, "Más reciente" usa TIPOS_EN_INVENTARIO y "Más antiguo" el inverso.
 fun ordenarTipos(tipos: List<ResumenTipo>, orden: OrdenInventario): List<ResumenTipo> {
     val (conCafe, sinCafe) = tipos.partition { it.ultimoIngreso != null }
     val ordenados = when (orden) {
         OrdenInventario.MAS_RECIENTE -> conCafe.sortedByDescending { it.ultimoIngreso?.clave() ?: 0 }
-        OrdenInventario.MAS_ANTIGUO -> conCafe.sortedBy { it.ultimoIngreso?.clave() ?: 0 }
+        // La lista de "Más reciente" al revés, para que los empates de fecha también cambien de orden.
+        OrdenInventario.MAS_ANTIGUO -> conCafe.sortedByDescending { it.ultimoIngreso?.clave() ?: 0 }.reversed()
     }
     return ordenados + sinCafe
 }

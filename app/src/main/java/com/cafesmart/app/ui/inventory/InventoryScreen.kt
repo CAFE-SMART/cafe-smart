@@ -1,5 +1,6 @@
 package com.cafesmart.app.ui.inventory
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -396,10 +397,18 @@ internal fun EncabezadoLista(
                 )
             }
             // El Figma solo muestra el botón cerrado; las opciones del menú son propuesta del equipo de código.
-            DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
+            // Colores del tema: sin esto Material 3 pinta el menú con su tono rosado por defecto.
+            DropdownMenu(
+                expanded = menuAbierto,
+                onDismissRequest = { menuAbierto = false },
+                shape = RoundedCornerShape(10.dp),
+                containerColor = SurfaceCard,
+                border = BorderStroke(1.dp, BorderField)
+            ) {
                 OrdenInventario.entries.forEach { opcion ->
                     DropdownMenuItem(
-                        text = { Text(text = opcion.etiqueta) },
+                        text = { Text(text = opcion.etiqueta, style = Texto13Medio, color = TextStrong) },
+                        modifier = Modifier.background(if (opcion == orden) SurfaceSelected else SurfaceCard),
                         onClick = {
                             menuAbierto = false
                             onOrdenChange(opcion)
