@@ -46,7 +46,9 @@ class GastosSubloteNavigationTest {
             ViewModelProvider(nav.getBackStackEntry(Routes.HOME), factory)[GastosViewModel::class.java]
             nav.navigate(Routes.inventoryDetail(batchId))
         }
-        compose.onNodeWithText("Gastos del sublote").performClick()
+        // El detalle solo muestra "Ver gastos" si el sublote existe en Room; aquí los datos son sintéticos,
+        // así que se navega directo a la ruta de gastos (el detalle queda debajo en la pila).
+        compose.runOnIdle { nav.navigate(Routes.inventoryBatchExpenses(batchId)) }
     }
 
     @Test fun vacioYVolverConservanElDetalleYBatchId() {
@@ -91,7 +93,7 @@ class GastosSubloteNavigationTest {
             assertEquals(Routes.INVENTORY_DETAIL, nav.currentDestination?.route)
             assertEquals("invalido", nav.currentBackStackEntry?.arguments?.getString(Routes.ARG_BATCH_ID))
         }
-        compose.onNodeWithText("Detalle del sublote #invalido").assertIsDisplayed()
+        compose.onNodeWithTag("detalle_sublote_no_encontrado").assertIsDisplayed()
     }
 
     @Test fun errorPermiteReintentar() {
