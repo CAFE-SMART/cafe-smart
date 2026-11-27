@@ -12,9 +12,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 
 class SaleViewModelTest {
+
+    @get:Rule val principal = PrincipalDeVentasRule()
 
     // Sublotes del Figma "Ventas - Paso 2" (cafe seco)
     private fun subloteDe(id: Long, calidad: Calidad, disponibleKg: Double) = SubloteConLote(
@@ -37,7 +40,7 @@ class SaleViewModelTest {
 
     @Test
     fun alEmpezar_noHayClienteNiSublotesYNoSePuedeContinuar() {
-        val estado = SaleViewModel().uiState.value
+        val estado = viewModelDeVentasDePrueba().uiState.value
         assertNull(estado.cliente)
         assertTrue(estado.elegidos.isEmpty())
         assertFalse(estado.puedeContinuar)
@@ -47,7 +50,7 @@ class SaleViewModelTest {
 
     @Test
     fun elegirCliente_loGuardaEnElEstado() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         val cliente = Cliente(nombre = "Carlos Mejía", documento = "16780012")
         viewModel.elegirCliente(cliente)
         assertEquals(cliente, viewModel.uiState.value.cliente)
@@ -55,7 +58,7 @@ class SaleViewModelTest {
 
     @Test
     fun alMarcarUnSublote_seVendeTodoLoDisponible() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarSublote(sublote5)
         val estado = viewModel.uiState.value
         assertEquals(200.0, estado.elegidos[0].cantidadKg, 0.001)
@@ -64,7 +67,7 @@ class SaleViewModelTest {
 
     @Test
     fun alMarcarDosVeces_elSubloteSeQuita() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarSublote(sublote5)
         viewModel.alternarSublote(sublote5)
         assertTrue(viewModel.uiState.value.elegidos.isEmpty())
@@ -72,7 +75,7 @@ class SaleViewModelTest {
 
     @Test
     fun cambiarCantidad_aceptaLoValidoEIgnoraLoDemas() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarSublote(sublote5)
         viewModel.cambiarCantidad(5, 150.0)
         assertEquals(150.0, viewModel.uiState.value.elegidos[0].cantidadKg, 0.001)
@@ -84,7 +87,7 @@ class SaleViewModelTest {
 
     @Test
     fun venderUnaParte_calculaElTotalDelFigma() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarSublote(sublote5)
         viewModel.cambiarCantidad(5, 150.0)
         // El campo muestra "20.000" y se guarda solo con digitos
@@ -97,7 +100,7 @@ class SaleViewModelTest {
 
     @Test
     fun venderTodo_cadaCalidadUsaSuPrecio() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         listOf(sublote5, sublote6, sublote7, sublote8).forEach { viewModel.alternarSublote(it) }
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         viewModel.cambiarPrecio(Calidad.REGULAR, "18000")
@@ -110,7 +113,7 @@ class SaleViewModelTest {
 
     @Test
     fun continuar_necesitaUnPrecioValidoPorCadaCalidadElegida() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarSublote(sublote5)
         viewModel.alternarSublote(sublote6)
         assertFalse(viewModel.uiState.value.puedeContinuar)
@@ -125,7 +128,7 @@ class SaleViewModelTest {
 
     @Test
     fun precioFueraDeRango_muestraElMensajeDeCompras() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.cambiarPrecio(Calidad.BUENA, "100001")
         assertEquals(
             "Escribe un valor entre \$1.000 y \$100.000 pesos colombianos.",
@@ -138,7 +141,7 @@ class SaleViewModelTest {
 
     @Test
     fun alEscribirUnaCantidadValida_laTomaYElCampoMuestraLoEscrito() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarSublote(sublote5)
         // Sin tocar el campo, muestra lo elegido (todo lo disponible).
         assertEquals("200", viewModel.uiState.value.textoCantidad(5))
@@ -151,7 +154,7 @@ class SaleViewModelTest {
 
     @Test
     fun alPasarseDeLoDisponible_guardaElTextoMuestraElErrorYBloqueaContinuar() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarSublote(sublote5)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         assertTrue(viewModel.uiState.value.puedeContinuar)
@@ -171,7 +174,7 @@ class SaleViewModelTest {
 
     @Test
     fun conElCampoVacioOEnCero_noHayErrorPeroNoSePuedeContinuar() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarSublote(sublote5)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         viewModel.escribirCantidad(5, "")
@@ -184,7 +187,7 @@ class SaleViewModelTest {
 
     @Test
     fun laCantidadAceptaComaOPuntoDecimal() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarSublote(sublote5)
         viewModel.escribirCantidad(5, "25,5")
         assertEquals(25.5, viewModel.uiState.value.elegidos[0].cantidadKg, 0.001)
@@ -193,7 +196,7 @@ class SaleViewModelTest {
 
     @Test
     fun alQuitarYVolverAMarcarElSublote_elCampoVuelveAMostrarLoElegido() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarSublote(sublote5)
         viewModel.escribirCantidad(5, "250")
         viewModel.alternarSublote(sublote5)
@@ -206,7 +209,7 @@ class SaleViewModelTest {
 
     @Test
     fun reiniciarVenta_dejaElEstadoComoAlEmpezar() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirCliente(Cliente(nombre = "Carlos Mejía", documento = "16780012"))
         viewModel.alternarSublote(sublote5)
         viewModel.escribirCantidad(5, "150")
