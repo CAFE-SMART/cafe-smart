@@ -3,6 +3,7 @@ package com.cafesmart.app.data.limites
 import com.cafesmart.app.data.purchase.CafeFormulario
 import com.cafesmart.app.viewmodel.finance.LimitesGasto
 import com.cafesmart.app.viewmodel.gastos.GastosValidation
+import com.cafesmart.app.viewmodel.gastos.GastoFormulario
 import com.cafesmart.app.viewmodel.limites.LimitesDeEntrada
 import com.cafesmart.app.viewmodel.limites.LimitesVigentes
 import com.cafesmart.app.viewmodel.limites.ayudaPrecioKg
@@ -110,6 +111,9 @@ class ConfiguracionLimitesTest {
         config.guardar(predeterminados.copy(gastoMin = "5000", gastoMax = "900000"))
         assertEquals(5_000L, LimitesGasto().valorMinimoCop)
         assertEquals(900_000L, LimitesGasto().valorMaximoCop)
+        val gasto = GastoFormulario(concepto = "Transporte", monto = "4000")
+        assertTrue(GastosValidation.validar(gasto, emptyList()).monto != null)
+        assertNull(GastosValidation.validar(gasto.copy(monto = "5000"), emptyList()).monto)
         assertEquals(6, GastosValidation.DIGITOS_MAX_VALOR)
         config.restablecer()
         assertEquals(8, GastosValidation.DIGITOS_MAX_VALOR)

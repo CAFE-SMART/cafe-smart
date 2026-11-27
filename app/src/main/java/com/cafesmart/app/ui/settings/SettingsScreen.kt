@@ -106,6 +106,7 @@ fun SettingsScreen(
     onInformacionEmpresa: () -> Unit,
     onResumenFinanciero: () -> Unit,
     onCapacidadBodega: () -> Unit = {},
+    onLimitesEntrada: () -> Unit = {},
     onPedirCerrarSesion: () -> Unit,
     onCancelarCierre: () -> Unit,
     onConfirmarCierre: () -> Unit,
@@ -153,6 +154,7 @@ fun SettingsScreen(
                         onNotificaciones = onNotificaciones,
                         onInformacionEmpresa = onInformacionEmpresa,
                         onGastosOperativos = onGastosOperativos,
+                        onLimitesEntrada = onLimitesEntrada,
                         proximamente = proximamente
                     )
                     PestanaAjustes.BODEGA -> OpcionesBodega(onCapacidadBodega, proximamente)
@@ -260,6 +262,7 @@ private fun OpcionesNegocio(
     onNotificaciones: (Boolean) -> Unit,
     onInformacionEmpresa: () -> Unit,
     onGastosOperativos: () -> Unit,
+    onLimitesEntrada: () -> Unit,
     proximamente: () -> Unit,
 ) {
     TituloSeccion("Configuración del negocio")
@@ -270,7 +273,7 @@ private fun OpcionesNegocio(
         onInformacionEmpresa
     )
     FilaAjuste(IconoGota, "Proceso de secado", "Registra el secado de tu café", proximamente)
-    FilaAjuste(IconoAjustes, "Límites de entrada", "Lo mínimo y lo máximo al registrar", proximamente)
+    FilaAjuste(IconoAjustes, "Límites de entrada", "Lo mínimo y lo máximo al registrar", onLimitesEntrada)
     FilaAjuste(IconoGastos, "Gastos operativos", "Mira y registra tus gastos", onGastosOperativos)
     FilaAjuste(
         IconoCampana, "Notificaciones", "Avisos cuando un sublote lleva mucho tiempo en bodega", {},

@@ -734,6 +734,7 @@ fun AppNavHost(
                 onGastosOperativos = { navController.navigateTo(Routes.EXPENSES) },
                 onInformacionEmpresa = { navController.navigateTo(Routes.SETTINGS_BUSINESS) },
                 onResumenFinanciero = { navController.navigateTo(Routes.FINANCE_SUMMARY) },
+                onLimitesEntrada = { navController.navigateTo(Routes.SETTINGS_LIMITS) },
                 onCapacidadBodega = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
                 aviso = settingsState.aviso,
                 onAvisoOculto = settingsViewModel::ocultarAviso,
@@ -754,6 +755,15 @@ fun AppNavHost(
                     cerrarSesion()
                 }
             )
+        }
+
+        composable(Routes.SETTINGS_LIMITS) {
+            val configuracion = remember {
+                com.cafesmart.app.data.limites.ConfiguracionLimites(
+                    com.cafesmart.app.data.limites.AlmacenLimitesPreferencias(context)
+                )
+            }
+            com.cafesmart.app.ui.settings.LimitesEntradaScreen(configuracion, onBack = { navController.popBackStack() })
         }
 
         // Finanzas · Resumen financiero: pide la clave propia (o la crea en el primer acceso) y solo con ella

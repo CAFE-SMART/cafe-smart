@@ -7,9 +7,8 @@ import com.cafesmart.app.viewmodel.limites.LimitesVigentes
 // Ajustes · "Límites de entrada" (ciclo 3, Amelia): guardar en el teléfono los mínimos y máximos que el usuario
 // cambie, recuperarlos al volver a abrir la app y poder volver a los predeterminados.
 //
-// PANTALLA PENDIENTE: la fila de Ajustes sigue en "Próximamente" hasta que exista el diseño aprobado por Andrés.
-// Esta capa (validar, guardar, recuperar, restablecer y aplicar a Compras, Ventas y Gastos) ya funciona y tiene
-// pruebas; la pantalla solo tendrá que llamar a ConfiguracionLimites.
+// La pantalla usa esta capa para validar, guardar, recuperar, restablecer y aplicar los valores.
+// La presentación y el precio compartido de compra y venta están pendientes de revisión del equipo.
 
 /** Dónde se guardan los límites del usuario. null = nunca los cambió (se usan los predeterminados). */
 interface AlmacenLimites {
