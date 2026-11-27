@@ -18,11 +18,9 @@ import com.cafesmart.app.viewmodel.purchase.fechaDeHoy
 // o se pasa otra lista a validarGasto.
 val TIPOS_GASTO_PERMITIDOS: List<TipoGasto> = TipoGasto.values().toList()
 
-// Valores por defecto de los límites. En Ajustes el usuario podrá cambiar los límites de todo lo que
-// sea dinero (mínimo y máximo): por eso se reciben como parámetro (LimitesGasto) y estos son solo los iniciales.
-// Convención de nombres para límites configurables: <CAMPO>_<MINIMO|MAXIMO>_<UNIDAD>, por ejemplo
-// VALOR_GASTO_MINIMO_COP (COP = pesos colombianos). Los campos de LimitesGasto siguen la misma idea.
-// Los valores salen de viewmodel/limites/LimitesDeEntrada.kt (unica fuente de la app); estos nombres son alias.
+// El mínimo y el máximo del valor de un gasto NO se definen aquí: salen de LimitesVigentes
+// (viewmodel/limites/LimitesDeEntrada.kt, única fuente de la app), que el usuario podrá cambiar en Ajustes.
+// Por eso LimitesGasto los recibe como parámetro. Aquí solo quedan los topes de texto del formulario.
 const val LARGO_CONCEPTO_GASTO_MAXIMO = 60
 const val LARGO_DESCRIPCION_GASTO_MAXIMO = 200
 
