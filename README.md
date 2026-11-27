@@ -31,16 +31,16 @@ Modelo de datos: [`docs/modelo-de-datos.md`](docs/modelo-de-datos.md).
 
 ## Navegación (Navigation Compose)
 Todo el grafo vive en `navigation/AppNavHost.kt` y los nombres de ruta en `navigation/Routes.kt`.
-Cada ruta corresponde a una pantalla del Figma (pestaña "Flujos"). Ya son reales: cuenta (inicio de sesión, registro y recuperar contraseña con Firebase), `home`, Compras (pasos 1 a 3 y `purchase_done`), el resumen de `inventory`, los tres de Gastos y los Gastos del sublote (`inventory_batch_expenses`), Ajustes (`settings`, `settings_business` y `settings_warehouse`) y las Finanzas (`finance_summary` y `finance_history`).
+Cada ruta corresponde a una pantalla del Figma (pestaña "Flujos"). Ya son reales: cuenta (inicio de sesión, registro y recuperar contraseña con Firebase), `home`, Compras (pasos 1 a 3 y `purchase_done`), el resumen de `inventory` con sus calidades (`inventory_type`) y los sublotes de un grupo (`inventory_list`), los tres de Gastos y los Gastos del sublote (`inventory_batch_expenses`), Ajustes (`settings`, `settings_business`, `settings_warehouse`, `settings_limits` y `settings_contacts`) y las Finanzas (`finance_summary` y `finance_history`).
 El resto (lo demás de Inventario, Ventas y Secado) son *placeholders* (`NavPlaceholder`) que se reemplazan por la pantalla real dentro de su `composable(...)`.
 
 **Flujo base:** `splash` → `login` → `home` → `inventory`
 (el splash y el login se sacan de la pila: "atrás" no vuelve a ellos).
 
 **Orden de pantallas (igual que el prototipo del Figma):**
-- Inventario: `inventory` (resumen) → `inventory_type/{tipo}` (calidades de un tipo: VERDE, SECO, TRILLADO o PASILLA) → `inventory_list` (sublotes del grupo) → `inventory_detail/{batchId}` → `inventory_batch_expenses/{batchId}` o `sale_batch_step1/{batchId}` → `sale_batch_step2/{batchId}` → `sale_done`.
+- Inventario: `inventory` (resumen) → `inventory_type/{tipo}` (calidades de un tipo: VERDE, SECO, TRILLADO o PASILLA) → `inventory_list/{loteId}` (sublotes del grupo) → `inventory_detail/{batchId}` → `inventory_batch_expenses/{batchId}` o `sale_batch_step1/{batchId}` → `sale_batch_step2/{batchId}` → `sale_done`.
 - Secado: `drying_step1` → `2` → `3` → `4` → `5` → `drying_step6` (sin gastos) **o** `5` → `drying_step7` (gastos) → `drying_step6`. El paso 6 siempre es el final.
-- Se entra a Secado desde `inventory_type` (botón "Iniciar secado"); a "Registrar gasto" (`expense_new`) desde `home`. `settings` es la pantalla real del Figma (perfil que se edita, cuatro pestañas: Negocio, Bodega, Calidades y Usuarios, resumen financiero y "Cerrar sesión"): "Gastos operativos" abre `expenses`, "Información de empresa" abre `settings_business`, "Capacidad de bodega" abre `settings_warehouse` (también la abren los botones "Ajustar bodega" de `home` e `inventory`) y la tarjeta de resumen financiero abre `finance_summary`; las demás filas muestran el aviso "Esta opción estará disponible próximamente."
+- Se entra a Secado desde `inventory_type` (botón "Iniciar secado"); a "Registrar gasto" (`expense_new`) desde `home`. `settings` es la pantalla real del Figma (perfil que se edita, cuatro pestañas: Negocio, Bodega, Calidades y Usuarios, resumen financiero y "Cerrar sesión"): "Gastos operativos" abre `expenses`, "Información de empresa" abre `settings_business`, "Límites de entrada" abre `settings_limits`, "Clientes y productores" abre `settings_contacts`, "Capacidad de bodega" abre `settings_warehouse` (también la abren los botones "Ajustar bodega" de `home` e `inventory`) y la tarjeta de resumen financiero abre `finance_summary`; las demás filas muestran el aviso "Esta opción estará disponible próximamente."
 - `finance_summary` pide la clave financiera propia (se crea en el primer acceso) y solo con ella muestra el resumen; desde ahí se llega a `finance_history`, que no tiene otra entrada.
 - `login` lleva a `forgot_password` ("¿Olvidaste tu contraseña?").
 - `home` y `settings` tienen "Salir" / "Cerrar sesión", que vuelve a `login` y borra la pila.
@@ -60,7 +60,7 @@ El resto (lo demás de Inventario, Ventas y Secado) son *placeholders* (`NavPlac
 | Compras | `purchase_done` | Compra registrada |
 | Inventario | `inventory` | Resumen (Todos) por tipo |
 | Inventario | `inventory_type/{tipo}` | Lista · Verde (calidades de un tipo de café; el tipo viaja en la ruta) |
-| Inventario | `inventory_list` | Lista de sublotes de un grupo |
+| Inventario | `inventory_list/{loteId}` | Lista de sublotes de un grupo (el grupo viaja en la ruta) |
 | Inventario | `inventory_detail/{batchId}` | Detalle del sublote |
 | Inventario | `inventory_batch_expenses/{batchId}` | Gastos del sublote |
 | Ventas | `sale_batch_step1/{batchId}` | Vender sublote · Paso 1 · Cliente |
@@ -82,6 +82,8 @@ El resto (lo demás de Inventario, Ventas y Secado) son *placeholders* (`NavPlac
 | Ajustes | `settings` | Ajustes |
 | Ajustes | `settings_business` | Información de empresa (nombre, tipo y teléfono) |
 | Ajustes | `settings_warehouse` | Capacidad de bodega y peso por bulto |
+| Ajustes | `settings_limits` | Límites de entrada (mínimos y máximos de peso, precio y gasto) |
+| Ajustes | `settings_contacts` | Contactos registrados (productores: ver, buscar y editar) |
 | Finanzas | `finance_summary` | Clave financiera y Resumen financiero (Hoy / Esta semana) |
 | Finanzas | `finance_history` | Historial financiero (compras, ventas y gastos) |
 
