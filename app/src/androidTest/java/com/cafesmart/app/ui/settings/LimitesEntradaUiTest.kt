@@ -14,6 +14,10 @@ import com.cafesmart.app.viewmodel.limites.LimitesVigentes
 import org.junit.After
 import org.junit.Assert.assertEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.text.TextRange
 import org.junit.Rule
 import org.junit.Test
 
@@ -68,5 +72,30 @@ class LimitesEntradaUiTest {
             config.restablecer()
             assertEquals(LimitesDeEntrada.PREDETERMINADOS, ConfiguracionLimites(AlmacenLimitesPreferencias(contexto)).cargar())
         } finally { config.restablecer() }
+    }
+
+    @Test fun camposLargosSeEditanConFuenteAmpliada() {
+        val almacen = AlmacenLimitesMemoria()
+        compose.setContent {
+            val densidad = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(densidad.density, fontScale = 1.5f)) {
+                CafesmartTheme { LimitesEntradaScreen(ConfiguracionLimites(almacen)) {} }
+            }
+        }
+        val casos = listOf("1000" to "1.000", "10000" to "10.000", "99999" to "99.999",
+            "100000" to "100.000", "900000" to "900.000", "50000000" to "50.000.000")
+        casos.forEach { (crudo, mostrado) ->
+            compose.onAllNodes(hasSetTextAction())[5].performScrollTo().performTextReplacement(crudo)
+            compose.onAllNodes(hasSetTextAction())[5].assertIsDisplayed().assertTextEquals(mostrado)
+        }
+        compose.onAllNodes(hasSetTextAction())[5].performTextReplacement("")
+        compose.onAllNodes(hasSetTextAction())[5].assertTextEquals("")
+        compose.onAllNodes(hasSetTextAction())[5].performTextReplacement("50000000")
+        compose.onAllNodes(hasSetTextAction())[5].performTextInputSelection(TextRange(2))
+        compose.onAllNodes(hasSetTextAction())[5].performTextInput("9")
+        compose.onAllNodes(hasSetTextAction())[5].assertTextEquals("509.000.000")
+        compose.onAllNodes(hasSetTextAction())[5].performTextReplacement("50000000")
+        compose.onNodeWithText("Guardar límites").performClick()
+        assertEquals(50_000_000L, almacen.leer()?.gastoMaximoCop)
     }
 }

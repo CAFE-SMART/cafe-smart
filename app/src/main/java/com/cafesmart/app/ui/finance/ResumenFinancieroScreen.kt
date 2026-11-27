@@ -38,6 +38,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -73,6 +75,13 @@ import com.cafesmart.app.viewmodel.finance.ResumenUiState
 import com.cafesmart.app.viewmodel.finance.mensajeDeUtilidad
 import com.cafesmart.app.viewmodel.purchase.formatoKg
 import com.cafesmart.app.viewmodel.purchase.formatoMiles
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 // Pantalla "Resumen financiero · Panel" (Figma, sección NUEVAS de Flujos), en lenguaje de todos los días:
 //   1. Tu ganancia (verde si ganas, rojo si pierdes) y lo que salió de tu bolsillo (ámbar).
@@ -102,21 +111,17 @@ fun ResumenFinancieroScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(start = Spacing.s20, end = Spacing.s20, top = Spacing.s16, bottom = Spacing.s28),
-            verticalArrangement = Arrangement.spacedBy(Spacing.s28)
+                .padding(start = Spacing.s16, end = Spacing.s16, top = Spacing.s16, bottom = Spacing.s28),
+            verticalArrangement = Arrangement.spacedBy(Spacing.s12)
         ) {
             Text(
                 text = "Aquí ves cuánto dinero entró y cuánto salió de tu negocio.",
                 style = AppTypography.bodyLg.copy(color = TextSecondary)
             )
             SelectorDePeriodo(estado.periodo, onPeriodo)
-            if (graficas != null) {
-                Text("Mes a mes", style = AppTypography.titleCard)
-                graficas()
-            }
             val resumen = estado.resumen
             when {
-                resumen != null -> Contenido(resumen, estado.periodo, onHistorial)
+                resumen != null -> Contenido(resumen, estado.periodo, onHistorial, graficas)
                 estado.error != null -> Error(estado.error, onRecargar)
                 else -> Box(Modifier.fillMaxWidth().padding(Spacing.s28), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Primary)
@@ -154,10 +159,18 @@ private fun BotonRecargar(girando: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun Contenido(resumen: ResumenFinanciero, periodo: PeriodoFinanciero, onHistorial: () -> Unit) {
+private fun Contenido(
+    resumen: ResumenFinanciero,
+    periodo: PeriodoFinanciero,
+    onHistorial: () -> Unit,
+    graficas: (@Composable () -> Unit)? = null,
+) {
+    // Sin ventas conectadas, ingresos, costo de lo vendido y ganancia son desconocidos: "No disponible", nunca 0.
+    val disponible = resumen.ventasDisponibles
     val colorGanancia = when {
-        resumen.utilidad > 0 -> SuccessText
-        resumen.utilidad < 0 -> ErrorText
+        !disponible -> TextMuted
+        resumen.utilidad > 0 -> VerdeOscuro
+        resumen.utilidad < 0 -> RojoOscuro
         else -> TextPrimary
     }
     if (!resumen.hayDatos) {
@@ -183,21 +196,20 @@ private fun Contenido(resumen: ResumenFinanciero, periodo: PeriodoFinanciero, on
     ) {
         Bloque(
             titulo = "Tu ganancia de ${periodo.etiqueta.lowercase()}",
-            valor = pesos(resumen.utilidad),
+            valor = if (disponible) pesos(resumen.utilidad) else NO_DISPONIBLE,
             colorValor = colorGanancia,
             grande = true,
             explicacion = "Es lo que te queda después de pagar el café y tus gastos.",
-            mensaje = mensajeDeUtilidad(resumen.utilidad, periodo, resumen.ventas)
-        )
-        HorizontalDivider(color = BorderDefault)
-        Bloque(
-            titulo = "Lo que te costó lo que vendiste",
-            valor = pesos(resumen.costoVenta),
-            colorValor = WarningText,
-            grande = false,
-            explicacion = "Lo que pagaste por el café que vendiste más los gastos de ese café (secado, transporte y otros)."
+            mensaje = if (disponible) mensajeDeUtilidad(resumen.utilidad, periodo, resumen.ventas) else MENSAJE_SIN_VENTAS
         )
     }
+
+    // Ingresos y costo de lo vendido: lado a lado si caben; uno debajo del otro en pantallas angostas o con letra grande.
+    IngresosYCostos(
+        ingresos = if (disponible) pesos(resumen.ingresos) else NO_DISPONIBLE,
+        costos = if (disponible) pesos(resumen.costoVenta) else NO_DISPONIBLE,
+        disponible = disponible,
+    )
 
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.s12)) {
         Text("Así se calculó tu ganancia", style = AppTypography.labelSection.copy(color = TextMuted))
@@ -208,11 +220,11 @@ private fun Contenido(resumen: ResumenFinanciero, periodo: PeriodoFinanciero, on
                 .background(SurfaceCard)
                 .border(BorderStroke(1.dp, BorderDefault), AppShapes.medium)
         ) {
-            FilaDetalle(IconoDinero, "Ventas", "Lo que cobraste por el café que vendiste", "+ " + pesos(resumen.ingresos), SuccessText)
+            FilaDetalle(IconoDinero, "Ventas", "Lo que cobraste por el café que vendiste", if (disponible) "+ " + pesos(resumen.ingresos) else NO_DISPONIBLE, if (disponible) SuccessText else TextMuted)
             HorizontalDivider(color = BorderDefault)
-            FilaDetalle(AppIcons.Package, "Costo del café", "Lo que pagaste por el café que vendiste", "− " + pesos(resumen.costoCafe), WarningText)
+            FilaDetalle(AppIcons.Package, "Costo del café", "Lo que pagaste por el café que vendiste", if (disponible) "− " + pesos(resumen.costoCafe) else NO_DISPONIBLE, if (disponible) WarningText else TextMuted)
             HorizontalDivider(color = BorderDefault)
-            FilaDetalle(IconoRecibo, "Gastos", "Secado, transporte, cargue y otros de ese café", "− " + pesos(resumen.gastos), WarningText)
+            FilaDetalle(IconoRecibo, "Gastos", "Secado, transporte, cargue y otros de ese café", if (disponible) "− " + pesos(resumen.gastos) else NO_DISPONIBLE, if (disponible) WarningText else TextMuted)
         }
         Text("Ganancia = ventas − costo del café − gastos", style = AppTypography.bodyMd.copy(color = TextSecondary))
     }
@@ -257,6 +269,9 @@ private fun Contenido(resumen: ResumenFinanciero, periodo: PeriodoFinanciero, on
         Text(formatoKg(resumen.mermaKg), style = AppTypography.valueStrong)
     }
 
+    // Gráficas (distribución de gastos y balance semanal) antes del acceso al historial.
+    graficas?.invoke()
+
     // Entrada al Historial financiero: todas las compras, ventas y gastos en una lista.
     Row(
         modifier = Modifier
@@ -288,7 +303,7 @@ private fun Bloque(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(titulo, style = AppTypography.labelSection.copy(color = TextMuted))
-        Text(valor, style = (if (grande) AppTypography.displayValorXl else AppTypography.displayValor).copy(color = colorValor))
+        MontoAjustable(valor, (if (grande) AppTypography.displayValorXl else AppTypography.displayValor).copy(color = colorValor))
         Text(explicacion, style = AppTypography.bodyMd.copy(color = TextSecondary))
         mensaje?.let { Text(it, style = AppTypography.bodyMd.copy(color = colorValor)) }
     }
@@ -308,7 +323,73 @@ private fun FilaDetalle(icono: ImageVector, titulo: String, detalle: String, mon
             Text(titulo, style = AppTypography.labelField)
             Text(detalle, style = AppTypography.helper.copy(color = TextMuted))
         }
-        Text(monto, style = AppTypography.valueStrong.copy(color = colorMonto))
+        MontoAjustable(monto, AppTypography.valueStrong.copy(color = colorMonto), Modifier.widthIn(max = 160.dp))
+    }
+}
+
+/**
+ * Un monto en una sola línea que se achica hasta caber (pantallas angostas, letra grande o cifras de cientos de
+ * millones). Nunca se corta ni se parte en dos renglones.
+ */
+@Composable
+internal fun MontoAjustable(texto: String, estilo: androidx.compose.ui.text.TextStyle, modifier: Modifier = Modifier) {
+    // Se ajusta con la medida real del Text (incluye la fuente Inter ya cargada): si no cabe, se achica y se repite.
+    var tamano by androidx.compose.runtime.remember(texto, estilo) { androidx.compose.runtime.mutableStateOf(estilo.fontSize) }
+    var listo by androidx.compose.runtime.remember(texto, estilo) { androidx.compose.runtime.mutableStateOf(false) }
+    Text(
+        texto,
+        style = estilo.copy(fontSize = tamano, lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified),
+        maxLines = 1,
+        softWrap = false,
+        onTextLayout = { r ->
+            if (r.didOverflowWidth && tamano.value > 8f) tamano = tamano * 0.92f else listo = true
+        },
+        // No se dibuja hasta que cabe, para no mostrar un instante el número cortado.
+        modifier = modifier.drawWithContent { if (listo) drawContent() },
+    )
+}
+
+const val NO_DISPONIBLE = "No disponible"
+const val MENSAJE_SIN_VENTAS = "Las ventas todavía no están conectadas a la app; la ganancia se calculará cuando lo estén."
+
+@Composable
+private fun IngresosYCostos(ingresos: String, costos: String, disponible: Boolean) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val escalaLetra = LocalDensity.current.fontScale
+        val ladoALado = maxWidth >= 340.dp && escalaLetra <= 1.3f
+        val colorIngreso = if (disponible) VerdeIngresos else TextMuted
+        val colorCosto = if (disponible) CoralCostos else TextMuted
+        if (ladoALado) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s12)) {
+                TarjetaMonto(Modifier.weight(1f), IconoDinero, "Ingresos por ventas", ingresos, colorIngreso, VerdeIngresos, "tarjeta_ingresos")
+                TarjetaMonto(Modifier.weight(1f), IconoRecibo, "Lo que te costó lo que vendiste", costos, colorCosto, CoralCostos, "tarjeta_costos")
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.s12)) {
+                TarjetaMonto(Modifier.fillMaxWidth(), IconoDinero, "Ingresos por ventas", ingresos, colorIngreso, VerdeIngresos, "tarjeta_ingresos")
+                TarjetaMonto(Modifier.fillMaxWidth(), IconoRecibo, "Lo que te costó lo que vendiste", costos, colorCosto, CoralCostos, "tarjeta_costos")
+            }
+        }
+    }
+}
+
+@Composable
+private fun TarjetaMonto(modifier: Modifier, icono: ImageVector, titulo: String, valor: String, colorValor: Color, colorIcono: Color, tag: String) {
+    val forma = RoundedCornerShape(16.dp)
+    Column(
+        modifier = modifier
+            .background(SurfaceCard, forma)
+            .border(BorderStroke(1.dp, BorderDefault), forma)
+            .padding(Spacing.s16)
+            .semantics(mergeDescendants = true) { contentDescription = "$titulo: $valor" }
+            .testTag(tag),
+        verticalArrangement = Arrangement.spacedBy(Spacing.s8)
+    ) {
+        Box(Modifier.size(36.dp).background(colorIcono.copy(alpha = 0.14f), CircleShape), contentAlignment = Alignment.Center) {
+            Icon(icono, contentDescription = null, tint = colorIcono, modifier = Modifier.size(18.dp))
+        }
+        Text(titulo, style = AppTypography.helper.copy(color = TextSecondary))
+        MontoAjustable(valor, AppTypography.valueStrong.copy(color = colorValor))
     }
 }
 

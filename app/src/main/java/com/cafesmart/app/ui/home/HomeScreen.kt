@@ -282,6 +282,7 @@ fun HomeScreen(
 
                 // Ocupa toda la pantalla
                 .fillMaxSize()
+                .testTag("inicio_lista")
 
                 // Respeta el espacio del Scaffold
                 .padding(innerPadding),
@@ -318,10 +319,17 @@ fun HomeScreen(
                 ResumenDelDia(
 
                     delDia = estado.delDia,
+                    ventasHoy = estado.indicadores.ventas?.ventas,
 
                     onRegistrarGasto = onRegistrarGasto,
                     onVerGastos = onVerGastos
                 )
+            }
+
+            if (!estado.cargando && estado.error == null) {
+                item(key = "movimientos_recientes") {
+                    MovimientosRecientesInicio(estado.movimientos, estado.indicadores.ventas != null)
+                }
             }
 
 
@@ -828,9 +836,34 @@ private fun TituloSeccion(
  * Actualmente utiliza datos de ejemplo.
  */
 @Composable
+private fun MovimientosRecientesInicio(movimientos: List<com.cafesmart.app.data.finanzas.MovimientoFinanciero>, ventasConectadas: Boolean) {
+    Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 24.dp)) {
+        Text("Movimientos recientes", fontWeight = FontWeight.SemiBold, color = Texto, fontSize = 18.sp)
+        Spacer(Modifier.height(12.dp))
+        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (movimientos.isEmpty()) {
+                    Text("Aún no hay compras registradas.", color = Gris)
+                } else {
+                    movimientos.forEach { movimiento ->
+                        Column {
+                            Text(movimiento.titulo, color = Texto, fontWeight = FontWeight.SemiBold)
+                            Text("${movimiento.detalle} · ${movimiento.fecha.dia}/${movimiento.fecha.mes}/${movimiento.fecha.anio}", color = Gris)
+                        }
+                    }
+                }
+                if (!ventasConectadas) Text("Las ventas aparecerán cuando estén conectadas.", color = Gris, fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+@Composable
 private fun ResumenDelDia(
 
     delDia: ComprasDelDia,
+    ventasHoy: Int?,
 
     onRegistrarGasto: () -> Unit,
     onVerGastos: () -> Unit
@@ -944,7 +977,7 @@ private fun ResumenDelDia(
                             titulo = "Ventas",
 
                             // Las ventas todavía no se guardan en Room: no hay un dato real que mostrar.
-                            valor = "—",
+                            valor = ventasHoy?.toString() ?: "—",
 
                             icono = "ventas",
 

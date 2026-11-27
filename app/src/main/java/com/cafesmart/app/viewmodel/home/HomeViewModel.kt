@@ -57,6 +57,9 @@ data class HomeUiState(
     val inventario: ResumenInventario,
     val delDia: ComprasDelDia = ComprasDelDia(0, 0.0, 0),
     val sublotesAntiguos: List<SubloteInicio> = emptyList(),
+    // Ciclo 3: indicadores del día (compras y, cuando estén conectadas, ventas) y movimientos recientes.
+    val indicadores: IndicadoresDelDia = IndicadoresDelDia(ComprasDelDia(0, 0.0, 0), 0, null),
+    val movimientos: List<com.cafesmart.app.data.finanzas.MovimientoFinanciero> = emptyList(),
     val cargando: Boolean = true,
     val error: String? = null,
 ) {
@@ -97,10 +100,16 @@ class HomeViewModel(
     private val negocios: NegocioRepository?,
     private val uid: String?,
     private val hoy: () -> Fecha = ::fechaDeHoy,
+    // Nombres de los productores (id → nombre) para "Movimientos recientes". null = se muestran sin nombre.
+    private val nombresProductores: (suspend () -> Map<Long, String>)? = null,
+    // Ventas registradas. null = la fuente de Ventas en Room aún no está conectada (PR #43): sin indicadores de venta.
+    private val ventas: (suspend () -> List<com.cafesmart.app.data.finanzas.VentaRegistrada>)? = null,
 ) : ViewModel() {
 
     private var lotes: List<LoteConSublotes> = emptyList()
     private var listaCompras: List<CompraEntity> = emptyList()
+    private var nombres: Map<Long, String> = emptyMap()
+    private var listaVentas: List<com.cafesmart.app.data.finanzas.VentaRegistrada>? = null
     private var capacidad = 0.0
     private var pesoBulto = KG_POR_BULTO
     private var lecturas: List<Job> = emptyList()
@@ -119,6 +128,12 @@ class HomeViewModel(
         observar()
     }
 
+    /** Botón de actualizar de Inicio: vuelve a leer Room y los nombres, aunque no haya error. */
+    fun actualizar() {
+        _uiState.update { it.copy(error = null) }
+        observar()
+    }
+
     private fun resumen() = resumirInventario(lotes, capacidad, OrdenInventario.MAS_RECIENTE, pesoBulto)
 
     private fun observar() {
@@ -127,7 +142,15 @@ class HomeViewModel(
             protegido { inventario.observarLotes().collect { lotes = it; recalcular(cargando = false) } }
         }
         val c = viewModelScope.launch {
-            protegido { compras.collect { listaCompras = it; recalcular() } }
+            protegido {
+                compras.collect {
+                    listaCompras = it
+                    // Una compra nueva puede traer un productor nuevo: se vuelven a leer los nombres y las ventas.
+                    nombres = nombresProductores?.invoke() ?: nombres
+                    listaVentas = ventas?.invoke()
+                    recalcular()
+                }
+            }
         }
         val n = if (negocios != null && uid != null) viewModelScope.launch {
             protegido {
@@ -157,6 +180,8 @@ class HomeViewModel(
         it.copy(
             inventario = resumen(),
             delDia = resumirDia(lotes, listaCompras, fecha),
+            indicadores = indicadoresDelDia(lotes, listaCompras, listaVentas, fecha),
+            movimientos = movimientosRecientes(comprasRegistradas(listaCompras, lotes, nombres), listaVentas),
             sublotesAntiguos = sublotesMasAntiguos(lotes, fecha),
             cargando = cargando ?: it.cargando,
         )

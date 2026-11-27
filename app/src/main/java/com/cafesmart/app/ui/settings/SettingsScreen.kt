@@ -107,6 +107,7 @@ fun SettingsScreen(
     onResumenFinanciero: () -> Unit,
     onCapacidadBodega: () -> Unit = {},
     onLimitesEntrada: () -> Unit = {},
+    onContactos: () -> Unit = {},
     onPedirCerrarSesion: () -> Unit,
     onCancelarCierre: () -> Unit,
     onConfirmarCierre: () -> Unit,
@@ -159,7 +160,7 @@ fun SettingsScreen(
                     )
                     PestanaAjustes.BODEGA -> OpcionesBodega(onCapacidadBodega, proximamente)
                     PestanaAjustes.CALIDADES -> OpcionesCalidades(proximamente)
-                    PestanaAjustes.USUARIOS -> OpcionesUsuarios(proximamente)
+                    PestanaAjustes.USUARIOS -> OpcionesUsuarios(proximamente, onContactos)
                 }
 
                 TarjetaResumenFinanciero(onAcceder = onResumenFinanciero)
@@ -296,12 +297,11 @@ private fun OpcionesCalidades(proximamente: () -> Unit) {
 }
 
 @Composable
-private fun OpcionesUsuarios(proximamente: () -> Unit) {
+private fun OpcionesUsuarios(proximamente: () -> Unit, onContactos: () -> Unit) {
     TituloSeccion("Gestión de personas")
     FilaAjuste(IconoClientes, "Permisos y roles", "Qué puede hacer cada trabajador", proximamente, modo = ModoFila.PROXIMAMENTE)
     FilaAjuste(AppIcons.User, "Personal", "Tus trabajadores", proximamente, modo = ModoFila.PROXIMAMENTE)
-    // Contactos todavía no tiene pantalla: por ahora muestra el aviso de "próximamente".
-    FilaAjuste(IconoClientes, "Clientes y productores", "Directorio de tus contactos", proximamente)
+    FilaAjuste(IconoClientes, "Clientes y productores", "Directorio de tus contactos", onContactos)
 }
 
 // Tarjeta de perfil (Figma, sección NUEVAS de Flujos): avatar con iniciales y lápiz, nombre, correo completo

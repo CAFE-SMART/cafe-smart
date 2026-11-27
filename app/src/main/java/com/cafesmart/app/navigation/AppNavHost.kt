@@ -30,6 +30,11 @@ import com.cafesmart.app.viewmodel.finance.ResumenFinancieroViewModel
 import com.cafesmart.app.data.negocio.NegocioRepository
 import com.cafesmart.app.data.negocio.negocioDesdeRegistro
 import com.cafesmart.app.data.session.FirebaseSessionGateway
+import com.cafesmart.app.data.borradores.AlmacenBorradoresPreferencias
+import com.cafesmart.app.data.borradores.BorradorDeOperacion
+import com.cafesmart.app.data.borradores.TipoOperacion
+import com.cafesmart.app.data.borradores.claveBorrador
+import androidx.lifecycle.createSavedStateHandle
 import com.cafesmart.app.data.session.DestinoInicial
 import com.cafesmart.app.data.session.PreferenciaNotificacionesLocal
 import com.cafesmart.app.data.session.PreferenciaSesionLocal
@@ -388,6 +393,8 @@ fun AppNavHost(
                     compras = AppDatabase.obtener(context).compraDao().observarTodas(),
                     negocios = negocios,
                     uid = FirebaseSessionGateway.usuarioActual()?.uid,
+                    nombresProductores = { AppDatabase.obtener(context).productorDao().listar().associate { it.id to it.nombre } },
+                    // ventas = null: Ventas en Room llega con el PR #43; hasta entonces Inicio no inventa ventas.
                 )
             }
             val homeState by homeViewModel.uiState.collectAsState()
@@ -409,8 +416,8 @@ fun AppNavHost(
                         "ajustes" -> navController.navigateTo(Routes.SETTINGS)
                     }
                 },
-                // Los datos se actualizan solos desde Room; el botón no necesita recargar nada.
-                onActualizar = { },
+                // Vuelve a leer Room (inventario, compras y nombres de productores).
+                onActualizar = homeViewModel::actualizar,
                 onAjustarBodega = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
                 // Abre el detalle del sublote real que se tocó (su id de Room).
                 onAbrirSublote = { id -> navController.navigateTo(Routes.inventoryDetail(id.toString())) }
@@ -572,7 +579,18 @@ fun AppNavHost(
         // Los pasos 1-3 y la pantalla final los resuelve PurchaseFlow con el estado del ViewModel.
         composable(Routes.PURCHASE_STEP1) {
             // viewModel { } ligado a esta entrada del NavHost: se limpia al salir de la ruta.
-            val purchaseViewModel: PurchaseViewModel = viewModel { PurchaseViewModel(compras, ocupacion) }
+            // El borrador recupera la compra a medio hacer (girar, proceso cerrado por Android o app cerrada).
+            // Clave por cuenta: otra cuenta no ve este borrador.
+            val purchaseViewModel: PurchaseViewModel = viewModel {
+                PurchaseViewModel(
+                    compras, ocupacion,
+                    BorradorDeOperacion(
+                        AlmacenBorradoresPreferencias(context),
+                        claveBorrador(TipoOperacion.COMPRA, FirebaseSessionGateway.usuarioActual()?.uid),
+                        createSavedStateHandle(),
+                    ),
+                )
+            }
             val estado by purchaseViewModel.uiState.collectAsState()
 
             // Los productores guardados en Room se leen al abrir Compras.
@@ -735,6 +753,7 @@ fun AppNavHost(
                 onInformacionEmpresa = { navController.navigateTo(Routes.SETTINGS_BUSINESS) },
                 onResumenFinanciero = { navController.navigateTo(Routes.FINANCE_SUMMARY) },
                 onLimitesEntrada = { navController.navigateTo(Routes.SETTINGS_LIMITS) },
+                onContactos = { navController.navigateTo(Routes.SETTINGS_CONTACTS) },
                 onCapacidadBodega = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
                 aviso = settingsState.aviso,
                 onAvisoOculto = settingsViewModel::ocultarAviso,
@@ -757,6 +776,14 @@ fun AppNavHost(
             )
         }
 
+        composable(Routes.SETTINGS_CONTACTS) {
+            val vm: com.cafesmart.app.viewmodel.contactos.ContactosViewModel = viewModel {
+                com.cafesmart.app.viewmodel.contactos.ContactosViewModel(compras)
+            }
+            val estado by vm.estado.collectAsState()
+            com.cafesmart.app.ui.settings.ContactosScreen(estado, vm, onBack = { navController.popBackStack() })
+        }
+
         composable(Routes.SETTINGS_LIMITS) {
             val configuracion = remember {
                 com.cafesmart.app.data.limites.ConfiguracionLimites(
@@ -775,7 +802,7 @@ fun AppNavHost(
             }
             val acceso by accesoViewModel.estado.collectAsState()
             if (acceso.autorizado) {
-                // Datos reales de Room (hoy: los gastos; ventas, compras y merma se conectan cuando entren en Room).
+                // Datos reales de Room: gastos y compras. Ventas (#43) y merma (#44-#46) aún no: "No disponible".
                 val origen = remember { OrigenFinancieroRoom.de(context) }
                 val resumenViewModel: ResumenFinancieroViewModel = viewModel {
                     ResumenFinancieroViewModel(FinanzasLocal(origen, ::fechaDeHoy))
@@ -789,11 +816,12 @@ fun AppNavHost(
                 ResumenFinancieroScreen(
                     estado = resumen,
                     onBack = { navController.popBackStack() },
-                    onPeriodo = resumenViewModel::cambiarPeriodo,
+                    // El periodo mueve el Resumen y las gráficas a la vez (la regla Hoy / 7 días es la del Resumen).
+                    onPeriodo = { resumenViewModel.cambiarPeriodo(it); graficasViewModel.cambiarPeriodo(it) },
                     onRecargar = { resumenViewModel.recargar(); graficasViewModel.cargar() },
                     onAvisoOculto = resumenViewModel::ocultarAviso,
                     onHistorial = { navController.navigateTo(Routes.FINANCE_HISTORY) },
-                    graficas = { GraficasFinancieras(graficas, soloGastos = true) },
+                    graficas = { GraficasFinancieras(graficas) },
                 )
             } else {
                 AccesoFinancieroScreen(

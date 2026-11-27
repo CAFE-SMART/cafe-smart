@@ -7,11 +7,20 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.cafesmart.app.data.limites.*
 import com.cafesmart.app.ui.components.AppTextField
@@ -104,9 +113,62 @@ private fun GrupoLimites(
             Text(titulo, style = AppTypography.titleCard)
             Text(descripcion, style = AppTypography.bodyMd.copy(color = TextSecondary))
         }
-        Row(Modifier.fillMaxWidth().padding(Spacing.s16), horizontalArrangement = Arrangement.spacedBy(Spacing.s12)) {
-            AppTextField("Mínimo ($unidad)", mostrarLimite(minimo), { onMinimo(limpiarLimite(it)) }, modifier = Modifier.weight(1f), keyboardType = KeyboardType.Number, error = errorMinimo, compact = true)
-            AppTextField("Máximo ($unidad)", mostrarLimite(maximo), { onMaximo(limpiarLimite(it)) }, modifier = Modifier.weight(1f), keyboardType = KeyboardType.Number, error = errorMaximo, compact = true)
+        Column(Modifier.fillMaxWidth().padding(Spacing.s16), verticalArrangement = Arrangement.spacedBy(Spacing.s16)) {
+            CampoLimiteNumerico("Mínimo ($unidad)", minimo, errorMinimo, onMinimo)
+            CampoLimiteNumerico("Máximo ($unidad)", maximo, errorMaximo, onMaximo)
         }
+    }
+}
+
+/** Se guarda el texto sin separadores; la transformación solo los dibuja y conserva la posición del cursor. */
+internal object SeparadoresLimite : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val original = text.text
+        val mostrado = mostrarLimite(original)
+        val mapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                if (offset <= 0) return 0
+                var vistos = 0
+                mostrado.forEachIndexed { i, c ->
+                    if (c != '.') vistos++
+                    if (vistos == offset) return i + 1
+                }
+                return mostrado.length
+            }
+            override fun transformedToOriginal(offset: Int): Int =
+                mostrado.take(offset.coerceIn(0, mostrado.length)).count { it != '.' }.coerceAtMost(original.length)
+        }
+        return TransformedText(AnnotatedString(mostrado), mapping)
+    }
+}
+
+@Composable
+private fun CampoLimiteNumerico(label: String, value: String, error: String?, onChange: (String) -> Unit) {
+    var campo by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+    val mostrado = if (campo.text == value) campo else TextFieldValue(value, TextRange(value.length))
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.s8)) {
+        Text(label, style = AppTypography.labelField)
+        OutlinedTextField(
+            value = mostrado,
+            onValueChange = { nuevo ->
+                val limpio = limpiarLimite(nuevo.text)
+                fun posicion(offset: Int) = limpiarLimite(nuevo.text.take(offset)).length.coerceAtMost(limpio.length)
+                campo = TextFieldValue(limpio, TextRange(posicion(nuevo.selection.start), posicion(nuevo.selection.end)))
+                onChange(limpio)
+            },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+            singleLine = true,
+            textStyle = AppTypography.bodyLg,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            visualTransformation = SeparadoresLimite,
+            isError = error != null,
+            shape = AppShapes.medium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Primary, unfocusedBorderColor = BorderField,
+                focusedContainerColor = SurfaceCard, unfocusedContainerColor = SurfaceCard,
+                errorBorderColor = ErrorDot, errorContainerColor = SurfaceCard,
+            ),
+        )
+        if (error != null) Text(error, style = AppTypography.helper.copy(color = ErrorText))
     }
 }

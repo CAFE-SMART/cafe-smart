@@ -49,6 +49,7 @@ internal fun Gasto.aGastoRegistrado(subloteIds: List<Long> = emptyList()): Gasto
     fecha = fecha,
     montoPesos = monto,
     concepto = concepto,
+    tipo = tipo,
     detalle = when (aplicaA) {
         AplicaGasto.GENERAL -> "Gasto general"
         AplicaGasto.SECADO -> "Secado"
