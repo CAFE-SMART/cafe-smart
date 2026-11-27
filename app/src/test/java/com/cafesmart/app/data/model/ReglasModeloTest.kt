@@ -68,12 +68,12 @@ class ReglasModeloTest {
     }
 
     @Test
-    fun factorDebeEstarEntre80y120() {
-        sublote(factor = 80)
+    fun factorDebeEstarEntre70y140() {
+        sublote(factor = 70)
         sublote(factor = 100)
-        sublote(factor = 120)
-        assertTrue(falla { sublote(factor = 79) })
-        assertTrue(falla { sublote(factor = 121) })
+        sublote(factor = 140)
+        assertTrue(falla { sublote(factor = 69) })
+        assertTrue(falla { sublote(factor = 141) })
     }
 
     // ── Secado ───────────────────────────────────────────────
@@ -86,11 +86,11 @@ class ReglasModeloTest {
     }
 
     @Test
-    fun factorDelSecadoDebeEstarEntre80y120() {
-        Secado(id = 1, fechaInicio = hoy, factorRendimiento = 80)
-        Secado(id = 1, fechaInicio = hoy, factorRendimiento = 120)
-        assertTrue(falla { Secado(id = 1, fechaInicio = hoy, factorRendimiento = 79) })
-        assertTrue(falla { Secado(id = 1, fechaInicio = hoy, factorRendimiento = 121) })
+    fun factorDelSecadoDebeEstarEntre70y140() {
+        Secado(id = 1, fechaInicio = hoy, factorRendimiento = 70)
+        Secado(id = 1, fechaInicio = hoy, factorRendimiento = 140)
+        assertTrue(falla { Secado(id = 1, fechaInicio = hoy, factorRendimiento = 69) })
+        assertTrue(falla { Secado(id = 1, fechaInicio = hoy, factorRendimiento = 141) })
     }
 
     @Test
