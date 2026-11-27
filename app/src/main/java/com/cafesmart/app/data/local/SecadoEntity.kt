@@ -14,7 +14,7 @@ import androidx.room.PrimaryKey
  *   igual que lote.tipo_cafe.
  * - fechaInicio y fechaFin: milisegundos UTC (fechaAMilis / milisAFecha), igual que sublote.fecha_ingreso.
  *   fechaFin es null mientras el secado está EN_CURSO (o si se canceló).
- * - factorRendimiento: opcional (null si no se registró); entre 80 y 120.
+ * - factorRendimiento: opcional (null si no se registró); entre 70 y 140.
  * - La merma NO se guarda: se calcula (kg enviados − kg secos). Ver SecadoConDetalle.
  */
 @Entity(tableName = "secado")

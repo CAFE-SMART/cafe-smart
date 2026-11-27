@@ -33,7 +33,6 @@ import com.cafesmart.app.data.session.DestinoInicial
 import com.cafesmart.app.data.session.PreferenciaNotificacionesLocal
 import com.cafesmart.app.data.session.PreferenciaSesionLocal
 import com.cafesmart.app.data.secado.SecadoRepository
-import com.cafesmart.app.data.secado.SecadoRepositoryEjemplo
 import com.cafesmart.app.data.session.decidirInicio
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
@@ -187,7 +186,7 @@ fun AppNavHost(
     val ventas = remember { VentaRepository.de(context) }
     val inventario = remember { InventoryRepository.de(context) }
     // Secado: por ahora el repositorio de ejemplo (en memoria); se cambia por Room cuando exista.
-    val secadoRepositorio = remember { SecadoRepositoryEjemplo() }
+    val secadoRepositorio = remember { SecadoRepository.de(context) }
     val scope = rememberCoroutineScope()
     val guardarNegocio: (RegistrationData) -> Unit = { data ->
         FirebaseSessionGateway.usuarioActual()?.uid?.let { uid ->

@@ -1,10 +1,14 @@
 package com.cafesmart.app.data.secado
 
+import com.cafesmart.app.data.local.LoteEntity
 import com.cafesmart.app.data.local.SecadoEntity
 import com.cafesmart.app.data.local.SecadoSubloteEntity
+import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.EstadoSecado
+import com.cafesmart.app.data.model.Lote
 import com.cafesmart.app.data.model.Secado
 import com.cafesmart.app.data.model.SecadoSublote
+import com.cafesmart.app.data.model.TipoCafe
 import com.cafesmart.app.viewmodel.purchase.fechaAMilis
 import com.cafesmart.app.viewmodel.purchase.milisAFecha
 
@@ -39,4 +43,12 @@ internal fun SecadoSubloteEntity.aModelo(): SecadoSublote = SecadoSublote(
     secadoId = secadoId,
     subloteId = subloteId,
     pesoEnviadoKg = pesoEnviadoKg,
+)
+
+// El tipo y la calidad se guardan como el nombre del enum ("SECO", "BUENA"); valueOf lanza una excepción si el
+// texto no existe, mejor que mostrar un tipo equivocado.
+internal fun LoteEntity.aModelo(): Lote = Lote(
+    id = id,
+    tipoCafe = TipoCafe.valueOf(tipoCafe),
+    calidad = Calidad.valueOf(calidad),
 )

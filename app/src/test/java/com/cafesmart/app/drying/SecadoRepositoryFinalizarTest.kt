@@ -252,7 +252,7 @@ class SecadoRepositoryFinalizarTest {
         val envio = repositorio.secadosEnCurso().single().enviados.single()
         assertEquals(50.0, envio.envio.pesoEnviadoKg, 0.0)
         assertEquals(1L, envio.sublote.id)
-        assertEquals(120.0, envio.sublote.pesoDisponibleKg, 0.0)   // la foto es de antes de descontar
+        assertEquals(14_000L, envio.sublote.costoKg)
         assertEquals(70.0, disponible(repositorio, 1), 0.0)
     }
 
