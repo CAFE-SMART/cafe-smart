@@ -12,9 +12,9 @@ import com.cafesmart.app.data.model.TipoCafe
 //
 //   Resumen (Todos)          → resumirInventario(...)           (InventorySummary.kt)
 //   Lista por tipo           → resumirCalidades(...)            (aquí) ruta inventory_type/{tipo}
-//   Sublotes del grupo       → sublotesDelLote(...)             (aquí) ruta inventory_list
+//   Sublotes del grupo       → sublotesDelLote(...)             (aquí) ruta inventory_list/{loteId}
 //
-// Las dos pantallas se construyen en la tarjeta del ciclo 3; esta tarjeta solo deja los datos listos.
+// Los textos y totales de "Sublotes del grupo" se arman en SublotesGrupo.kt.
 // "Grupo" = un lote, es decir, un tipo de café con una calidad (por ejemplo "Verde · Buena").
 
 // Una fila de "Lista por tipo": una calidad de ese tipo con lo que hay en bodega.

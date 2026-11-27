@@ -202,12 +202,12 @@ private fun Resumen(d: DetalleSublote) {
 }
 
 @Composable
-private fun DivisorVertical() {
+internal fun DivisorVertical() {
     Box(Modifier.width(1.dp).fillMaxHeight().background(DividerOnBlue))
 }
 
 @Composable
-private fun Metrica(titulo: String, valor: String, nota: String?, modifier: Modifier = Modifier) {
+internal fun Metrica(titulo: String, valor: String, nota: String?, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(titulo, style = AppTypography.caption)
         Text(valor, style = AppTypography.valueStrongBold, color = PrimaryDark)
@@ -217,7 +217,7 @@ private fun Metrica(titulo: String, valor: String, nota: String?, modifier: Modi
 
 // Etiqueta con punto de color según la calidad: buena (verde), regular (ámbar) y mala (rojo).
 @Composable
-private fun EtiquetaCalidad(calidad: Calidad, texto: String) {
+internal fun EtiquetaCalidad(calidad: Calidad, texto: String) {
     val (fondo, punto, letra) = when (calidad) {
         Calidad.BUENA -> Triple(SuccessBg, SuccessDot, SuccessText)
         Calidad.REGULAR -> Triple(WarningBg, WarningDot, WarningText)
@@ -286,14 +286,14 @@ private fun DatosDeCalidad(d: DetalleSublote) {
 }
 
 @Composable
-private fun Tarjeta(contenido: @Composable () -> Unit) {
+internal fun Tarjeta(contenido: @Composable () -> Unit) {
     Surface(shape = AppShapes.large, color = SurfaceCard, border = BorderStroke(1.dp, BorderDefault)) {
         Column(Modifier.fillMaxWidth()) { contenido() }
     }
 }
 
 @Composable
-private fun EncabezadoSeccion(icono: ImageVector, fondo: Color, tinte: Color, titulo: String, subtitulo: String?) {
+internal fun EncabezadoSeccion(icono: ImageVector, fondo: Color, tinte: Color, titulo: String, subtitulo: String?) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = Spacing.s16, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -311,14 +311,14 @@ private fun EncabezadoSeccion(icono: ImageVector, fondo: Color, tinte: Color, ti
 }
 
 @Composable
-private fun IconoCircular(icono: ImageVector) {
+internal fun IconoCircular(icono: ImageVector) {
     Box(Modifier.size(32.dp).background(SurfaceSoft, CircleShape), contentAlignment = Alignment.Center) {
         Icon(icono, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
     }
 }
 
 @Composable
-private fun FilaDato(icono: ImageVector, etiqueta: String, valor: @Composable () -> Unit) {
+internal fun FilaDato(icono: ImageVector, etiqueta: String, valor: @Composable () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(Spacing.s16),
         verticalAlignment = Alignment.CenterVertically,
@@ -331,7 +331,7 @@ private fun FilaDato(icono: ImageVector, etiqueta: String, valor: @Composable ()
 }
 
 @Composable
-private fun Valor(texto: String, tag: String? = null) {
+internal fun Valor(texto: String, tag: String? = null) {
     Text(
         texto,
         style = AppTypography.valueStrongBold,
@@ -356,16 +356,16 @@ private fun FilaCalidad(icono: ImageVector, titulo: String, subtitulo: String, v
     }
 }
 
-// Íconos de línea (Lucide) propios de esta pantalla, privados para no editar AppIcons.kt, que comparte todo el equipo.
-private val IconoDetInfo by lazy { icono("Info", "M12 2a10 10 0 1 1 0 20a10 10 0 1 1 0-20Z", "M12 16v-4", "M12 8h.01") }
+// Íconos de línea (Lucide) de Inventario, definidos aquí para no editar AppIcons.kt, que comparte todo el equipo.
+internal val IconoDetInfo by lazy { icono("Info", "M12 2a10 10 0 1 1 0 20a10 10 0 1 1 0-20Z", "M12 16v-4", "M12 8h.01") }
 private val IconoDetEstrella by lazy {
     icono("Estrella", "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z")
 }
-private val IconoDetReloj by lazy { icono("Reloj", "M12 2a10 10 0 1 1 0 20a10 10 0 1 1 0-20Z", "M12 6v6l4 2") }
-private val IconoDetGota by lazy {
+internal val IconoDetReloj by lazy { icono("Reloj", "M12 2a10 10 0 1 1 0 20a10 10 0 1 1 0-20Z", "M12 6v6l4 2") }
+internal val IconoDetGota by lazy {
     icono("Gota", "M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z")
 }
-private val IconoDetEtiqueta by lazy {
+internal val IconoDetEtiqueta by lazy {
     icono(
         "Etiqueta",
         "M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z",

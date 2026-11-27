@@ -96,11 +96,11 @@ import com.cafesmart.app.viewmodel.purchase.formatoKg
 // Pantalla "Inventario · Resumen (Todos)" y "Inventario · Vacío" del Figma (ruta `inventory`).
 // Sin estado propio: recibe el estado y avisa con callbacks (igual que SettingsScreen). Los datos salen
 // de InventoryViewModel, que los lee de Room (InventoryRepository) y se actualiza solo.
-// Las pantallas siguientes (calidades de un tipo, sublotes, detalle) son otras tareas: aquí solo se avisa
-// con onTipoClick cuál tipo se tocó.
+// Con onTipoClick se avisa cuál tipo se tocó (abre CalidadesTipoScreen). Las piezas marcadas `internal`
+// las reutiliza esa pantalla.
 
 // "Inventario" a 28 sp negrita (Figma). displayValor ya tiene ese tamaño pero en azul; aquí va en el texto principal.
-private val TituloPantalla = AppTypography.displayValor.copy(color = TextPrimary)
+internal val TituloPantalla = AppTypography.displayValor.copy(color = TextPrimary)
 
 // Estilos de 13 sp que el Figma usa y AppTypography no trae.
 private val Texto13Medio = TextStyle(fontFamily = Inter, fontWeight = FontWeight.Medium, fontSize = 13.sp)
@@ -170,7 +170,7 @@ fun InventoryScreen(
 
 // Tarjeta blanca: total en bodega, anillo de capacidad y estado ("Capacidad normal" + "Ajustar bodega").
 @Composable
-private fun ResumenBodega(resumen: ResumenInventario, onAjustarBodega: () -> Unit) {
+internal fun ResumenBodega(resumen: ResumenInventario, onAjustarBodega: () -> Unit) {
     val estadoBodega = resumen.ocupacion.estado
     val colorEstado = colorDelEstado(estadoBodega)
 
@@ -300,7 +300,7 @@ private fun AnilloCapacidad(porcentaje: Double, color: Color, modifier: Modifier
 // Fila de pestañas "Todos · Verde · Seco · Trillado · Pasilla". En el Figma cada una abre la lista de ese
 // tipo (otra pantalla), por eso solo avisa con onTipoClick. `seleccionado = null` marca "Todos".
 @Composable
-private fun FiltroPorTipo(
+internal fun FiltroPorTipo(
     seleccionado: TipoCafe?,
     onTipoClick: (TipoCafe) -> Unit,
     onTodosClick: () -> Unit = {}
@@ -358,7 +358,11 @@ private fun OpcionFiltro(
 
 // "Por tipo de café" a la izquierda y el botón de orden a la derecha.
 @Composable
-private fun EncabezadoLista(orden: OrdenInventario, onOrdenChange: (OrdenInventario) -> Unit) {
+internal fun EncabezadoLista(
+    orden: OrdenInventario,
+    onOrdenChange: (OrdenInventario) -> Unit,
+    titulo: String = "Por tipo de café",
+) {
     var menuAbierto by remember { mutableStateOf(false) }
 
     Row(
@@ -366,7 +370,7 @@ private fun EncabezadoLista(orden: OrdenInventario, onOrdenChange: (OrdenInventa
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Por tipo de café",
+            text = titulo,
             style = AppTypography.labelSection,
             modifier = Modifier.weight(1f)
         )
@@ -453,7 +457,7 @@ private fun TarjetaTipo(fila: ResumenTipo, pesoBultoKg: Double, onClick: () -> U
 
 // Etiqueta gris "4 sublotes" / "1 sublote" / "Sin sublotes".
 @Composable
-private fun EtiquetaSublotes(texto: String) {
+internal fun EtiquetaSublotes(texto: String) {
     Box(
         modifier = Modifier
             .height(26.dp)
@@ -469,14 +473,14 @@ private fun EtiquetaSublotes(texto: String) {
     }
 }
 
-private fun iconoDelTipo(tipo: TipoCafe): ImageVector = when (tipo) {
+internal fun iconoDelTipo(tipo: TipoCafe): ImageVector = when (tipo) {
     TipoCafe.VERDE -> AppIcons.Sprout
     TipoCafe.SECO -> AppIcons.Sun
     TipoCafe.TRILLADO -> AppIcons.Coffee
     TipoCafe.PASILLA -> AppIcons.Package
 }
 
-private fun colorDelTipo(tipo: TipoCafe): Color = when (tipo) {
+internal fun colorDelTipo(tipo: TipoCafe): Color = when (tipo) {
     TipoCafe.VERDE -> SuccessIcon
     TipoCafe.SECO -> WarningText
     TipoCafe.TRILLADO -> TrilladoIcon

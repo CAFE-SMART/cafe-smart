@@ -31,14 +31,14 @@ Modelo de datos: [`docs/modelo-de-datos.md`](docs/modelo-de-datos.md).
 
 ## Navegación (Navigation Compose)
 Todo el grafo vive en `navigation/AppNavHost.kt` y los nombres de ruta en `navigation/Routes.kt`.
-Cada ruta corresponde a una pantalla del Figma (pestaña "Flujos"). Ya son reales: cuenta (inicio de sesión, registro y recuperar contraseña con Firebase), `home`, Compras (pasos 1 a 3 y `purchase_done`), el resumen de `inventory`, los tres de Gastos y los Gastos del sublote (`inventory_batch_expenses`), Ajustes (`settings`, `settings_business` y `settings_warehouse`) y las Finanzas (`finance_summary` y `finance_history`).
-El resto (lo demás de Inventario, Ventas y Secado) son *placeholders* (`NavPlaceholder`) que se reemplazan por la pantalla real dentro de su `composable(...)`.
+Cada ruta corresponde a una pantalla del Figma (pestaña "Flujos"). Ya son reales: cuenta (inicio de sesión, registro y recuperar contraseña con Firebase), `home`, Compras (pasos 1 a 3 y `purchase_done`), el resumen de `inventory`, sus listas (`inventory_type/{tipo}` y `inventory_list/{loteId}`), el detalle del sublote, los tres de Gastos y los Gastos del sublote (`inventory_batch_expenses`), Ajustes (`settings`, `settings_business` y `settings_warehouse`) y las Finanzas (`finance_summary` y `finance_history`).
+El resto (Ventas desde un sublote y Secado) son *placeholders* (`NavPlaceholder`) que se reemplazan por la pantalla real dentro de su `composable(...)`.
 
 **Flujo base:** `splash` → `login` → `home` → `inventory`
 (el splash y el login se sacan de la pila: "atrás" no vuelve a ellos).
 
 **Orden de pantallas (igual que el prototipo del Figma):**
-- Inventario: `inventory` (resumen) → `inventory_type/{tipo}` (calidades de un tipo: VERDE, SECO, TRILLADO o PASILLA) → `inventory_list` (sublotes del grupo) → `inventory_detail/{batchId}` → `inventory_batch_expenses/{batchId}` o `sale_batch_step1/{batchId}` → `sale_batch_step2/{batchId}` → `sale_done`.
+- Inventario: `inventory` (resumen) → `inventory_type/{tipo}` (calidades de un tipo: VERDE, SECO, TRILLADO o PASILLA) → `inventory_list/{loteId}` (sublotes del grupo) → `inventory_detail/{batchId}` → `inventory_batch_expenses/{batchId}` o `sale_batch_step1/{batchId}` → `sale_batch_step2/{batchId}` → `sale_done`.
 - Secado: `drying_step1` → `2` → `3` → `4` → `5` → `drying_step6` (sin gastos) **o** `5` → `drying_step7` (gastos) → `drying_step6`. El paso 6 siempre es el final.
 - Se entra a Secado desde `inventory_type` (botón "Iniciar secado"); a "Registrar gasto" (`expense_new`) desde `home`. `settings` es la pantalla real del Figma (perfil que se edita, cuatro pestañas: Negocio, Bodega, Calidades y Usuarios, resumen financiero y "Cerrar sesión"): "Gastos operativos" abre `expenses`, "Información de empresa" abre `settings_business`, "Capacidad de bodega" abre `settings_warehouse` (también la abren los botones "Ajustar bodega" de `home` e `inventory`) y la tarjeta de resumen financiero abre `finance_summary`; las demás filas muestran el aviso "Esta opción estará disponible próximamente."
 - `finance_summary` pide la clave financiera propia (se crea en el primer acceso) y solo con ella muestra el resumen; desde ahí se llega a `finance_history`, que no tiene otra entrada.
@@ -60,7 +60,7 @@ El resto (lo demás de Inventario, Ventas y Secado) son *placeholders* (`NavPlac
 | Compras | `purchase_done` | Compra registrada |
 | Inventario | `inventory` | Resumen (Todos) por tipo |
 | Inventario | `inventory_type/{tipo}` | Lista · Verde (calidades de un tipo de café; el tipo viaja en la ruta) |
-| Inventario | `inventory_list` | Lista de sublotes de un grupo |
+| Inventario | `inventory_list/{loteId}` | Lista de sublotes de un grupo (el lote viaja en la ruta) |
 | Inventario | `inventory_detail/{batchId}` | Detalle del sublote |
 | Inventario | `inventory_batch_expenses/{batchId}` | Gastos del sublote |
 | Ventas | `sale_batch_step1/{batchId}` | Vender sublote · Paso 1 · Cliente |
@@ -167,6 +167,7 @@ En cada pull request el workflow `CI` corre las pruebas y guarda el reporte:
 | `viewmodel/gastos/GastosSubloteTest.kt` | Gastos del sublote | 7       |
 | `viewmodel/inventory/InventorySummaryTest.kt` | Resumen de inventario por tipo, orden y conversión a bultos                                                                                                   | 19      |
 | `viewmodel/inventory/InventoryListsTest.kt` | Datos de Lista por tipo (calidades de un tipo) y Sublotes del grupo: pesos, agotados y orden                                                                  | 12      |
+| `viewmodel/inventory/SublotesGrupoTest.kt` | Agrupamiento por calidad y totales, orden, filtro por tipo y calidad y estado vacío de Sublotes del grupo | 6 |
 | `viewmodel/inventory/InventoryViewModelTest.kt` | Estado de Inventario con repositorio falso: resumen, estado vacío, cargando y compra nueva que aparece sola                                                   | 9       |
 | `viewmodel/inventory/DetalleSubloteViewModelTest.kt` | Detalle del sublote con repositorio falso: datos, actualización automática, no encontrado, agotado, tiempo en bodega, datos de calidad y bultos según el negocio | 16      |
 | `viewmodel/inventory/WarehouseCapacityTest.kt` | Ocupación de la bodega y sus estados (normal, advertencia, crítica, sin capacidad)                                                                            | 36      |
