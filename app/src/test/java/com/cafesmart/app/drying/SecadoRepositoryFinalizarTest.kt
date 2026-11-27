@@ -3,6 +3,8 @@ package com.cafesmart.app.drying
 import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.EstadoSecado
 import com.cafesmart.app.data.model.Fecha
+import com.cafesmart.app.data.model.FACTOR_RENDIMIENTO_MAX
+import com.cafesmart.app.data.model.FACTOR_RENDIMIENTO_MIN
 import com.cafesmart.app.data.model.SubloteConLote
 import com.cafesmart.app.data.model.TipoCafe
 import com.cafesmart.app.data.secado.EnvioASecar
@@ -172,8 +174,8 @@ class SecadoRepositoryFinalizarTest {
 
         val invalidos = listOf<() -> Unit>(
             { repositorio.finalizarSecado(id, Fecha(2, 6, 2026), kilos(140.0, 118.0, 12.0), 92) },  // fecha anterior al inicio
-            { repositorio.finalizarSecado(id, fin, kilos(140.0, 118.0, 12.0), 79) },                 // factor bajo
-            { repositorio.finalizarSecado(id, fin, kilos(140.0, 118.0, 12.0), 121) },                // factor alto
+            { repositorio.finalizarSecado(id, fin, kilos(140.0, 118.0, 12.0), FACTOR_RENDIMIENTO_MIN - 1) },                 // factor bajo
+            { repositorio.finalizarSecado(id, fin, kilos(140.0, 118.0, 12.0), FACTOR_RENDIMIENTO_MAX + 1) },                // factor alto
             { repositorio.finalizarSecado(id, fin, kilos(), 92) },                                   // suma 0
             { repositorio.finalizarSecado(id, fin, kilos(140.0, 118.0, 33.0), 92) },                 // pasa de lo enviado
             { repositorio.finalizarSecado(id, fin, kilos(140.0, -1.0, 12.0), 92) }                   // negativo

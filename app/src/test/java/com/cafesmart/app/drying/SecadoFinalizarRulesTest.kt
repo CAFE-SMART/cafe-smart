@@ -3,6 +3,8 @@ package com.cafesmart.app.drying
 import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.EnvioSecado
 import com.cafesmart.app.data.model.Fecha
+import com.cafesmart.app.data.model.FACTOR_RENDIMIENTO_MAX
+import com.cafesmart.app.data.model.FACTOR_RENDIMIENTO_MIN
 import com.cafesmart.app.data.model.SecadoSublote
 import com.cafesmart.app.data.model.TipoCafe
 import com.cafesmart.app.viewmodel.drying.AYUDA_FACTOR
@@ -116,20 +118,22 @@ class SecadoFinalizarRulesTest {
     // ---------- Factor de rendimiento ----------
 
     @Test
-    fun factor_80y120SonValidos() {
-        assertNull(errorFactor("80"))
-        assertNull(errorFactor("120"))
-        assertTrue(factorValido("80"))
-        assertTrue(factorValido("120"))
+    fun factor_losLimitesSonValidos() {
+        assertNull(errorFactor(FACTOR_RENDIMIENTO_MIN.toString()))
+        assertNull(errorFactor(FACTOR_RENDIMIENTO_MAX.toString()))
+        assertTrue(factorValido(FACTOR_RENDIMIENTO_MIN.toString()))
+        assertTrue(factorValido(FACTOR_RENDIMIENTO_MAX.toString()))
         assertTrue(factorValido("92"))
     }
 
     @Test
-    fun factor_79y121EstanFueraDeRango() {
-        assertEquals(MENSAJE_FACTOR_FUERA_DE_RANGO, errorFactor("79"))
-        assertEquals(MENSAJE_FACTOR_FUERA_DE_RANGO, errorFactor("121"))
-        assertFalse(factorValido("79"))
-        assertFalse(factorValido("121"))
+    fun factor_unoFueraDeLosLimitesEsInvalido() {
+        val bajo = (FACTOR_RENDIMIENTO_MIN - 1).toString()
+        val alto = (FACTOR_RENDIMIENTO_MAX + 1).toString()
+        assertEquals(MENSAJE_FACTOR_FUERA_DE_RANGO, errorFactor(bajo))
+        assertEquals(MENSAJE_FACTOR_FUERA_DE_RANGO, errorFactor(alto))
+        assertFalse(factorValido(bajo))
+        assertFalse(factorValido(alto))
         assertEquals(MENSAJE_FACTOR_FUERA_DE_RANGO, errorFactor("99999999999999"))
     }
 
@@ -153,8 +157,8 @@ class SecadoFinalizarRulesTest {
     @Test
     fun factor_losTextosSonLosAcordados() {
         assertEquals("Escribe solo números.", MENSAJE_FACTOR_NO_NUMERICO)
-        assertEquals("Recuerda: El factor de rendimiento que escribas debe estar entre 80 y 120.", MENSAJE_FACTOR_FUERA_DE_RANGO)
-        assertEquals("Opcional. Entre 80 y 120.", AYUDA_FACTOR)
+        assertEquals("Recuerda: El factor de rendimiento que escribas debe estar entre $FACTOR_RENDIMIENTO_MIN y $FACTOR_RENDIMIENTO_MAX.", MENSAJE_FACTOR_FUERA_DE_RANGO)
+        assertEquals("Opcional. Entre $FACTOR_RENDIMIENTO_MIN y $FACTOR_RENDIMIENTO_MAX.", AYUDA_FACTOR)
     }
 
     // ---------- Fecha de fin ----------

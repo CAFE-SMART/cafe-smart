@@ -43,7 +43,7 @@ interface SecadoRepository {
 
     // Finaliza un secado: crea un sublote seco por cada calidad con kg > 0 y marca el secado FINALIZADO.
     // Valida todo antes de cambiar algo. Lanza IllegalArgumentException si el secado no existe o no esta EN_CURSO,
-    // si la fecha de fin es anterior al inicio, si los kilos secos no son validos o si el factor (opcional; null = sin factor) no esta entre 80 y 120.
+    // si la fecha de fin es anterior al inicio, si los kilos secos no son validos o si el factor (opcional; null = sin factor) no esta entre FACTOR_RENDIMIENTO_MIN y FACTOR_RENDIMIENTO_MAX.
     fun finalizarSecado(
         secadoId: Long,
         fechaFin: Fecha,
