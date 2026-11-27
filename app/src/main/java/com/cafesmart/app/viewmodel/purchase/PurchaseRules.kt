@@ -1,5 +1,13 @@
 package com.cafesmart.app.viewmodel.purchase
 
+import com.cafesmart.app.viewmodel.limites.MENSAJE_PRECIO_RANGO
+import com.cafesmart.app.viewmodel.limites.MENSAJE_PESO_RANGO
+import com.cafesmart.app.viewmodel.limites.DIGITOS_PRECIO_KG
+import com.cafesmart.app.viewmodel.limites.DIGITOS_PESO
+import com.cafesmart.app.viewmodel.limites.AYUDA_PESO_RANGO
+import com.cafesmart.app.viewmodel.limites.LimitesVigentes
+import com.cafesmart.app.viewmodel.limites.PESO_MINIMO_KG
+import com.cafesmart.app.viewmodel.limites.PESO_MAXIMO_KG
 import com.cafesmart.app.data.purchase.CafeFormulario
 import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.purchase.ModoProductor
@@ -13,11 +21,12 @@ import java.util.Calendar
 // Estan en un archivo aparte como funciones puras (no dependen de Compose ni de Android)
 // para poder probarlas con JUnit.
 
-// Limites de peso y precio por kg
-const val PESO_MIN_KG = 1
-const val PESO_MAX_KG = 99_999
-const val PRECIO_MIN_KG = 1_000
-const val PRECIO_MAX_KG = 100_000
+// Limites de peso y precio por kg: salen de viewmodel/limites/LimitesDeEntrada.kt (unica fuente de la app).
+// Se conservan estos nombres como alias para no cambiar quien ya los usa.
+@Deprecated("Usa LimitesVigentes.actuales.pesoMinimoKg (el usuario puede cambiarlo en Ajustes)")
+const val PESO_MIN_KG = PESO_MINIMO_KG
+@Deprecated("Usa LimitesVigentes.actuales.pesoMaximoKg (el usuario puede cambiarlo en Ajustes)")
+const val PESO_MAX_KG = PESO_MAXIMO_KG
 
 // ---------------- Paso 1: productor ----------------
 
@@ -184,8 +193,9 @@ const val SIN_RESULTADOS = "Lo siento, no pudimos encontrarlo. Prueba con otro n
 
 // ---------------- Paso 2: cafe ----------------
 
-const val MENSAJE_PESO = "Escribe un peso entre 1 y 99.999 kg."
-const val MENSAJE_PRECIO = "Escribe un valor entre $1.000 y $100.000 pesos colombianos."
+// Armados con los límites unificados (mismo texto de antes): cambiar un límite cambia el mensaje.
+val MENSAJE_PESO: String get() = MENSAJE_PESO_RANGO
+val MENSAJE_PRECIO: String get() = MENSAJE_PRECIO_RANGO
 
 // RF-COM-09 (ajustado el 11 nov con Andrés): se escribe como en Colombia, con el punto para los miles y la coma
 // para los decimales. "12.500" y "12500" son lo mismo (doce mil quinientos kg); "12,5" tiene decimales.
@@ -197,7 +207,7 @@ fun limpiarPeso(texto: String): String {
     val sinMiles = texto.replace(".", "")
     // indexOf devuelve la posicion de la primera coma, o -1 si no hay.
     val coma = sinMiles.indexOf(',')
-    val entero = (if (coma == -1) sinMiles else sinMiles.substring(0, coma)).filter { it.isDigit() }.take(5)
+    val entero = (if (coma == -1) sinMiles else sinMiles.substring(0, coma)).filter { it.isDigit() }.take(DIGITOS_PESO)
     if (coma == -1) return entero
     // Parte decimal: solo digitos (se ignoran otras comas) y maximo 3.
     val decimales = sinMiles.substring(coma + 1).filter { it.isDigit() }.take(3)
@@ -214,10 +224,10 @@ fun pesoEnPantalla(peso: String): String {
 }
 
 // Ayuda del campo Peso: el limite y como se escriben los decimales, siempre visible.
-const val AYUDA_PESO = "Entre 1 y 99.999 kg. Decimales con coma: 12,5"
+val AYUDA_PESO: String get() = AYUDA_PESO_RANGO
 
 // RF-COM-10: precio por kg en pesos enteros, solo digitos
-fun limpiarPrecio(texto: String): String = texto.filter { it.isDigit() }.take(6)
+fun limpiarPrecio(texto: String): String = texto.filter { it.isDigit() }.take(DIGITOS_PRECIO_KG)
 
 // toDoubleOrNull convierte el texto en numero; devuelve null si no se puede.
 fun pesoKg(cafe: CafeFormulario): Double? = cafe.peso.toDoubleOrNull()
@@ -226,31 +236,32 @@ fun pesoKg(cafe: CafeFormulario): Double? = cafe.peso.toDoubleOrNull()
 // Recibe el texto (no la tarjeta) para que Compras y Ventas usen las mismas reglas del precio.
 fun precioKg(texto: String): Double? = limpiarPrecio(texto).toDoubleOrNull()
 
-// Entre el peso minimo (1 kg) y el maximo.
+// Entre el peso minimo (1 kg) y el maximo vigentes.
 fun pesoValido(cafe: CafeFormulario): Boolean {
     val peso = pesoKg(cafe)
-    return peso != null && peso >= PESO_MIN_KG && peso <= PESO_MAX_KG
+    return peso != null && LimitesVigentes.actuales.pesoEnRango(peso)
 }
 
-// Entre el precio minimo y el maximo.
+// Entre el precio minimo y el maximo vigentes.
 fun precioValido(texto: String): Boolean {
     val precio = precioKg(texto)
-    return precio != null && precio >= PRECIO_MIN_KG && precio <= PRECIO_MAX_KG
+    return precio != null && LimitesVigentes.actuales.precioEnRango(precio)
 }
 
 // El error del campo aparece cuando ya se escribio algo y esta fuera de rango
 fun errorPeso(cafe: CafeFormulario): String? {
     // ?: return null: si el campo esta vacio no hay error que mostrar.
     val peso = pesoKg(cafe) ?: return null
-    return if (peso < PESO_MIN_KG || peso > PESO_MAX_KG) MENSAJE_PESO else null
+    return if (LimitesVigentes.actuales.pesoEnRango(peso)) null else MENSAJE_PESO
 }
 
 // El minimo ($1.000) se revisa cuando ya hay 4 digitos, para no marcar error mientras se escribe
 fun errorPrecio(texto: String): String? {
     // ?: return null: si el campo esta vacio no hay error que mostrar.
     val precio = precioKg(texto) ?: return null
-    val muyBajo = texto.length >= 4 && precio < PRECIO_MIN_KG
-    return if (muyBajo || precio > PRECIO_MAX_KG) MENSAJE_PRECIO else null
+    val limites = LimitesVigentes.actuales
+    val muyBajo = texto.length >= 4 && precio < limites.precioKgMinimoCop
+    return if (muyBajo || precio > limites.precioKgMaximoCop) MENSAJE_PRECIO else null
 }
 
 // Convierte la tarjeta en un sublote, o null si falta algun dato o esta fuera de rango

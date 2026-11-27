@@ -9,7 +9,7 @@ import com.cafesmart.app.data.model.*
 import com.cafesmart.app.viewmodel.finance.LARGO_CONCEPTO_GASTO_MAXIMO
 import com.cafesmart.app.viewmodel.finance.LARGO_DESCRIPCION_GASTO_MAXIMO
 import com.cafesmart.app.viewmodel.finance.LimitesGasto
-import com.cafesmart.app.viewmodel.finance.VALOR_GASTO_MAXIMO_COP
+import com.cafesmart.app.viewmodel.limites.LimitesVigentes
 import com.cafesmart.app.viewmodel.finance.validarGasto
 // Aritmética entera de gran tamaño para sumas sin desbordamiento de Long.
 import java.math.BigInteger
@@ -29,8 +29,8 @@ object GastosValidation {
     const val CONCEPTO_MAX_CARACTERES = LARGO_CONCEPTO_GASTO_MAXIMO
     const val DESCRIPCION_MAX_CARACTERES = LARGO_DESCRIPCION_GASTO_MAXIMO
 
-    /** Dígitos que caben en el valor máximo (50.000.000 son 8). */
-    val DIGITOS_MAX_VALOR: Int = VALOR_GASTO_MAXIMO_COP.toString().length
+    /** Dígitos que caben en el valor máximo vigente (50.000.000 son 8). */
+    val DIGITOS_MAX_VALOR: Int get() = LimitesVigentes.actuales.gastoMaximoCop.toString().length
 
     fun limitarConcepto(texto: String): String = recortar(texto, CONCEPTO_MAX_CARACTERES)
 

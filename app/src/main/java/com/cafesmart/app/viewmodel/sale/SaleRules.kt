@@ -13,8 +13,7 @@ import com.cafesmart.app.data.sale.SubloteElegido
 import com.cafesmart.app.viewmodel.inventory.redondearKg
 import com.cafesmart.app.viewmodel.purchase.CANTIDAD_RECIENTES
 import com.cafesmart.app.viewmodel.purchase.MENSAJE_PRECIO
-import com.cafesmart.app.viewmodel.purchase.PRECIO_MAX_KG
-import com.cafesmart.app.viewmodel.purchase.PRECIO_MIN_KG
+import com.cafesmart.app.viewmodel.limites.LimitesVigentes
 import com.cafesmart.app.viewmodel.purchase.coincideBusqueda
 import com.cafesmart.app.viewmodel.purchase.fechaAMilis
 import com.cafesmart.app.viewmodel.purchase.formatoDinero
@@ -192,7 +191,8 @@ fun costoPromedio(elegidos: List<SubloteElegido>): Long {
 
 // Ayuda del campo de precio: "Entre $ 1.000 y $ 100.000. Costo promedio: $ 18.000 por kg."
 fun ayudaPrecio(costoPromedioKg: Long): String =
-    "Entre ${formatoDinero(PRECIO_MIN_KG.toDouble())} y ${formatoDinero(PRECIO_MAX_KG.toDouble())}. " +
+    "Entre ${formatoDinero(LimitesVigentes.actuales.precioKgMinimoCop.toDouble())} y " +
+        "${formatoDinero(LimitesVigentes.actuales.precioKgMaximoCop.toDouble())}. " +
         "Costo promedio: ${formatoDinero(costoPromedioKg.toDouble())} por kg."
 
 // Error del campo precio de una calidad elegida (null si ya es valido): vacio pide escribirlo y fuera de rango da el rango.
@@ -222,7 +222,8 @@ fun errorFecha(fecha: Fecha, hoy: Fecha, elegidos: List<SubloteElegido>): String
 }
 
 // Una venta no puede ser de menos de 5 kg en total (misma regla de la version web: PESO_MINIMO_KG).
-const val VENTA_MINIMA_KG = 5.0
+// Sale de los límites unificados (viewmodel/limites); este nombre queda como alias.
+const val VENTA_MINIMA_KG = com.cafesmart.app.viewmodel.limites.VENTA_MINIMA_KG
 
 // El error aparece cuando ya hay cafe elegido pero la suma de lo que se vende no llega al minimo.
 fun errorTotalKg(totalKg: Double, hayElegidos: Boolean): String? =

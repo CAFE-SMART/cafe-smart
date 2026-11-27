@@ -1,9 +1,11 @@
 package com.cafesmart.app.viewmodel.finance
 
+import com.cafesmart.app.viewmodel.limites.mensajeValorMinimo
+import com.cafesmart.app.viewmodel.limites.mensajeValorMaximo
+import com.cafesmart.app.viewmodel.limites.LimitesVigentes
 import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.model.TipoGasto
 import com.cafesmart.app.viewmodel.purchase.fechaDeHoy
-import com.cafesmart.app.viewmodel.purchase.formatoMiles
 
 // Validaciones del registro de un gasto (ExpenseRules). Funciones puras, sin Compose ni Android,
 // para probarlas con JUnit. Aún no se conectan a pantallas (se enchufan en el ciclo 3).
@@ -20,8 +22,7 @@ val TIPOS_GASTO_PERMITIDOS: List<TipoGasto> = TipoGasto.values().toList()
 // sea dinero (mínimo y máximo): por eso se reciben como parámetro (LimitesGasto) y estos son solo los iniciales.
 // Convención de nombres para límites configurables: <CAMPO>_<MINIMO|MAXIMO>_<UNIDAD>, por ejemplo
 // VALOR_GASTO_MINIMO_COP (COP = pesos colombianos). Los campos de LimitesGasto siguen la misma idea.
-const val VALOR_GASTO_MINIMO_COP = 1_000L
-const val VALOR_GASTO_MAXIMO_COP = 50_000_000L
+// Los valores salen de viewmodel/limites/LimitesDeEntrada.kt (unica fuente de la app); estos nombres son alias.
 const val LARGO_CONCEPTO_GASTO_MAXIMO = 60
 const val LARGO_DESCRIPCION_GASTO_MAXIMO = 200
 
@@ -34,8 +35,9 @@ const val MSG_FECHA_FUTURA = "La fecha no puede ser futura"
 
 /** Límites configurables de un gasto (los valores en pesos colombianos, COP). valorMinimoCop debe ser al menos 1. */
 data class LimitesGasto(
-    val valorMinimoCop: Long = VALOR_GASTO_MINIMO_COP,
-    val valorMaximoCop: Long = VALOR_GASTO_MAXIMO_COP,
+    // Los vigentes (Ajustes · Límites de entrada); sin cambios, 1.000 y 50.000.000 pesos.
+    val valorMinimoCop: Long = LimitesVigentes.actuales.gastoMinimoCop,
+    val valorMaximoCop: Long = LimitesVigentes.actuales.gastoMaximoCop,
     val largoConceptoMaximo: Int = LARGO_CONCEPTO_GASTO_MAXIMO,
     val largoDescripcionMaximo: Int = LARGO_DESCRIPCION_GASTO_MAXIMO,
 ) {
@@ -102,8 +104,8 @@ private fun errorTipo(tipo: TipoGasto?, permitidos: List<TipoGasto>): String? = 
 private fun errorValor(valor: Long?, limites: LimitesGasto): String? = when {
     valor == null -> MSG_VALOR_OBLIGATORIO
     valor <= 0 -> "El valor debe ser mayor que 0"
-    valor < limites.valorMinimoCop -> "El valor mínimo es ${formatoMiles(limites.valorMinimoCop)} pesos"
-    valor > limites.valorMaximoCop -> "El valor máximo es ${formatoMiles(limites.valorMaximoCop)} pesos"
+    valor < limites.valorMinimoCop -> mensajeValorMinimo(limites.valorMinimoCop)
+    valor > limites.valorMaximoCop -> mensajeValorMaximo(limites.valorMaximoCop)
     else -> null
 }
 
