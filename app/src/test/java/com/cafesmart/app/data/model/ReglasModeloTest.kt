@@ -88,6 +88,8 @@ class ReglasModeloTest {
     @Test
     fun factorDelSecadoDebeEstarEntre70y140() {
         Secado(id = 1, fechaInicio = hoy, factorRendimiento = 70)
+        Secado(id = 1, fechaInicio = hoy, factorRendimiento = 140)
+        assertTrue(falla { Secado(id = 1, fechaInicio = hoy, factorRendimiento = 69) })
         assertTrue(falla { Secado(id = 1, fechaInicio = hoy, factorRendimiento = 141) })
     }
 
