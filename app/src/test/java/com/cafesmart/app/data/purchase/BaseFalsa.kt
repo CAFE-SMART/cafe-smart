@@ -185,6 +185,9 @@ class SecadoDaoFalso(private val sublotes: SubloteDaoFalso) : SecadoDao() {
     var filas = listOf<SecadoEntity>()
     var envios = listOf<SecadoSubloteEntity>()
     private var siguienteId = 1L
+    // true = cerrar no cambia ninguna fila (devuelve 0) aunque el secado siga EN_CURSO: imita que otra operación
+    // lo cerró justo después de la validación previa del repositorio.
+    var cerrarSinCambios = false
 
     fun copiarEstado() = Triple(filas, envios, siguienteId)
     fun restaurar(estado: Triple<List<SecadoEntity>, List<SecadoSubloteEntity>, Long>) {
@@ -204,6 +207,7 @@ class SecadoDaoFalso(private val sublotes: SubloteDaoFalso) : SecadoDao() {
         }
     }
     override suspend fun cerrar(id: Long, estado: String, fechaFin: Long?, factor: Int?): Int {
+        if (cerrarSinCambios) return 0
         val secado = filas.firstOrNull { it.id == id && it.estado == "EN_CURSO" } ?: return 0
         filas = filas.map { if (it.id == id) secado.copy(estado = estado, fechaFin = fechaFin, factorRendimiento = factor) else it }
         return 1

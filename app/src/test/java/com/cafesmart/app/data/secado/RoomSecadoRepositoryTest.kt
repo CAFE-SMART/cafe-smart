@@ -160,6 +160,24 @@ class RoomSecadoRepositoryTest {
         assertEquals("FINALIZADO", base.secados.filas.single().estado)
     }
 
+    @Test fun siCerrarNoCambiaNingunaFilaFinalizarNoCreaLotesNiSublotesSecos() = runBlocking {
+        val a = verdeCon(100.0)
+        val secado = repositorio.iniciarSecado(inicio, listOf(EnvioASecar(a, 100.0)))
+        val sublotesAntes = base.sublotes.filas
+        val lotesAntes = base.lotes.filas
+        // La validación previa lo ve EN_CURSO, pero al cerrar otro ya lo había cerrado: cerrar devuelve 0.
+        base.secados.cerrarSinCambios = true
+        try {
+            repositorio.finalizarSecado(secado.id, fin, kilos(buena = 90.0), 95)
+            fail("Debía fallar: el secado ya no está en curso")
+        } catch (e: IllegalArgumentException) {
+            assertTrue(e.message!!.contains("ya no esta en curso"))
+        }
+        assertEquals(sublotesAntes, base.sublotes.filas)   // ningún sublote seco
+        assertEquals(lotesAntes, base.lotes.filas)         // ningún lote SECO
+        assertEquals("EN_CURSO", base.secados.filas.single().estado)
+    }
+
     // ── Cancelar ───────────────────────────────────────────
 
     @Test fun cancelarDevuelveLosKgEnviadosYMarcaElSecadoCancelado() = runBlocking {
@@ -190,6 +208,22 @@ class RoomSecadoRepositoryTest {
         }
         assertEquals(0.0, disponible(a), 0.0)   // no se le devolvió nada
         assertEquals("FINALIZADO", base.secados.filas.single().estado)
+    }
+
+    @Test fun siCerrarNoCambiaNingunaFilaCancelarNoDevuelveKg() = runBlocking {
+        val a = verdeCon(100.0)
+        val b = verdeCon(40.0)
+        val secado = repositorio.iniciarSecado(inicio, listOf(EnvioASecar(a, 60.0), EnvioASecar(b, 40.0)))
+        base.secados.cerrarSinCambios = true
+        try {
+            repositorio.cancelarSecado(secado.id)
+            fail("Debía fallar: el secado ya no está en curso")
+        } catch (e: IllegalArgumentException) {
+            assertTrue(e.message!!.contains("ya no esta en curso"))
+        }
+        assertEquals(40.0, disponible(a), 0.0)   // siguen descontados: no se devolvió nada
+        assertEquals(0.0, disponible(b), 0.0)
+        assertEquals("EN_CURSO", base.secados.filas.single().estado)
     }
 
     // ── Inventario ─────────────────────────────────────────
