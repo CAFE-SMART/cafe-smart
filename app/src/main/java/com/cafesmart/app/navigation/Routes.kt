@@ -30,7 +30,8 @@ object Routes {
     const val INVENTORY = "inventory"              // Inventario · Resumen (Todos)
     const val ARG_TIPO = "tipo"                    // Nombre del TipoCafe (VERDE, SECO, TRILLADO, PASILLA)
     const val INVENTORY_TYPE = "inventory_type/{$ARG_TIPO}"  // Inventario · Lista · Verde (calidades de un tipo de café)
-    const val INVENTORY_LIST = "inventory_list"    // Inventario · Detalle · Lista de sublotes (de un grupo)
+    const val ARG_LOTE_ID = "loteId"                // Id del lote (grupo = tipo + calidad)
+    const val INVENTORY_LIST = "inventory_list/{$ARG_LOTE_ID}"  // Inventario · Detalle · Lista de sublotes (de un grupo)
     const val ARG_BATCH_ID = "batchId"
     const val INVENTORY_DETAIL = "inventory_detail/{$ARG_BATCH_ID}"                  // Detalle del sublote
     const val INVENTORY_BATCH_EXPENSES = "inventory_batch_expenses/{$ARG_BATCH_ID}"  // Gastos del sublote
@@ -66,6 +67,7 @@ object Routes {
 
     // ── Helpers para rutas con argumentos ───────────────────
     fun inventoryType(tipo: String) = "inventory_type/$tipo"
+    fun inventoryList(loteId: Long) = "inventory_list/$loteId"
     fun inventoryDetail(batchId: String) = "inventory_detail/$batchId"
     fun inventoryBatchExpenses(batchId: String) = "inventory_batch_expenses/$batchId"
     fun saleBatchStep1(batchId: String) = "sale_batch_step1/$batchId"

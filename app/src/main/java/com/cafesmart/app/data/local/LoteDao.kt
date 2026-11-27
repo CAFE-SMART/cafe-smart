@@ -2,8 +2,20 @@ package com.cafesmart.app.data.local
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.Embedded
 import androidx.room.Query
+import androidx.room.Relation
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
+
+/**
+ * Un lote con TODOS sus sublotes (también los agotados), leído en una sola transacción. No es una tabla: es el
+ * resultado de [LoteDao.observarConSublotes]. El orden de [sublotes] no está garantizado: quien lo usa los ordena.
+ */
+data class LoteConSublotesFila(
+    @Embedded val lote: LoteEntity,
+    @Relation(parentColumn = "id", entityColumn = "lote_id") val sublotes: List<SubloteEntity>,
+)
 
 @Dao
 interface LoteDao {
@@ -32,4 +44,13 @@ interface LoteDao {
      */
     @Query("SELECT * FROM lote ORDER BY id")
     fun observarTodos(): Flow<List<LoteEntity>>
+
+    /**
+     * Los lotes con sus sublotes en UNA lectura: Room consulta las dos tablas dentro de la misma transacción y
+     * vuelve a emitir cuando cambia cualquiera de ellas. Así nunca llega un lote nuevo sin el sublote que se guardó
+     * con él (lo que sí podía pasar juntando observarTodos() de lotes y de sublotes con combine).
+     */
+    @Transaction
+    @Query("SELECT * FROM lote ORDER BY id")
+    fun observarConSublotes(): Flow<List<LoteConSublotesFila>>
 }

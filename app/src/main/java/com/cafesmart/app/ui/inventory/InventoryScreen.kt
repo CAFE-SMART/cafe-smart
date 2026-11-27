@@ -18,13 +18,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import com.cafesmart.app.viewmodel.inventory.ResumenCalidad
+import com.cafesmart.app.data.model.Calidad
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.foundation.BorderStroke
+import com.cafesmart.app.ui.theme.PrimaryDark
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +50,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -62,6 +71,7 @@ import com.cafesmart.app.ui.theme.BorderDefault
 import com.cafesmart.app.ui.theme.BorderField
 import com.cafesmart.app.ui.theme.CafesmartTheme
 import com.cafesmart.app.ui.theme.ErrorDot
+import com.cafesmart.app.ui.theme.ErrorText
 import com.cafesmart.app.ui.theme.Inter
 import com.cafesmart.app.ui.theme.OnPrimary
 import com.cafesmart.app.ui.theme.Primary
@@ -104,6 +114,20 @@ private val TituloPantalla = AppTypography.displayValor.copy(color = TextPrimary
 
 // Estilos de 13 sp que el Figma usa y AppTypography no trae.
 private val Texto13Medio = TextStyle(fontFamily = Inter, fontWeight = FontWeight.Medium, fontSize = 13.sp)
+private val Texto14Menu = TextStyle(fontFamily = Inter, fontSize = 14.sp)
+
+/**
+ * Colores del menú "Más reciente / Más antiguo". Fondo blanco opaco con borde, texto oscuro y la opción elegida
+ * en azul de la marca sobre azul muy claro (más un check). Contraste (WCAG): texto 17,9:1 sobre blanco y la
+ * elegida 9,5:1 sobre su fondo; ambos pasan AA (4,5:1). Lo comprueba MenuOrdenContrasteTest.
+ */
+internal object ColoresMenuOrden {
+    val fondo = SurfaceCard
+    val borde = BorderDefault
+    val texto = TextPrimary
+    val fondoElegido = SurfaceSelected
+    val textoElegido = PrimaryDark
+}
 private val Texto13Semi = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
 
 private val FormaTarjetaTipo = RoundedCornerShape(14.dp)
@@ -116,7 +140,15 @@ fun InventoryScreen(
     onAjustarBodega: () -> Unit,
     onRegistrarCompra: () -> Unit,
     onNavegar: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onReintentar: () -> Unit = {},
+    // "Inventario · Lista · <tipo>" (Figma): la misma pantalla con la pestaña del tipo elegida y sus calidades.
+    // null = "Resumen (Todos)".
+    tipoSeleccionado: TipoCafe? = null,
+    onTodosClick: () -> Unit = {},
+    onCalidadClick: (ResumenCalidad) -> Unit = {},
+    // Solo el café verde se manda a secar (botón "Iniciar secado" del Figma).
+    onIniciarSecado: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier,
@@ -124,7 +156,14 @@ fun InventoryScreen(
         // Misma barra inferior que Inicio; aquí la pestaña activa es Inventario (el botón central).
         bottomBar = { AppBottomBar(selectedRoute = "inventario", onNavigate = onNavegar) }
     ) { innerPadding ->
-        if (estado.cargando) {
+        if (estado.error != null) {
+            // Room falló o trajo un dato que no se pudo leer: se avisa en vez de mostrar un inventario incompleto.
+            EstadoError(
+                mensaje = estado.error,
+                onReintentar = onReintentar,
+                modifier = Modifier.padding(innerPadding)
+            )
+        } else if (estado.cargando) {
             // Room todavía no entregó la primera lectura: no se muestra nada para que no parpadee el
             // estado vacío ("no tienes café") a quien sí tiene. Dura unos milisegundos.
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding))
@@ -153,13 +192,37 @@ fun InventoryScreen(
                     ResumenBodega(resumen = estado.resumen, onAjustarBodega = onAjustarBodega)
                 }
                 item(key = "filtro") {
-                    FiltroPorTipo(seleccionado = null, onTipoClick = onTipoClick)
+                    FiltroPorTipo(seleccionado = tipoSeleccionado, onTipoClick = onTipoClick, onTodosClick = onTodosClick)
                 }
-                item(key = "encabezado") {
-                    EncabezadoLista(orden = estado.orden, onOrdenChange = onOrdenChange)
-                }
-                items(items = estado.resumen.tipos, key = { it.tipo.name }) { fila ->
-                    TarjetaTipo(fila = fila, pesoBultoKg = estado.resumen.pesoBultoKg, onClick = { onTipoClick(fila.tipo) })
+                if (tipoSeleccionado == null) {
+                    item(key = "encabezado") {
+                        EncabezadoLista(orden = estado.orden, onOrdenChange = onOrdenChange)
+                    }
+                    items(items = estado.resumen.tipos, key = { it.tipo.name }) { fila ->
+                        TarjetaTipo(fila = fila, pesoBultoKg = estado.resumen.pesoBultoKg, onClick = { onTipoClick(fila.tipo) })
+                    }
+                } else {
+                    if (tipoSeleccionado == TipoCafe.VERDE) item(key = "secado") {
+                        BotonIniciarSecado(onIniciarSecado)
+                    }
+                    item(key = "encabezado_tipo") {
+                        EncabezadoLista(
+                            orden = estado.orden, onOrdenChange = onOrdenChange,
+                            titulo = "Café ${tipoSeleccionado.etiqueta.lowercase()} por calidad",
+                        )
+                    }
+                    val calidades = estado.calidadesDe(tipoSeleccionado)
+                    if (calidades.isEmpty()) item(key = "sin_calidades") {
+                        // Texto propuesto (pendiente del equipo): el tipo todavía no tiene compras.
+                        Text(
+                            text = "Aún no tienes café ${tipoSeleccionado.etiqueta.lowercase()} en inventario.",
+                            style = AppTypography.bodyMd, color = TextSecondary,
+                            modifier = Modifier.testTag("inventario_tipo_vacio"),
+                        )
+                    }
+                    items(items = calidades, key = { it.lote.id }) { fila ->
+                        TarjetaCalidad(fila = fila, pesoBultoKg = estado.resumen.pesoBultoKg, onClick = { onCalidadClick(fila) })
+                    }
                 }
             }
         }
@@ -358,7 +421,11 @@ private fun OpcionFiltro(
 
 // "Por tipo de café" a la izquierda y el botón de orden a la derecha.
 @Composable
-private fun EncabezadoLista(orden: OrdenInventario, onOrdenChange: (OrdenInventario) -> Unit) {
+private fun EncabezadoLista(
+    orden: OrdenInventario,
+    onOrdenChange: (OrdenInventario) -> Unit,
+    titulo: String = "Por tipo de café",
+) {
     var menuAbierto by remember { mutableStateOf(false) }
 
     Row(
@@ -366,7 +433,7 @@ private fun EncabezadoLista(orden: OrdenInventario, onOrdenChange: (OrdenInventa
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Por tipo de café",
+            text = titulo,
             style = AppTypography.labelSection,
             modifier = Modifier.weight(1f)
         )
@@ -392,14 +459,45 @@ private fun EncabezadoLista(orden: OrdenInventario, onOrdenChange: (OrdenInventa
                 )
             }
             // El Figma solo muestra el botón cerrado; las opciones del menú son propuesta del equipo de código.
-            DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
+            // Colores propios a propósito: con los del tema el menú salía ilegible (fondo lila y texto blanco),
+            // porque Material usa surfaceContainer (no definido en el tema: queda el lila por defecto) y
+            // typography.labelLarge (= buttonPrimary, que trae color blanco fijo). Ver ColoresMenuOrden.
+            DropdownMenu(
+                expanded = menuAbierto,
+                onDismissRequest = { menuAbierto = false },
+                shape = forma,
+                containerColor = ColoresMenuOrden.fondo,
+                border = BorderStroke(1.dp, ColoresMenuOrden.borde),
+                shadowElevation = 6.dp,
+                modifier = Modifier.testTag("inventario_orden_menu"),
+            ) {
                 OrdenInventario.entries.forEach { opcion ->
+                    val elegida = opcion == orden
                     DropdownMenuItem(
-                        text = { Text(text = opcion.etiqueta) },
+                        text = {
+                            Text(
+                                text = opcion.etiqueta,
+                                style = Texto14Menu,
+                                fontWeight = if (elegida) FontWeight.SemiBold else FontWeight.Medium,
+                                color = if (elegida) ColoresMenuOrden.textoElegido else ColoresMenuOrden.texto,
+                                maxLines = 1,
+                            )
+                        },
+                        trailingIcon = if (elegida) {
+                            { Icon(AppIcons.Check, contentDescription = null, tint = ColoresMenuOrden.textoElegido, modifier = Modifier.size(16.dp)) }
+                        } else null,
                         onClick = {
                             menuAbierto = false
                             onOrdenChange(opcion)
-                        }
+                        },
+                        colors = MenuDefaults.itemColors(
+                            textColor = ColoresMenuOrden.texto,
+                            trailingIconColor = ColoresMenuOrden.textoElegido,
+                        ),
+                        modifier = Modifier
+                            .background(if (elegida) ColoresMenuOrden.fondoElegido else ColoresMenuOrden.fondo)
+                            .semantics { selected = elegida }
+                            .testTag("inventario_orden_${opcion.name}"),
                     )
                 }
             }
@@ -451,6 +549,57 @@ private fun TarjetaTipo(fila: ResumenTipo, pesoBultoKg: Double, onClick: () -> U
     }
 }
 
+// Tarjeta de una calidad (Figma "Lista · Verde"): punto de color, "Calidad buena", "60 kg · 1,5 bultos", sublotes y flecha.
+@Composable
+private fun TarjetaCalidad(fila: ResumenCalidad, pesoBultoKg: Double, onClick: () -> Unit) {
+    val punto = when (fila.calidad) {
+        Calidad.BUENA -> SuccessDot
+        Calidad.REGULAR -> WarningDot
+        Calidad.MALA -> ErrorDot
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(FormaTarjetaTipo)
+            .background(SurfaceCard)
+            .border(1.dp, BorderDefault, FormaTarjetaTipo)
+            .clickable(role = Role.Button, onClick = onClick)
+            .testTag("inventario_calidad_${fila.calidad.name}")
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s12)
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.s6)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.s6)) {
+                Box(Modifier.size(8.dp).background(punto, CircleShape))
+                Text(text = "Calidad ${fila.calidad.etiqueta.lowercase()}", style = Texto13Semi, color = TextStrong)
+            }
+            Text(text = detallePeso(fila.pesoKg, pesoBultoKg), style = AppTypography.titleCard)
+        }
+        EtiquetaSublotes(texto = formatoSublotes(fila.cantidadSublotes))
+        Icon(imageVector = AppIcons.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+    }
+}
+
+// Botón azul "Iniciar secado" (Figma "Lista · Verde").
+@Composable
+private fun BotonIniciarSecado(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .clip(AppShapes.medium)
+            .background(Primary)
+            .clickable(role = Role.Button, onClick = onClick)
+            .testTag("inventario_iniciar_secado"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(imageVector = AppIcons.Sun, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(20.dp))
+        Text(text = "Iniciar secado", style = AppTypography.valueStrong, color = OnPrimary, modifier = Modifier.padding(start = Spacing.s8))
+    }
+}
+
 // Etiqueta gris "4 sublotes" / "1 sublote" / "Sin sublotes".
 @Composable
 private fun EtiquetaSublotes(texto: String) {
@@ -486,6 +635,36 @@ private fun colorDelTipo(tipo: TipoCafe): Color = when (tipo) {
 // ---------------- Estado vacío ----------------
 
 // "Inventario · Vacío": título arriba y, en el centro del resto de la pantalla, ilustración, mensaje y botón.
+// Mismo patrón que el error de Resumen financiero: mensaje en rojo y "Reintentar".
+@Composable
+private fun EstadoError(mensaje: String, onReintentar: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = Spacing.s20)
+            .padding(top = Spacing.s48, bottom = Spacing.s16)
+    ) {
+        Text(text = "Inventario", style = TituloPantalla)
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = mensaje,
+                    style = AppTypography.bodyMd.copy(color = ErrorText),
+                    textAlign = TextAlign.Center
+                )
+                TextButton(onClick = onReintentar) {
+                    Text("Reintentar", style = AppTypography.buttonLink.copy(color = Primary))
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun EstadoVacio(onRegistrarCompra: () -> Unit, modifier: Modifier = Modifier) {
     Column(

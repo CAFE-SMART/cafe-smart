@@ -10,7 +10,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import com.cafesmart.app.data.finanzas.AlmacenClaveFinancieraLocal
 import com.cafesmart.app.data.finanzas.FinanzasLocal
-import com.cafesmart.app.data.finanzas.SinDatosFinancieros
+import com.cafesmart.app.data.finanzas.OrigenFinancieroRoom
+import com.cafesmart.app.ui.finance.GraficasFinancieras
+import com.cafesmart.app.viewmodel.finance.GraficasFinancierasViewModel
 import com.cafesmart.app.data.finanzas.FirebaseConfirmacionCuenta
 import com.cafesmart.app.data.finanzas.fechaDeHoy
 import com.cafesmart.app.ui.finance.AccesoFinancieroScreen
@@ -83,6 +85,8 @@ import com.cafesmart.app.ui.inventory.InventoryScreen
 import com.cafesmart.app.ui.settings.NegocioInfoScreen
 import com.cafesmart.app.ui.settings.SettingsScreen
 import com.cafesmart.app.viewmodel.inventory.InventoryViewModel
+import com.cafesmart.app.viewmodel.home.HomeViewModel
+import com.cafesmart.app.ui.inventory.SublotesGrupoScreen
 import com.cafesmart.app.viewmodel.inventory.tipoCafeDesdeRuta
 import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
 import com.cafesmart.app.viewmodel.sale.SaleViewModel
@@ -376,11 +380,26 @@ fun AppNavHost(
         composable(Routes.HOME) {
             var showLogoutConfirmation by remember { mutableStateOf(false) }
 
+            // Datos reales de Room: los mismos sublotes, capacidad y peso del bulto que Inventario, y las compras
+            // guardadas para el "Resumen del día". Se actualiza solo cuando Compras (o Gastos) guarda algo.
+            val homeViewModel: HomeViewModel = viewModel {
+                HomeViewModel(
+                    inventario = inventario,
+                    compras = AppDatabase.obtener(context).compraDao().observarTodas(),
+                    negocios = negocios,
+                    uid = FirebaseSessionGateway.usuarioActual()?.uid,
+                )
+            }
+            val homeState by homeViewModel.uiState.collectAsState()
+
             HomeScreen(
+                estado = homeState,
+                onReintentar = homeViewModel::reintentar,
                 onSalir = { showLogoutConfirmation = true },
                 onRegistrarGasto = { navController.navigateTo(Routes.EXPENSE_NEW) },
                 onVerGastos = { navController.navigateTo(Routes.EXPENSES) },
-                onVerSublotes = { navController.navigateTo(Routes.INVENTORY_LIST) },
+                // "Ver todos ›" abre Inventario: la lista de sublotes de la app es por grupo (tipo + calidad).
+                onVerSublotes = { navController.navigateTo(Routes.INVENTORY) },
                 // La barra inferior manda el nombre de la pestaña.
                 onNavegar = { destino ->
                     when (destino) {
@@ -390,9 +409,11 @@ fun AppNavHost(
                         "ajustes" -> navController.navigateTo(Routes.SETTINGS)
                     }
                 },
-                onActualizar = { /* TODO ciclo 2 */ },
+                // Los datos se actualizan solos desde Room; el botón no necesita recargar nada.
+                onActualizar = { },
                 onAjustarBodega = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
-                onAbrirSublote = { /* TODO ciclo 2 */ }
+                // Abre el detalle del sublote real que se tocó (su id de Room).
+                onAbrirSublote = { id -> navController.navigateTo(Routes.inventoryDetail(id.toString())) }
             )
 
             if (showLogoutConfirmation) {
@@ -426,6 +447,7 @@ fun AppNavHost(
                 // Figma: cada tipo abre su lista por calidad. Esa pantalla aún es placeholder.
                 onTipoClick = { tipo -> navController.navigateTo(Routes.inventoryType(tipo.name)) },
                 onOrdenChange = inventoryViewModel::cambiarOrden,
+                onReintentar = inventoryViewModel::reintentar,
                 onAjustarBodega = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
                 onRegistrarCompra = { navController.navigateTo(Routes.PURCHASE_STEP1) },
                 // La barra inferior manda el nombre de la pestaña.
@@ -449,21 +471,58 @@ fun AppNavHost(
                 androidx.compose.runtime.LaunchedEffect(Unit) { navController.popBackStack() }
                 return@composable
             }
-            NavPlaceholder(
-                navController,
-                "Inventario · Café ${tipo.etiqueta.lowercase()} por calidad", Routes.inventoryType(tipo.name), true,
-                *listOfNotNull(
-                    "Ver sublotes de una calidad" to Routes.INVENTORY_LIST,
-                    // Solo el café verde se manda a secar.
-                    if (tipo == TipoCafe.VERDE) "Iniciar secado" to Routes.DRYING_STEP1 else null
-                ).toTypedArray()
+            // "Inventario · Lista · <tipo>": misma pantalla y misma lectura de Room que el resumen, con la pestaña
+            // del tipo elegida y sus calidades. Cada calidad abre la lista de sublotes de ese grupo (lote).
+            val tipoViewModel: InventoryViewModel = viewModel {
+                InventoryViewModel(inventario = inventario, negocios = negocios, uid = FirebaseSessionGateway.usuarioActual()?.uid)
+            }
+            val tipoState by tipoViewModel.uiState.collectAsState()
+            InventoryScreen(
+                estado = tipoState,
+                tipoSeleccionado = tipo,
+                // Otra pestaña reemplaza esta lista (no se apilan las pestañas).
+                onTipoClick = { otro ->
+                    if (otro != tipo) navController.navigate(Routes.inventoryType(otro.name)) {
+                        popUpTo(Routes.INVENTORY)
+                        launchSingleTop = true
+                    }
+                },
+                onTodosClick = { navController.popBackStack(Routes.INVENTORY, inclusive = false) },
+                onCalidadClick = { calidad -> navController.navigateTo(Routes.inventoryList(calidad.lote.id)) },
+                // Solo el café verde se manda a secar (Secado aún es placeholder hasta que entren los PR de Katherine).
+                onIniciarSecado = { navController.navigateTo(Routes.DRYING_STEP1) },
+                onOrdenChange = tipoViewModel::cambiarOrden,
+                onReintentar = tipoViewModel::reintentar,
+                onAjustarBodega = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
+                onRegistrarCompra = { navController.navigateTo(Routes.PURCHASE_STEP1) },
+                onNavegar = { destino ->
+                    when (destino) {
+                        "inicio" -> navController.popBackStack(Routes.HOME, inclusive = false)
+                        "inventario" -> navController.popBackStack(Routes.INVENTORY, inclusive = false)
+                        "compras" -> navController.navigateTo(Routes.PURCHASE_STEP1)
+                        "ventas" -> navController.navigateTo(Routes.SALE_STEP1)
+                        "ajustes" -> navController.navigateTo(Routes.SETTINGS)
+                    }
+                }
             )
         }
-        composable(Routes.INVENTORY_LIST) {
-            NavPlaceholder(
-                navController,
-                "Inventario · Sublotes del grupo", Routes.INVENTORY_LIST, true,
-                "Detalle del sublote (ejemplo)" to Routes.inventoryDetail("1")
+        composable(
+            route = Routes.INVENTORY_LIST,
+            arguments = listOf(navArgument(Routes.ARG_LOTE_ID) { type = NavType.StringType })
+        ) { entry ->
+            // "Inventario · Detalle · Lista de sublotes" de un grupo real (id del lote de la ruta, nunca uno fijo).
+            val loteId = entry.arguments?.getString(Routes.ARG_LOTE_ID)?.toLongOrNull()
+            val grupoViewModel: InventoryViewModel = viewModel {
+                InventoryViewModel(inventario = inventario, negocios = negocios, uid = FirebaseSessionGateway.usuarioActual()?.uid)
+            }
+            val grupoState by grupoViewModel.uiState.collectAsState()
+            SublotesGrupoScreen(
+                estado = grupoState,
+                loteId = loteId,
+                hoy = fechaDeHoy(),
+                onBack = { navController.popBackStack() },
+                onAbrirSublote = { id -> navController.navigateTo(Routes.inventoryDetail(id.toString())) },
+                onReintentar = grupoViewModel::reintentar,
             )
         }
         composable(
@@ -706,17 +765,25 @@ fun AppNavHost(
             }
             val acceso by accesoViewModel.estado.collectAsState()
             if (acceso.autorizado) {
+                // Datos reales de Room (hoy: los gastos; ventas, compras y merma se conectan cuando entren en Room).
+                val origen = remember { OrigenFinancieroRoom.de(context) }
                 val resumenViewModel: ResumenFinancieroViewModel = viewModel {
-                    ResumenFinancieroViewModel(FinanzasLocal(SinDatosFinancieros, ::fechaDeHoy))
+                    ResumenFinancieroViewModel(FinanzasLocal(origen, ::fechaDeHoy))
+                }
+                // Las gráficas se crean SOLO después de ingresar la clave financiera (mismo acceso que el Resumen).
+                val graficasViewModel: GraficasFinancierasViewModel = viewModel {
+                    GraficasFinancierasViewModel(origen, ::fechaDeHoy)
                 }
                 val resumen by resumenViewModel.estado.collectAsState()
+                val graficas by graficasViewModel.estado.collectAsState()
                 ResumenFinancieroScreen(
                     estado = resumen,
                     onBack = { navController.popBackStack() },
                     onPeriodo = resumenViewModel::cambiarPeriodo,
-                    onRecargar = resumenViewModel::recargar,
+                    onRecargar = { resumenViewModel.recargar(); graficasViewModel.cargar() },
                     onAvisoOculto = resumenViewModel::ocultarAviso,
-                    onHistorial = { navController.navigateTo(Routes.FINANCE_HISTORY) }
+                    onHistorial = { navController.navigateTo(Routes.FINANCE_HISTORY) },
+                    graficas = { GraficasFinancieras(graficas) },
                 )
             } else {
                 AccesoFinancieroScreen(
@@ -739,7 +806,7 @@ fun AppNavHost(
         // pidió la clave propia; no hay otra entrada.
         composable(Routes.FINANCE_HISTORY) {
             val historialViewModel: HistorialFinancieroViewModel = viewModel {
-                HistorialFinancieroViewModel(FinanzasLocal(SinDatosFinancieros, ::fechaDeHoy), ::fechaDeHoy)
+                HistorialFinancieroViewModel(FinanzasLocal(OrigenFinancieroRoom.de(context), ::fechaDeHoy), ::fechaDeHoy)
             }
             val historial by historialViewModel.estado.collectAsState()
             HistorialFinancieroScreen(

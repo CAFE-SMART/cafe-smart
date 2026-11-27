@@ -62,6 +62,18 @@ import com.cafesmart.app.ui.components.CafeIcon
 
 // Tema de la aplicación
 import com.cafesmart.app.ui.theme.CafesmartTheme
+import androidx.compose.ui.platform.testTag
+import com.cafesmart.app.data.model.Calidad
+import com.cafesmart.app.data.model.TipoCafe
+import com.cafesmart.app.viewmodel.home.ComprasDelDia
+import com.cafesmart.app.viewmodel.home.HomeUiState
+import com.cafesmart.app.viewmodel.home.SubloteInicio
+import com.cafesmart.app.viewmodel.inventory.EstadoBodega
+import com.cafesmart.app.viewmodel.inventory.ResumenInventario
+import com.cafesmart.app.viewmodel.inventory.detallePeso
+import com.cafesmart.app.viewmodel.inventory.formatoPorcentaje
+import com.cafesmart.app.viewmodel.inventory.resumirInventario
+import com.cafesmart.app.viewmodel.purchase.formatoKg
 
 // Permite redondear números decimales
 import kotlin.math.roundToInt
@@ -104,76 +116,11 @@ private val Borde = Color(0xFFE5EBF3)
 
 
 // ============================================================
-// 2. MODELO DE DATOS PARA LOS SUBLOTES
+// 2. DATOS
 // ============================================================
 
-/**
- * SubloteEjemplo representa la información
- * de un sublote que aparece en Home.
- *
- * data class permite almacenar datos
- * dentro de un objeto.
- *
- * Propiedades:
- *
- * tipo: identifica el tipo de café.
- * dias: antigüedad del sublote.
- * peso: cantidad de café.
- * estado: estado o calidad del sublote.
- *
- * Los datos son de demostración.
- */
-private data class SubloteEjemplo(
-
-    val tipo: String,
-
-    val dias: Int,
-
-    val peso: String,
-
-    val estado: String
-)
-
-
-// ============================================================
-// 3. LISTA DE SUBLOTES DE EJEMPLO
-// ============================================================
-
-/**
- * listOf crea una lista de elementos.
- *
- * En este caso contiene tres sublotes
- * que se muestran en la pantalla principal.
- *
- * Posteriormente podrán reemplazarse
- * por información de la base de datos.
- */
-private val sublotesEjemplo = listOf(
-
-    // Primer sublote
-    SubloteEjemplo(
-        "Seco",
-        26,
-        "1 kg",
-        "Regular"
-    ),
-
-    // Segundo sublote
-    SubloteEjemplo(
-        "Seco",
-        25,
-        "190 kg",
-        "Buena"
-    ),
-
-    // Tercer sublote
-    SubloteEjemplo(
-        "Verde",
-        15,
-        "50 kg",
-        "Buena"
-    )
-)
+// Ya no hay sublotes inventados: Inicio recibe HomeUiState (viewmodel/home/HomeViewModel.kt), armado con los
+// datos Room de la cuenta activa y con las mismas reglas que Inventario (resumirInventario).
 
 
 // ============================================================
@@ -216,6 +163,9 @@ private val sublotesEjemplo = listOf(
 @Composable
 fun HomeScreen(
 
+    // Datos de la cuenta (Room). Por defecto, una cuenta vacía y sin bodega configurada.
+    estado: HomeUiState = HomeUiState(resumirInventario(emptyList(), 0.0), cargando = false),
+
     // Acción para salir
     onSalir: () -> Unit = {},
 
@@ -233,7 +183,10 @@ fun HomeScreen(
     onVerSublotes: () -> Unit = {},
 
     // Acción para abrir un sublote determinado
-    onAbrirSublote: (Int) -> Unit = {},
+    onAbrirSublote: (Long) -> Unit = {},
+
+    // "Reintentar" del estado de error
+    onReintentar: () -> Unit = {},
 
     // Acción para navegar a otras pantallas
     onNavegar: (String) -> Unit = {}
@@ -364,6 +317,8 @@ fun HomeScreen(
 
                 ResumenDelDia(
 
+                    delDia = estado.delDia,
+
                     onRegistrarGasto = onRegistrarGasto,
                     onVerGastos = onVerGastos
                 )
@@ -378,6 +333,8 @@ fun HomeScreen(
 
                 CapacidadBodega(
 
+                    inventario = estado.inventario,
+
                     onAjustarBodega = onAjustarBodega
                 )
             }
@@ -390,6 +347,10 @@ fun HomeScreen(
             item(key = "sublotes") {
 
                 SublotesAntiguos(
+
+                    estado = estado,
+
+                    onReintentar = onReintentar,
 
                     onVerSublotes = onVerSublotes,
 
@@ -869,6 +830,8 @@ private fun TituloSeccion(
 @Composable
 private fun ResumenDelDia(
 
+    delDia: ComprasDelDia,
+
     onRegistrarGasto: () -> Unit,
     onVerGastos: () -> Unit
 ) {
@@ -957,7 +920,7 @@ private fun ResumenDelDia(
 
                             titulo = "Compras",
 
-                            valor = "0",
+                            valor = delDia.compras.toString(),
 
                             icono = "compras",
 
@@ -980,7 +943,8 @@ private fun ResumenDelDia(
 
                             titulo = "Ventas",
 
-                            valor = "0",
+                            // Las ventas todavía no se guardan en Room: no hay un dato real que mostrar.
+                            valor = "—",
 
                             icono = "ventas",
 
@@ -1021,7 +985,7 @@ private fun ResumenDelDia(
 
                             titulo = "Kg comprados",
 
-                            valor = "0 kg",
+                            valor = formatoKg(delDia.kgComprados),
 
                             icono = "balanza",
 
@@ -1044,7 +1008,7 @@ private fun ResumenDelDia(
 
                             titulo = "Productores",
 
-                            valor = "2",
+                            valor = delDia.productores.toString(),
 
                             icono = "usuarios",
 
@@ -1282,81 +1246,20 @@ private fun TarjetaResumen(
 @Composable
 private fun CapacidadBodega(
 
+    inventario: ResumenInventario,
+
     onAjustarBodega: () -> Unit
 ) {
 
-
-    // ========================================================
-    // 32. VALORES DE EJEMPLO DE LA BODEGA
-    // ========================================================
-
-    /**
-     * Representan la cantidad almacenada
-     * y la capacidad total.
-     *
-     * Posteriormente podrán obtenerse
-     * desde el inventario real.
-     */
-    val kilosUsados = 559
-
-    val kilosTotales = 3000
-
-
-    // ========================================================
-    // 33. CÁLCULO DE OCUPACIÓN
-    // ========================================================
-
-    /**
-     * Calcula la proporción de ocupación.
-     *
-     * toFloat() convierte el número
-     * a un valor decimal.
-     *
-     * Ejemplo:
-     *
-     * 559 / 3000 = 0.1863
-     *
-     * Lo que equivale a 18.63%.
-     *
-     * coerceIn(0f, 1f) evita que el valor
-     * sea menor que cero o mayor que uno.
-     *
-     * También se comprueba que la capacidad
-     * total sea mayor que cero para evitar
-     * una división entre cero.
-     */
-    val ocupacion = if (kilosTotales > 0) {
-
-        (
-                kilosUsados.toFloat() / kilosTotales
-                ).coerceIn(0f, 1f)
-
-    } else {
-
-        0f
+    // Mismo cálculo y mismo redondeo que Inventario (resumirInventario y formatoPorcentaje): kg disponibles de los
+    // sublotes con café ÷ capacidad del Negocio de la cuenta. Antes eran 559 kg y 3.000 kg fijos (por eso salía 19 %).
+    val sinCapacidad = inventario.ocupacion.estado == EstadoBodega.SIN_CAPACIDAD
+    val ocupacion = (inventario.ocupacion.porcentaje / 100).toFloat().coerceIn(0f, 1f)
+    val colorEstado = when (inventario.ocupacion.estado) {
+        EstadoBodega.ADVERTENCIA -> Color(0xFFD99A00)
+        EstadoBodega.CRITICA -> Color(0xFFDC2626)
+        else -> Verde
     }
-
-
-    // ========================================================
-    // 34. PORCENTAJE DE OCUPACIÓN
-    // ========================================================
-
-    /**
-     * Multiplica la proporción por 100.
-     *
-     * roundToInt() redondea el resultado
-     * a un número entero.
-     *
-     * En este ejemplo muestra 19%.
-     */
-    val porcentaje = (
-            ocupacion * 100
-            ).roundToInt()
-
-
-    // ========================================================
-    // 35. CONTENEDOR DE LA SECCIÓN
-    // ========================================================
 
     Column(
 
@@ -1440,9 +1343,11 @@ private fun CapacidadBodega(
                     Text(
 
                         // Muestra el porcentaje calculado
-                        text = "$porcentaje%",
+                        text = if (sinCapacidad) "—" else formatoPorcentaje(inventario.ocupacion.porcentaje),
 
-                        color = Verde,
+                        color = colorEstado,
+
+                        modifier = Modifier.testTag("inicio_ocupacion"),
 
                         fontSize = 22.sp,
 
@@ -1487,7 +1392,7 @@ private fun CapacidadBodega(
 
                         .clip(CircleShape),
 
-                    color = Verde,
+                    color = colorEstado,
 
                     trackColor = Color(0xFFEAF0F7),
 
@@ -1531,7 +1436,9 @@ private fun CapacidadBodega(
 
                         Text(
 
-                            text = "$kilosUsados kg",
+                            text = formatoKg(inventario.totalKg),
+
+                            modifier = Modifier.testTag("inicio_kg_usados"),
 
                             fontSize = 13.sp,
 
@@ -1561,7 +1468,9 @@ private fun CapacidadBodega(
                         Text(
 
                             // Capacidad de ejemplo
-                            text = "3.000 kg",
+                            text = if (sinCapacidad) "—" else formatoKg(inventario.capacidadKg),
+
+                            modifier = Modifier.testTag("inicio_capacidad"),
 
                             fontSize = 13.sp,
 
@@ -1595,9 +1504,13 @@ private fun CapacidadBodega(
 @Composable
 private fun SublotesAntiguos(
 
+    estado: HomeUiState,
+
+    onReintentar: () -> Unit,
+
     onVerSublotes: () -> Unit,
 
-    onAbrirSublote: (Int) -> Unit
+    onAbrirSublote: (Long) -> Unit
 ) {
 
     Column(
@@ -1683,44 +1596,29 @@ private fun SublotesAntiguos(
                  * La pantalla principal ya utiliza
                  * LazyColumn para el desplazamiento.
                  */
-                sublotesEjemplo.forEachIndexed {
-                        index, sublote ->
-
-
-                    // ========================================
-                    // 45. FILA DEL SUBLOTE
-                    // ========================================
-
-                    FilaSublote(
-
-                        sublote = sublote,
-
-                        onClick = {
-
-                            // Informa cuál sublote
-                            // fue seleccionado
-                            onAbrirSublote(index)
-                        }
+                // Estados en el mismo orden que Inventario: error, cargando, vacío y lista.
+                when {
+                    estado.error != null -> {
+                        Text(estado.error, color = Texto, fontSize = 14.sp, modifier = Modifier.padding(vertical = 12.dp))
+                        TextButton(onClick = onReintentar) { Text("Reintentar", color = AzulOscuro) }
+                    }
+                    estado.cargando -> CircularProgressIndicator(
+                        Modifier.padding(vertical = 16.dp).size(28.dp).testTag("inicio_cargando"), color = Azul
                     )
-
-
-                    // ========================================
-                    // 46. SEPARADOR ENTRE SUBLOTES
-                    // ========================================
-
-                    /**
-                     * Muestra una línea entre filas.
-                     *
-                     * No agrega un separador
-                     * después del último sublote.
-                     */
-                    if (
-                        index != sublotesEjemplo.lastIndex
-                    ) {
-
-                        HorizontalDivider(
-                            color = Borde
+                    // Mismo texto que el estado vacío de Inventario.
+                    estado.sublotesAntiguos.isEmpty() -> Text(
+                        "Aún no tienes café en inventario",
+                        color = Gris,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(vertical = 16.dp).testTag("inicio_sin_sublotes"),
+                    )
+                    else -> estado.sublotesAntiguos.forEachIndexed { index, sublote ->
+                        FilaSublote(
+                            sublote = sublote,
+                            pesoBultoKg = estado.inventario.pesoBultoKg,
+                            onClick = { onAbrirSublote(sublote.id) }
                         )
+                        if (index != estado.sublotesAntiguos.lastIndex) HorizontalDivider(color = Borde)
                     }
                 }
             }
@@ -1752,7 +1650,9 @@ private fun SublotesAntiguos(
 @Composable
 private fun FilaSublote(
 
-    sublote: SubloteEjemplo,
+    sublote: SubloteInicio,
+
+    pesoBultoKg: Double,
 
     onClick: () -> Unit
 ) {
@@ -1768,7 +1668,7 @@ private fun FilaSublote(
      * Si el tipo es "Verde",
      * esVerde tendrá el valor true.
      */
-    val esVerde = sublote.tipo == "Verde"
+    val esVerde = sublote.tipo == TipoCafe.VERDE
 
 
     // ========================================================
@@ -1779,7 +1679,7 @@ private fun FilaSublote(
      * Comprueba si el sublote
      * tiene el estado "Regular".
      */
-    val regular = sublote.estado == "Regular"
+    val regular = sublote.calidad != Calidad.BUENA
 
 
     // ========================================================
@@ -1794,6 +1694,7 @@ private fun FilaSublote(
             .fillMaxWidth()
 
             // Permite seleccionar el sublote
+            .testTag("inicio_sublote_${sublote.id}")
             .clickable(
                 onClick = onClick
             )
@@ -1884,7 +1785,7 @@ private fun FilaSublote(
 
             Text(
 
-                text = sublote.tipo,
+                text = "${sublote.tipo.etiqueta} · Sublote #${sublote.id}",
 
                 fontWeight = FontWeight.SemiBold,
 
@@ -1931,7 +1832,7 @@ private fun FilaSublote(
                  */
                 Text(
 
-                    text = "${sublote.dias} días",
+                    text = when (sublote.diasEnBodega) { 0 -> "Hoy"; 1 -> "1 día"; else -> "${sublote.diasEnBodega} días" },
 
                     color = Gris,
 
@@ -1957,7 +1858,7 @@ private fun FilaSublote(
 
             Text(
 
-                text = sublote.peso,
+                text = detallePeso(sublote.pesoKg, pesoBultoKg),
 
                 color = AzulOscuro,
 
@@ -2014,7 +1915,7 @@ private fun FilaSublote(
 
                 Text(
 
-                    text = sublote.estado,
+                    text = sublote.calidad.etiqueta,
 
                     color =
                         if (regular) {
