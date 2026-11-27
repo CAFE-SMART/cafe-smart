@@ -8,7 +8,7 @@
 |---|---|
 | **Productor** | Quien vende café. Cédula o NIT únicos.|
 | **Lote** | Agrupación lógica por *tipo + calidad*. No guarda pesos; se calculan desde sus sublotes. |
-| **Sublote** | Unidad real del inventario: peso, costo/kg, fecha de entrada, humedad (8–15 %) y factor de rendimiento (80–120), ambos opcionales. |
+| **Sublote** | Unidad real del inventario: peso, costo/kg, fecha de entrada, humedad (8–15 %) y factor de rendimiento (70–140), ambos opcionales. |
 | **Compra** | Operación de compra. Una compra → N sublotes (un "Café N" = un sublote). |
 | **Gasto** | Concepto, descripción, tipo, monto, fecha, estado de pago, a qué aplica. | 
 | **Venta** | Operación de venta, total o parcial, de varios sublotes a la vez. |
@@ -76,8 +76,8 @@ Las data classes validan al construirse (`init { require(...) }`); un dato invá
 
 | Entidad | Regla |
 |---|---|
-| Sublote | `compraId` o `secadoId`, nunca los dos · `pesoInicialKg > 0` · `0 ≤ pesoDisponibleKg ≤ pesoInicialKg` · `costoKg ≥ 0` · humedad entre **8 y 15 %** · factor entre **80 y 120** |
-| Secado | EN_CURSO no tiene `fechaFin` · factor entre 80 y 120 |
+| Sublote | `compraId` o `secadoId`, nunca los dos · `pesoInicialKg > 0` · `0 ≤ pesoDisponibleKg ≤ pesoInicialKg` · `costoKg ≥ 0` · humedad entre **8 y 15 %** · factor entre **70 y 140** |
+| Secado | EN_CURSO no tiene `fechaFin` · factor entre 70 y 140 |
 | SecadoSublote | `pesoEnviadoKg > 0` |
 | Gasto | `concepto` no vacío · `monto > 0` · `secadoId != null` si y solo si `aplicaA == SECADO` |
 | GastoSublote | `montoAsignado > 0`; `Gasto.repartoEsValido(reparto)` comprueba que la suma sea igual al monto |

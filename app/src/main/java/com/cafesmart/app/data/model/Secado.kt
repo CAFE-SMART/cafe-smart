@@ -16,7 +16,7 @@ data class Secado(
     val fechaInicio: Fecha,
     val fechaFin: Fecha? = null,             // null mientras está EN_CURSO
     val estado: EstadoSecado = EstadoSecado.EN_CURSO,
-    val factorRendimiento: Int? = null       // entre 80 y 120 (Paso 5)
+    val factorRendimiento: Int? = null       // entre 70 y 140 (Paso 5)
 ) {
     init {
         require(estado != EstadoSecado.EN_CURSO || fechaFin == null) {

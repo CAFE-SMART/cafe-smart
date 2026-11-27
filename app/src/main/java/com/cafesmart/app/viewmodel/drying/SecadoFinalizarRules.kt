@@ -70,7 +70,7 @@ fun factorDesdeTexto(texto: String): Int? {
     return limpio.toIntOrNull() ?: Int.MAX_VALUE
 }
 
-// Error de un factor ya convertido a numero, o null si esta entre 80 y 120.
+// Error de un factor ya convertido a numero, o null si esta entre FACTOR_RENDIMIENTO_MIN y FACTOR_RENDIMIENTO_MAX.
 fun errorFactorEntero(factor: Int): String? =
     if (factor in FACTOR_RENDIMIENTO_MIN..FACTOR_RENDIMIENTO_MAX) null else MENSAJE_FACTOR_FUERA_DE_RANGO
 

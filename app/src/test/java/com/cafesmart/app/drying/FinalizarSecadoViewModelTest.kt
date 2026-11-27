@@ -3,6 +3,8 @@ package com.cafesmart.app.drying
 import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.EstadoSecado
 import com.cafesmart.app.data.model.Fecha
+import com.cafesmart.app.data.model.FACTOR_RENDIMIENTO_MAX
+import com.cafesmart.app.data.model.FACTOR_RENDIMIENTO_MIN
 import com.cafesmart.app.data.secado.EnvioASecar
 import com.cafesmart.app.data.secado.SecadoRepositoryEjemplo
 import com.cafesmart.app.viewmodel.drying.FinalizarSecadoViewModel
@@ -179,7 +181,12 @@ class FinalizarSecadoViewModelTest {
     @Test
     fun factor_fronterasYTextos() = runTest {
         llenarFigma()
-        listOf("79" to false, "80" to true, "120" to true, "121" to false).forEach { (texto, valido) ->
+        listOf(
+            (FACTOR_RENDIMIENTO_MIN - 1).toString() to false,
+            FACTOR_RENDIMIENTO_MIN.toString() to true,
+            FACTOR_RENDIMIENTO_MAX.toString() to true,
+            (FACTOR_RENDIMIENTO_MAX + 1).toString() to false
+        ).forEach { (texto, valido) ->
             vm.escribirFactor(texto)
             assertEquals(texto, valido, estado.puedeConfirmar)
             assertEquals(texto, if (valido) null else MENSAJE_FACTOR_FUERA_DE_RANGO, estado.errorFactor)
@@ -192,7 +199,7 @@ class FinalizarSecadoViewModelTest {
         vm.escribirFactor("")
         assertNull(estado.errorFactor)
         assertTrue(estado.puedeConfirmar)
-        assertEquals("Opcional. Entre 80 y 120.", estado.ayudaFactor)
+        assertEquals("Opcional. Entre $FACTOR_RENDIMIENTO_MIN y $FACTOR_RENDIMIENTO_MAX.", estado.ayudaFactor)
     }
 
     @Test
@@ -335,7 +342,7 @@ class FinalizarSecadoViewModelTest {
     @Test
     fun confirmar_conFactorFueraDeRangoNoFinaliza() = runTest {
         llenarFigma()
-        vm.escribirFactor("121")
+        vm.escribirFactor((FACTOR_RENDIMIENTO_MAX + 1).toString())
         vm.confirmar()
         assertNull(estado.resultado)
         assertEquals(1, repositorio.secadosEnCurso().size)
