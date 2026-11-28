@@ -73,11 +73,19 @@ class GastosSubloteNavigationTest {
         abrir("1")
         compose.onNodeWithText("Transporte compartido").assertIsDisplayed()
         compose.onNodeWithText("Solo otro sublote").assertDoesNotExist()
-        compose.onNodeWithText("Valor asignado: ${dineroGasto(30000)}").assertIsDisplayed()
+        // La fila (diseño del Figma, tarea 16) muestra solo lo asignado a ESTE sublote, sin el prefijo "Valor
+        // asignado:" del diseño anterior: $30.000 de los $50.000 del gasto, nunca el monto global.
+        val lista = compose.onNodeWithTag("gastos_sublote_lista")
+        lista.performScrollToNode(hasTestTag("gastos_sublote_fila_1"))
+        compose.onNode(hasText(dineroGasto(30000)) and hasAnyAncestor(hasTestTag("gastos_sublote_fila_1"))).assertIsDisplayed()
+        compose.onNode(hasText(dineroGasto(50000)) and hasAnyAncestor(hasTestTag("gastos_sublote_fila_1"))).assertDoesNotExist()
+        lista.performScrollToNode(hasTestTag("gastos_sublote_total"))
         compose.onNodeWithTag("gastos_sublote_total").assertTextEquals(dineroGasto(30000))
         runBlocking { repo.guardar(gasto.copy(id = 3, concepto = "Segundo gasto", monto = 7000), listOf(GastoSublote(3, 1, 7000))) }
+        lista.performScrollToNode(hasTestTag("gastos_sublote_total"))
         compose.onNodeWithTag("gastos_sublote_total").assertTextEquals(dineroGasto(37000))
-        compose.onNodeWithText("Segundo gasto").performScrollTo().assertIsDisplayed()
+        lista.performScrollToNode(hasText("Segundo gasto"))
+        compose.onNodeWithText("Segundo gasto").assertIsDisplayed()
         compose.runOnIdle { nav.popBackStack(); nav.navigate(Routes.inventoryBatchExpenses("2")) }
         compose.onNodeWithTag("gastos_sublote_total").assertTextEquals(dineroGasto(70000))
         compose.onNodeWithText("Segundo gasto").assertDoesNotExist()
