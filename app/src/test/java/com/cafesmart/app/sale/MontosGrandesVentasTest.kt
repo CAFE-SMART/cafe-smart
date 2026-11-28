@@ -6,13 +6,16 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 
 // QA de cantidades y precios grandes en Ventas (Paso 2). Cafe seco de ejemplo: 521 kg en total.
 class MontosGrandesVentasTest {
 
+    @get:Rule val principal = PrincipalDeVentasRule()
+
     private fun ventaConTodoElSeco(precio: String): SaleViewModel {
-        val vm = SaleViewModel()
+        val vm = viewModelDeVentasDePrueba()
         vm.alternarTodos()
         listOf(Calidad.BUENA, Calidad.REGULAR, Calidad.MALA).forEach { vm.cambiarPrecio(it, precio) }
         return vm
@@ -33,7 +36,7 @@ class MontosGrandesVentasTest {
     }
 
     @Test fun precioPegadoGigante_seRecortaYNoRompe() {
-        val vm = SaleViewModel()
+        val vm = viewModelDeVentasDePrueba()
         vm.alternarTodos()
         vm.cambiarPrecio(Calidad.BUENA, "9".repeat(40))
         val texto = textoDelPrecio(vm, Calidad.BUENA)

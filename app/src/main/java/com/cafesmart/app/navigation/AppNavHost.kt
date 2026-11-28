@@ -16,6 +16,7 @@ import com.cafesmart.app.data.finanzas.fechaDeHoy
 import com.cafesmart.app.ui.finance.AccesoFinancieroScreen
 import com.cafesmart.app.data.inventario.InventoryRepository
 import com.cafesmart.app.data.inventario.OrigenOcupacionRoom
+import com.cafesmart.app.data.sale.VentaRepository
 import com.cafesmart.app.data.local.AppDatabase
 import com.cafesmart.app.data.purchase.PurchaseRepository
 import com.cafesmart.app.ui.finance.HistorialFinancieroScreen
@@ -178,6 +179,8 @@ fun AppNavHost(
     // Compras y bodega en Room: el repositorio guarda productores y compras; la ocupación suma los sublotes con existencia.
     val compras = remember { PurchaseRepository.de(context) }
     val ocupacion = remember { OrigenOcupacionRoom(AppDatabase.obtener(context).subloteDao()) }
+    // Ventas en Room: el repositorio guarda clientes y ventas; el inventario es el mismo que lee la pantalla Inventario.
+    val ventas = remember { VentaRepository.de(context) }
     val inventario = remember { InventoryRepository.de(context) }
     // Secado: por ahora el repositorio de ejemplo (en memoria); se cambia por Room cuando exista.
     val secadoRepositorio = remember { SecadoRepositoryEjemplo() }
@@ -565,7 +568,12 @@ fun AppNavHost(
         // ── Ventas ──────────────────────────────────────────
         composable(Routes.SALE_STEP1) {
             // viewModel() ligado a esta entrada: los pasos 2 y 3 y la pantalla final usan este mismo ViewModel.
-            val saleViewModel: SaleViewModel = viewModel()
+            val saleViewModel: SaleViewModel = viewModel { SaleViewModel(ventas, inventario) }
+            // Una sola vez al entrar al flujo: los clientes de Room y el inventario (que se mantiene al dia solo).
+            LaunchedEffect(saleViewModel) {
+                saleViewModel.cargarClientes()
+                saleViewModel.observarInventario()
+            }
             SaleStep1Flow(
                 viewModel = saleViewModel,
                 onContinuar = { navController.navigateTo(Routes.SALE_STEP2) },
@@ -855,7 +863,17 @@ private const val AVISO_CAPACIDAD_GUARDADA = "Capacidad de bodega guardada"
 @Composable
 private fun rememberSaleViewModel(navController: NavHostController, entrada: NavBackStackEntry): SaleViewModel {
     val entradaPaso1 = remember(entrada) { navController.getBackStackEntry(Routes.SALE_STEP1) }
-    return viewModel(entradaPaso1)
+    val contexto = LocalContext.current
+    // El ViewModel ya existe (lo creo el paso 1); la fabrica solo se usa si la entrada se restaura sin el.
+    val viewModel: SaleViewModel =
+        viewModel(entradaPaso1) { SaleViewModel(VentaRepository.de(contexto), InventoryRepository.de(contexto)) }
+    // Si el ViewModel se creo al restaurar el paso 2 o 3 (sin pasar por el paso 1) no tendria clientes ni inventario.
+    // Las dos llamadas son seguras si ya estaban hechas: observarInventario no lee dos veces y cargarClientes solo recarga.
+    LaunchedEffect(viewModel) {
+        viewModel.cargarClientes()
+        viewModel.observarInventario()
+    }
+    return viewModel
 }
 
 /**

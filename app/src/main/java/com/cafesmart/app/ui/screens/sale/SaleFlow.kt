@@ -1,6 +1,7 @@
 package com.cafesmart.app.ui.screens.sale
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -41,11 +42,8 @@ fun SaleStep1Flow(
         onDocumentoChange = { viewModel.cambiarDocumento(it) },
         onNombreChange = { viewModel.cambiarNombre(it) },
         onTelefonoChange = { viewModel.cambiarTelefono(it) },
-        // Con "Cliente nuevo", continuarPaso1 lo registra; luego se navega al paso 2.
-        onContinuar = {
-            viewModel.continuarPaso1()
-            onContinuar()
-        },
+        // Con "Cliente nuevo", continuarPaso1 lo guarda en Room y solo entonces se navega al paso 2.
+        onContinuar = { viewModel.continuarPaso1(alTerminar = onContinuar) },
         // La flecha del paso 1 sale del registro de venta.
         onBack = onSalir,
         modifier = modifier
@@ -89,16 +87,20 @@ fun SaleStep3Flow(
 ) {
     val estado by viewModel.uiState.collectAsState()
 
+    // La venta se guarda en segundo plano: se pasa a la pantalla final solo cuando Room la guardo.
+    // Si falla, la persona se queda aqui con el aviso de error.
+    LaunchedEffect(estado.ventaRegistrada) {
+        if (estado.ventaRegistrada) onConfirmada()
+    }
+
     SaleStep3Screen(
         estado = estado,
         onCambiarCliente = onCambiarCliente,
         onFechaChange = { viewModel.cambiarFecha(it) },
         onEditarCafe = onEditarCafe,
-        onConfirmar = {
-            val registrada = viewModel.confirmarVenta()
-            // Solo se pasa a la pantalla final si este toque registro la venta: un segundo toque no navega otra vez.
-            if (registrada) onConfirmada()
-        },
+        // Un segundo toque mientras se guarda no hace nada (lo ignora el ViewModel).
+        onConfirmar = { viewModel.confirmarVenta() },
+        onDescartarError = { viewModel.descartarErrorAlGuardar() },
         onCancelarVenta = {
             viewModel.reiniciarVenta()
             onCancelada()
