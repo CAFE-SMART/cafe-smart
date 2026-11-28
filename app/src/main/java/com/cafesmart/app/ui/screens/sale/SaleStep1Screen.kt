@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -62,7 +63,7 @@ fun SaleStep1Screen(
     modifier: Modifier = Modifier
 ) {
     // Estado visual: si la hoja "Clientes" esta abierta
-    var mostrarLista by remember { mutableStateOf(false) }
+    var mostrarLista by rememberSaveable { mutableStateOf(false) }
 
     // imePadding(): cuando sale el teclado, la pantalla se encoge para que no tape
     // los campos ni el boton Continuar
