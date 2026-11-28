@@ -8,15 +8,10 @@ import com.cafesmart.app.data.model.SubloteConLote
 import com.cafesmart.app.data.model.TipoCafe
 import com.cafesmart.app.data.negocio.NegocioRepository
 import com.cafesmart.app.data.sample.CAPACIDAD_EJEMPLO_KG
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.coroutines.cancellation.CancellationException
-
-// Mismo estilo que ERROR_RESUMEN y ERROR_HISTORIAL (Finanzas). Texto pendiente de confirmar con el equipo.
-const val ERROR_INVENTARIO = "No se pudo cargar el inventario. Inténtalo de nuevo."
 
 /**
  * Estado de Inventario, compartido por las tres vistas.
@@ -24,15 +19,12 @@ const val ERROR_INVENTARIO = "No se pudo cargar el inventario. Inténtalo de nue
  * - [lotes]: los lotes con sus sublotes tal como están en Room; de aquí salen "Lista por tipo" y "Sublotes del grupo".
  * - [cargando]: true hasta que Room entrega la primera lectura. Mientras tanto la lista está vacía y la pantalla
  *   no debe mostrar el estado vacío (sería un parpadeo falso de "no tienes café").
- * - [error]: no null si Room falló o entregó un dato que no se pudo leer. La pantalla muestra el mensaje y
- *   "Reintentar" en vez de un inventario incompleto (y en vez de cerrar la app).
  */
 data class InventoryUiState(
     val resumen: ResumenInventario,
     val orden: OrdenInventario = OrdenInventario.MAS_RECIENTE,
     val lotes: List<LoteConSublotes> = emptyList(),
     val cargando: Boolean = false,
-    val error: String? = null,
 ) {
     /** Filas de "Lista por tipo": las calidades de [tipo] con su peso y sublotes. */
     fun calidadesDe(tipo: TipoCafe): List<ResumenCalidad> = resumirCalidades(lotes, tipo, orden)
@@ -49,8 +41,8 @@ data class InventoryUiState(
 class InventoryViewModel(
     private val inventario: InventoryRepository,
     capacidadKg: Double = CAPACIDAD_EJEMPLO_KG,
-    private val negocios: NegocioRepository? = null,
-    private val uid: String? = null,
+    negocios: NegocioRepository? = null,
+    uid: String? = null,
 ) : ViewModel() {
 
     private val conNegocio = negocios != null && uid != null
@@ -69,64 +61,27 @@ class InventoryViewModel(
     )
     val uiState: StateFlow<InventoryUiState> = _uiState
 
-    // Las dos lecturas en curso. Si una falla se cancelan ambas; "Reintentar" las vuelve a abrir.
-    private var lecturas: List<Job> = emptyList()
-
     init {
-        observar()
-    }
-
-    /** Botón "Reintentar" del estado de error: vuelve a leer Room desde cero. */
-    fun reintentar() {
-        if (_uiState.value.error == null) return
-        _uiState.update { it.copy(error = null, cargando = true) }
-        observar()
+        viewModelScope.launch {
+            inventario.observarLotes().collect { nuevos ->
+                lotes = nuevos
+                // Con la primera lectura (aunque venga vacía) ya se sabe si hay café o no.
+                recalcular(cargando = false)
+            }
+        }
+        if (negocios != null && uid != null) {
+            viewModelScope.launch {
+                negocios.observar(uid).collect { negocio ->
+                    capacidad = negocio?.capacidadBodegaKg ?: 0.0
+                    pesoBulto = negocio?.pesoBultoKg ?: KG_POR_BULTO
+                    recalcular()
+                }
+            }
+        }
     }
 
     /** El usuario eligió otra opción del botón "Más reciente": se reordena la lista. */
     fun cambiarOrden(orden: OrdenInventario) = recalcular(orden = orden)
-
-    // Cualquier excepción de Room, del paso de entidad a modelo (enum desconocido) o de las validaciones de
-    // Sublote (dato fuera de rango) termina en el estado de error. Sin esto, en viewModelScope cerraría la app.
-    private fun observar() {
-        lecturas.forEach { it.cancel() }
-        val inventarioJob = viewModelScope.launch {
-            protegido {
-                inventario.observarLotes().collect { nuevos ->
-                    lotes = nuevos
-                    // Con la primera lectura (aunque venga vacía) ya se sabe si hay café o no.
-                    recalcular(cargando = false)
-                }
-            }
-        }
-        val negocioJob = if (negocios != null && uid != null) {
-            viewModelScope.launch {
-                protegido {
-                    negocios.observar(uid).collect { negocio ->
-                        capacidad = negocio?.capacidadBodegaKg ?: 0.0
-                        pesoBulto = negocio?.pesoBultoKg ?: KG_POR_BULTO
-                        recalcular()
-                    }
-                }
-            }
-        } else null
-        lecturas = listOfNotNull(inventarioJob, negocioJob)
-    }
-
-    private suspend fun protegido(bloque: suspend () -> Unit) {
-        try {
-            bloque()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            mostrarError()
-        }
-    }
-
-    private fun mostrarError() {
-        lecturas.forEach { it.cancel() }
-        _uiState.update { it.copy(cargando = false, error = ERROR_INVENTARIO) }
-    }
 
     // Vuelve a calcular el resumen con lo último que se sabe. Los parámetros que no se pasan se quedan como estaban.
     private fun recalcular(

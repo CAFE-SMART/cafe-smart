@@ -100,7 +100,6 @@ import com.cafesmart.app.ui.settings.NegocioInfoScreen
 import com.cafesmart.app.ui.settings.SettingsScreen
 import com.cafesmart.app.viewmodel.inventory.InventoryViewModel
 import com.cafesmart.app.viewmodel.home.HomeViewModel
-import com.cafesmart.app.ui.inventory.SublotesGrupoScreen
 import com.cafesmart.app.viewmodel.inventory.tipoCafeDesdeRuta
 import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
 import com.cafesmart.app.viewmodel.drying.FinalizarSecadoViewModel
@@ -470,7 +469,6 @@ fun AppNavHost(
                 // Figma: cada tipo abre su lista por calidad. Esa pantalla aún es placeholder.
                 onTipoClick = { tipo -> navController.navigateTo(Routes.inventoryType(tipo.name)) },
                 onOrdenChange = inventoryViewModel::cambiarOrden,
-                onReintentar = inventoryViewModel::reintentar,
                 onAjustarBodega = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
                 onRegistrarCompra = { navController.navigateTo(Routes.PURCHASE_STEP1) },
                 // La barra inferior manda el nombre de la pestaña.
@@ -494,58 +492,21 @@ fun AppNavHost(
                 androidx.compose.runtime.LaunchedEffect(Unit) { navController.popBackStack() }
                 return@composable
             }
-            // "Inventario · Lista · <tipo>": misma pantalla y misma lectura de Room que el resumen, con la pestaña
-            // del tipo elegida y sus calidades. Cada calidad abre la lista de sublotes de ese grupo (lote).
-            val tipoViewModel: InventoryViewModel = viewModel {
-                InventoryViewModel(inventario = inventario, negocios = negocios, uid = FirebaseSessionGateway.usuarioActual()?.uid)
-            }
-            val tipoState by tipoViewModel.uiState.collectAsState()
-            InventoryScreen(
-                estado = tipoState,
-                tipoSeleccionado = tipo,
-                // Otra pestaña reemplaza esta lista (no se apilan las pestañas).
-                onTipoClick = { otro ->
-                    if (otro != tipo) navController.navigate(Routes.inventoryType(otro.name)) {
-                        popUpTo(Routes.INVENTORY)
-                        launchSingleTop = true
-                    }
-                },
-                onTodosClick = { navController.popBackStack(Routes.INVENTORY, inclusive = false) },
-                onCalidadClick = { calidad -> navController.navigateTo(Routes.inventoryList(calidad.lote.id)) },
-                // Solo el café verde se manda a secar (Secado aún es placeholder hasta que entren los PR de Katherine).
-                onIniciarSecado = { navController.navigateTo(Routes.DRYING_STEP1) },
-                onOrdenChange = tipoViewModel::cambiarOrden,
-                onReintentar = tipoViewModel::reintentar,
-                onAjustarBodega = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
-                onRegistrarCompra = { navController.navigateTo(Routes.PURCHASE_STEP1) },
-                onNavegar = { destino ->
-                    when (destino) {
-                        "inicio" -> navController.popBackStack(Routes.HOME, inclusive = false)
-                        "inventario" -> navController.popBackStack(Routes.INVENTORY, inclusive = false)
-                        "compras" -> navController.navigateTo(Routes.PURCHASE_STEP1)
-                        "ventas" -> navController.navigateTo(Routes.SALE_STEP1)
-                        "ajustes" -> navController.navigateTo(Routes.SETTINGS)
-                    }
-                }
+            NavPlaceholder(
+                navController,
+                "Inventario · Café ${tipo.etiqueta.lowercase()} por calidad", Routes.inventoryType(tipo.name), true,
+                *listOfNotNull(
+                    "Ver sublotes de una calidad" to Routes.INVENTORY_LIST,
+                    // Solo el café verde se manda a secar.
+                    if (tipo == TipoCafe.VERDE) "Iniciar secado" to Routes.DRYING_STEP1 else null
+                ).toTypedArray()
             )
         }
-        composable(
-            route = Routes.INVENTORY_LIST,
-            arguments = listOf(navArgument(Routes.ARG_LOTE_ID) { type = NavType.StringType })
-        ) { entry ->
-            // "Inventario · Detalle · Lista de sublotes" de un grupo real (id del lote de la ruta, nunca uno fijo).
-            val loteId = entry.arguments?.getString(Routes.ARG_LOTE_ID)?.toLongOrNull()
-            val grupoViewModel: InventoryViewModel = viewModel {
-                InventoryViewModel(inventario = inventario, negocios = negocios, uid = FirebaseSessionGateway.usuarioActual()?.uid)
-            }
-            val grupoState by grupoViewModel.uiState.collectAsState()
-            SublotesGrupoScreen(
-                estado = grupoState,
-                loteId = loteId,
-                hoy = fechaDeHoy(),
-                onBack = { navController.popBackStack() },
-                onAbrirSublote = { id -> navController.navigateTo(Routes.inventoryDetail(id.toString())) },
-                onReintentar = grupoViewModel::reintentar,
+        composable(Routes.INVENTORY_LIST) {
+            NavPlaceholder(
+                navController,
+                "Inventario · Sublotes del grupo", Routes.INVENTORY_LIST, true,
+                "Detalle del sublote (ejemplo)" to Routes.inventoryDetail("1")
             )
         }
         composable(
