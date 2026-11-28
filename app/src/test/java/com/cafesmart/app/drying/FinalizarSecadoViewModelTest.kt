@@ -110,7 +110,7 @@ class FinalizarSecadoViewModelTest {
         vm.escribirKilos(Calidad.REGULAR, "100")
         vm.escribirKilos(Calidad.MALA, "41")
         assertEquals("Entre los tres, máximo 290 kg.", estado.errorKilos)
-        assertEquals("Entre los tres, entre 232 y 290 kg.", estado.ayudaKilos)
+        assertEquals("Entre los tres, máximo 290 kg.", estado.ayudaKilos)
         assertFalse(estado.puedeConfirmar.also { vm.escribirFactor("92") })
         assertNull(estado.resumen)
     }
@@ -141,7 +141,7 @@ class FinalizarSecadoViewModelTest {
         assertEquals("", e.kilosEnPantalla(Calidad.BUENA))
         assertEquals("", e.kilosEnPantalla(Calidad.REGULAR))
         assertEquals("", e.kilosEnPantalla(Calidad.MALA))
-        assertEquals("Entre los tres, entre 48 y 60 kg.", e.ayudaKilos)
+        assertEquals("Entre los tres, máximo 60 kg.", e.ayudaKilos)
     }
 
     @Test
@@ -162,18 +162,16 @@ class FinalizarSecadoViewModelTest {
     }
 
     @Test
-    fun de60Kg_debajoDelMinimoNoSePuedeConfirmar() = runTest {
+    fun de60Kg_unaMermaMayorAl20PorCientoSePuedeConfirmar() = runTest {
+        // RN-G-23 no fija merma maxima: 47,9 de 60 kg es valido.
         val vm60 = vmDe60Kg()
         vm60.escribirKilos(Calidad.BUENA, "40")
         vm60.escribirKilos(Calidad.REGULAR, "5")
         vm60.escribirKilos(Calidad.MALA, "2,9")
         vm60.escribirFactor("92")
         val e = vm60.uiState.value
-        assertEquals("Entre los tres, mínimo 48 kg.", e.errorKilos)
-        assertFalse(e.puedeConfirmar)
-        // Justo en el minimo (48 kg) si se puede.
-        vm60.escribirKilos(Calidad.MALA, "3")
-        assertTrue(vm60.uiState.value.puedeConfirmar)
+        assertNull(e.errorKilos)
+        assertTrue(e.puedeConfirmar)
     }
 
     // ---------- Factor ----------
@@ -332,8 +330,8 @@ class FinalizarSecadoViewModelTest {
 
     @Test
     fun confirmar_incompletoNoHaceNada() = runTest {
-        vm.escribirKilos(Calidad.BUENA, "140")
-        vm.confirmar()   // los kilos no llegan al minimo
+        vm.escribirKilos(Calidad.BUENA, "0")
+        vm.confirmar()   // sin cafe seco (RN-G-23: el peso final debe ser mayor a 0)
         assertNull(estado.resultado)
         assertEquals(1, repositorio.secadosEnCurso().size)
         assertFalse(estado.bloqueado)

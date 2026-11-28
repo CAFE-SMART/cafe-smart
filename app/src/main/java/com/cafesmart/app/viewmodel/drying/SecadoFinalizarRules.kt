@@ -27,36 +27,26 @@ const val MENSAJE_FECHA_FIN_FUTURA = "La fecha de finalización no puede ser fut
 
 // ---------------- Kilos secos ----------------
 
-// Decision de la estudiante (no esta en el Figma ni en Trello): el cafe pierde poco peso al secarse
-// (normal 1 a 2 %), asi que el total seco no puede ser menor a este porcentaje de lo enviado (merma maxima 20 %).
-// Es el unico lugar donde vive el limite: para cambiarlo basta editar esta constante.
-const val PORCENTAJE_MINIMO_SECO = 0.80
-
-// Minimo de kilos secos para lo enviado (redondeado a gramos). Con 60 kg enviados: 48 kg.
-fun minimoKilosSecos(enviadosKg: Double): Double = redondearKg(enviadosKg * PORCENTAJE_MINIMO_SECO)
+// RN-G-23: el peso final debe ser mayor que cero y no puede superar el peso enviado. No hay merma maxima:
+// el limite del 20 % que habia aqui no estaba en los requerimientos, el Figma ni Trello, y se quito.
 
 // "Entre los tres, máximo 290 kg."
 fun mensajeMaximoKilosSecos(enviadosKg: Double): String = "Entre los tres, máximo ${formatoKg(enviadosKg)}."
 
-// "Entre los tres, mínimo 232 kg."
-fun mensajeMinimoKilosSecos(enviadosKg: Double): String = "Entre los tres, mínimo ${formatoKg(minimoKilosSecos(enviadosKg))}."
-
-// Ayuda bajo los campos: "Entre los tres, entre 232 y 290 kg."
-fun ayudaKilosSecos(enviadosKg: Double): String =
-    "Entre los tres, entre ${formatoKg(minimoKilosSecos(enviadosKg)).removeSuffix(" kg")} y ${formatoKg(enviadosKg)}."
+// Ayuda bajo los campos: "Entre los tres, máximo 290 kg."
+fun ayudaKilosSecos(enviadosKg: Double): String = mensajeMaximoKilosSecos(enviadosKg)
 
 // Suma de los kilos secos de las tres calidades (redondeada a gramos). Una calidad que falta en el mapa vale 0.
 fun kilosSecosTotal(kilos: Map<Calidad, Double>): Double = redondearKg(kilos.values.sum())
 
-// Error de los kilos secos o null si son validos: ninguno negativo, la suma mayor a 0 y entre el minimo
-// (PORCENTAJE_MINIMO_SECO de lo enviado) y lo enviado, ambos extremos incluidos.
+// Error de los kilos secos o null si son validos: ninguno negativo, la suma mayor a 0 y como maximo lo enviado
+// (incluido), segun RN-G-23.
 // Es la unica validacion: la usan la pantalla y el repositorio.
 fun errorKilosSecos(kilos: Map<Calidad, Double>, enviadosKg: Double): String? {
     if (kilos.values.any { !it.isFinite() || it < 0 }) return MENSAJE_KILOS_NEGATIVOS
     val total = kilosSecosTotal(kilos)
     if (total <= 0.0) return MENSAJE_KILOS_SIN_CAFE
     if (total > enviadosKg + EPSILON_KG) return mensajeMaximoKilosSecos(enviadosKg)
-    if (total < minimoKilosSecos(enviadosKg) - EPSILON_KG) return mensajeMinimoKilosSecos(enviadosKg)
     return null
 }
 
