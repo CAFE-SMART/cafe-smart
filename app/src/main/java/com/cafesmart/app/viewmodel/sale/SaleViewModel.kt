@@ -1,17 +1,20 @@
 package com.cafesmart.app.viewmodel.sale
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.cafesmart.app.data.inventario.InventoryRepository
 import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.Cliente
 import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.model.SubloteConLote
 import com.cafesmart.app.data.model.TipoCafe
 import com.cafesmart.app.data.model.TipoDocumento
+import com.cafesmart.app.data.sale.ItemVenta
 import com.cafesmart.app.data.sale.ModoCliente
+import com.cafesmart.app.data.sale.ResultadoCliente
+import com.cafesmart.app.data.sale.VentaRepository
 import com.cafesmart.app.data.sale.NuevoCliente
 import com.cafesmart.app.data.sale.SubloteElegido
-import com.cafesmart.app.data.sale.clientesDeEjemplo
-import com.cafesmart.app.data.sale.sublotesParaVenderEjemplo
 import com.cafesmart.app.viewmodel.purchase.CafeEnResumen
 import com.cafesmart.app.viewmodel.purchase.SIN_RESULTADOS
 import com.cafesmart.app.viewmodel.purchase.conDocumento
@@ -35,8 +38,12 @@ import com.cafesmart.app.viewmodel.purchase.precioValido
 import com.cafesmart.app.viewmodel.purchase.validarDocumento
 import com.cafesmart.app.viewmodel.purchase.validarNombre
 import com.cafesmart.app.viewmodel.purchase.validarTelefono
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 // Un cliente tal como lo muestra la vista en la lista (textos ya listos)
 data class ClienteEnPantalla(
@@ -90,8 +97,8 @@ data class GrupoCalidad(
 // Los datos se guardan arriba; los valores con get() son lo que la vista muestra,
 // ya calculados aqui, para que la vista no tenga logica.
 data class SaleUiState(
-    // Clientes registrados, del mas antiguo al mas reciente. Temporal: se reemplazan por los de Room.
-    val clientes: List<Cliente> = clientesDeEjemplo,
+    // Clientes registrados en Room, del mas antiguo al mas reciente (se leen con cargarClientes).
+    val clientes: List<Cliente> = emptyList(),
     // Opcion elegida en el paso 1; null mientras no se elige ninguna
     val modo: ModoCliente? = null,
     // Lo que se escribio en el buscador de la tarjeta "Cliente registrado" y en el de la hoja "Clientes"
@@ -110,15 +117,23 @@ data class SaleUiState(
     // Lo que se escribio en el campo "Cantidad a vender" de cada sublote (por id). Se guarda aunque sea invalido,
     // para que la vista muestre lo escrito y su error; sin texto, el campo muestra la cantidad elegida.
     val textosCantidad: Map<Long, String> = emptyMap(),
-    // Sublotes con cafe para vender. Temporal: se reemplazan por los de Room.
-    val inventario: List<SubloteConLote> = sublotesParaVenderEjemplo(),
+    // Sublotes del inventario de Room, tambien los agotados (sublotesDelTipo ya los quita). Se leen con observarInventario.
+    val inventario: List<SubloteConLote> = emptyList(),
     // Pestana del paso 2 ("Verde", "Seco"...)
     val tipoCafe: TipoCafe = TipoCafe.SECO,
     // Hoy y la fecha de la venta (por defecto hoy); "Cambiar" en el paso 3 la modifica
     val hoy: Fecha = fechaDeHoy(),
     val fecha: Fecha = hoy,
     // true cuando se confirma la venta: evita registrarla dos veces
-    val ventaRegistrada: Boolean = false
+    val ventaRegistrada: Boolean = false,
+    // true mientras se guarda la venta en Room: un segundo toque en "Confirmar venta" se ignora.
+    val guardando: Boolean = false,
+    // Mensaje cuando no se pudo guardar la venta; null si no hay error.
+    val errorAlGuardar: String? = null,
+    // Aviso cuando no se pudo leer o guardar un cliente (null si todo va bien).
+    val errorCliente: String? = null,
+    // true mientras se guarda o modifica un cliente en Room: un segundo toque se ignora
+    val guardandoCliente: Boolean = false
 ) {
     // ---------- Paso 1: cliente ----------
 
@@ -381,14 +396,58 @@ data class SaleUiState(
         get() = !ventaRegistrada && continuarPaso1Habilitado && puedeContinuar && errorDeFecha == null
 }
 
+// Cuando Room no logra guardar, modificar o leer clientes (textos propuestos; falta confirmarlos con el equipo)
+const val MENSAJE_ERROR_CARGAR_CLIENTES = "No pudimos cargar tus clientes. Inténtalo de nuevo."
+const val MENSAJE_ERROR_GUARDAR_CLIENTE = "No pudimos guardar el cliente. Inténtalo de nuevo."
+// Cuando Room no logra registrar la venta, o ya no hay cafe suficiente (texto del Figma)
+const val MENSAJE_ERROR_GUARDAR_VENTA = "Hubo un problema al guardar tu venta. Inténtalo de nuevo."
+
 // ViewModel (MVVM): aqui esta la logica del registro de venta.
 // Guarda el estado en un StateFlow y recibe las acciones de la vista.
-class SaleViewModel : ViewModel() {
+// El repositorio de ventas y el inventario (Room) llegan por el constructor: asi las pruebas usan versiones falsas.
+class SaleViewModel(
+    private val repositorio: VentaRepository,
+    private val inventario: InventoryRepository
+) : ViewModel() {
 
     // _uiState es privado: solo el ViewModel puede cambiar el estado.
     private val _uiState = MutableStateFlow(SaleUiState())
     // uiState es de solo lectura: la vista lo observa y se redibuja cuando cambia.
     val uiState: StateFlow<SaleUiState> = _uiState
+
+    // Lee los clientes guardados en Room. La vista lo pide al entrar al flujo de venta.
+    fun cargarClientes() {
+        viewModelScope.launch {
+            try {
+                recargarClientes()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Se queda la lista que ya habia; la venta "Sin registrar" sigue funcionando.
+                _uiState.update { it.copy(errorCliente = MENSAJE_ERROR_CARGAR_CLIENTES) }
+            }
+        }
+    }
+
+    private suspend fun recargarClientes() {
+        val clientes = repositorio.listarClientes()
+        _uiState.update { it.copy(clientes = clientes, errorCliente = null) }
+    }
+
+    // Trabajo que lee el inventario; se guarda para no leerlo dos veces si la vista lo pide otra vez.
+    private var lecturaInventario: Job? = null
+
+    // Lee el inventario de Room (la misma fuente que la pantalla Inventario) y lo mantiene al dia:
+    // cada compra o venta vuelve a emitir la lista. Pide los sublotes agotados tambien.
+    fun observarInventario() {
+        if (lecturaInventario?.isActive == true) return
+        lecturaInventario = viewModelScope.launch {
+            inventario.observarLotes().collect { lotes ->
+                val sublotes = lotes.flatMap { grupo -> grupo.sublotes.map { SubloteConLote(it, grupo.lote) } }
+                _uiState.update { it.copy(inventario = sublotes) }
+            }
+        }
+    }
 
     // ---------------- Paso 1: cliente ----------------
 
@@ -455,17 +514,36 @@ class SaleViewModel : ViewModel() {
 
     fun cambiarTelefonoEdicion(texto: String) = cambiarEdicion { it.conTelefono(texto) }
 
-    // "Guardar cambios": reemplaza al cliente en la lista (conservando su id) y, si estaba elegido, tambien ahi
+    // "Guardar cambios": lo modifica en Room y reemplaza al cliente en la lista (conservando su id) y, si estaba elegido, tambien ahi
     fun guardarEdicion() {
         val estado = _uiState.value
         val original = estado.clienteEnEdicion
-        if (original == null || !estado.guardarEdicionHabilitado) return
+        if (original == null || !estado.guardarEdicionHabilitado || estado.guardandoCliente) return
         val editado = crearCliente(estado.datosEdicion).copy(id = original.id)
-        _uiState.value = estado.copy(
-            clientes = estado.clientes.map { if (it == original) editado else it },
-            cliente = if (estado.cliente == original) editado else estado.cliente,
-            clienteEnEdicion = null
-        )
+        _uiState.update { it.copy(errorCliente = null, guardandoCliente = true) }
+        viewModelScope.launch {
+            try {
+                when (repositorio.actualizarCliente(editado)) {
+                    is ResultadoCliente.Guardado -> _uiState.update {
+                        it.copy(
+                            clientes = it.clientes.map { c -> if (c == original) editado else c },
+                            cliente = if (it.cliente == original) editado else it.cliente,
+                            clienteEnEdicion = null
+                        )
+                    }
+                    // La copia estaba desactualizada: al recargarla, edicionDocumentoError muestra el aviso de siempre.
+                    ResultadoCliente.DocumentoRepetido -> recargarClientes()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // No se pudo guardar: la hoja sigue abierta con lo escrito y se avisa.
+                _uiState.update { it.copy(errorCliente = MENSAJE_ERROR_GUARDAR_CLIENTE) }
+            } finally {
+                // Termine bien, con documento repetido, con error o cancelado, se puede volver a tocar.
+                _uiState.update { it.copy(guardandoCliente = false) }
+            }
+        }
     }
 
     // "Cancelar" en la modificacion: vuelve a la lista sin guardar
@@ -473,20 +551,49 @@ class SaleViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(clienteEnEdicion = null)
     }
 
-    // "Continuar" del paso 1. Con "Cliente nuevo" lo registra: lo agrega a la lista y lo deja elegido.
-    // Con las otras opciones no cambia nada: el cliente ya esta elegido. Si falta algo no hace nada.
-    fun continuarPaso1() {
+    // "Continuar" del paso 1. Con "Cliente nuevo" lo guarda en Room, lo agrega a la lista y lo deja elegido
+    // (con el id real). Con las otras opciones no cambia nada: el cliente ya esta elegido.
+    // Si falta algo no hace nada. [alTerminar] se llama solo cuando el paso 1 quedo listo (la vista navega al
+    // paso 2); si el documento ya existia o no se pudo guardar, no se llama y la persona se queda en el paso 1.
+    fun continuarPaso1(alTerminar: () -> Unit = {}) {
         val estado = _uiState.value
         if (!estado.continuarPaso1Habilitado) return
-        if (estado.modo == ModoCliente.NUEVO) {
-            val nuevo = crearCliente(estado.nuevoCliente)
-            _uiState.value = estado.copy(
-                clientes = estado.clientes + nuevo,
-                cliente = nuevo,
-                modo = ModoCliente.REGISTRADO,
-                nuevoCliente = NuevoCliente(),
-                busqueda = ""
-            )
+        if (estado.modo != ModoCliente.NUEVO) {
+            alTerminar()
+            return
+        }
+        // Un segundo toque mientras se guarda el primero no hace nada: no se guarda dos veces ni se navega dos veces.
+        if (estado.guardandoCliente) return
+        val nuevo = crearCliente(estado.nuevoCliente)
+        _uiState.update { it.copy(errorCliente = null, guardandoCliente = true) }
+        viewModelScope.launch {
+            try {
+                when (val resultado = repositorio.guardarCliente(nuevo)) {
+                    // El cliente guardado ya trae su id: es el que se usa al registrar la venta.
+                    is ResultadoCliente.Guardado -> {
+                        _uiState.update {
+                            it.copy(
+                                clientes = it.clientes + resultado.cliente,
+                                cliente = resultado.cliente,
+                                modo = ModoCliente.REGISTRADO,
+                                nuevoCliente = NuevoCliente(),
+                                busqueda = ""
+                            )
+                        }
+                        alTerminar()
+                    }
+                    // La copia estaba desactualizada: al recargarla, documentoError muestra el aviso de siempre.
+                    ResultadoCliente.DocumentoRepetido -> recargarClientes()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // No se pudo guardar: lo escrito se conserva y se avisa para intentarlo de nuevo.
+                _uiState.update { it.copy(errorCliente = MENSAJE_ERROR_GUARDAR_CLIENTE) }
+            } finally {
+                // Termine bien, con documento repetido, con error o cancelado, se puede volver a tocar.
+                _uiState.update { it.copy(guardandoCliente = false) }
+            }
         }
     }
 
@@ -575,15 +682,36 @@ class SaleViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(fecha = milisAFecha(millis))
     }
 
-    // "Confirmar venta": descuenta lo vendido del inventario y marca la venta como registrada.
-    // Si falta algo, o ya se registro, no hace nada (asi no se puede registrar dos veces).
-    // Temporal: cuando exista Room aqui se guardan la Venta y sus VentaSublote.
-    // Devuelve true solo si esta llamada registro la venta: un segundo toque no la registra otra vez.
-    fun confirmarVenta(): Boolean {
+    // "Regresar" en el aviso de error: lo quita sin registrar nada. La venta sigue lista para reintentar.
+    fun descartarErrorAlGuardar() {
+        _uiState.update { it.copy(errorAlGuardar = null) }
+    }
+
+    // "Confirmar venta": guarda la venta en Room (la Venta, su detalle y el descuento de kg, en una sola
+    // transaccion). El inventario no se toca aqui: baja solo cuando Room emite la lista nueva (observarInventario).
+    // Si falta algo, ya se esta guardando o ya se registro, no hace nada (asi no se guarda dos veces).
+    // Si falla (tambien SinCafeSuficienteException) no queda nada guardado y sale el error para reintentar.
+    fun confirmarVenta() {
         val estado = _uiState.value
-        if (!estado.puedeConfirmar) return false
-        _uiState.value = estado.copy(inventario = descontarVenta(estado.inventario, estado.elegidos), ventaRegistrada = true)
-        return true
+        if (!estado.puedeConfirmar || estado.guardando || estado.ventaRegistrada) return
+        // Cada sublote se vende al precio de su calidad, en pesos enteros.
+        val items = estado.elegidos.map {
+            ItemVenta(it.id, it.cantidadKg, (precioKg(estado.precios[it.calidad].orEmpty()) ?: 0.0).toLong())
+        }
+        _uiState.value = estado.copy(guardando = true, errorAlGuardar = null)
+        viewModelScope.launch {
+            try {
+                repositorio.registrarVenta(estado.clienteDeLaVenta?.id, estado.fecha, items)
+                _uiState.update { it.copy(ventaRegistrada = true) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorAlGuardar = MENSAJE_ERROR_GUARDAR_VENTA) }
+            } finally {
+                // Termine bien, con error o cancelado, el boton vuelve a poder tocarse.
+                _uiState.update { it.copy(guardando = false) }
+            }
+        }
     }
 }
 

@@ -13,16 +13,19 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 
 // Paso 3 de Ventas (confirmar) y pantalla "Venta registrada".
 class ConfirmarVentaViewModelTest {
 
+    @get:Rule val principal = PrincipalDeVentasRule()
+
     private val exportadora = Cliente(nombre = "Exportadora del Sur S.A.", documento = "9003421215", tipoDocumento = TipoDocumento.NIT)
 
     // Una venta lista para confirmar: cliente registrado, 150 kg del sublote 5 a $ 20.000.
     private fun ventaLista(): SaleViewModel {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirModo(ModoCliente.REGISTRADO)
         viewModel.elegirCliente(exportadora)
         viewModel.elegir(5)
@@ -44,7 +47,7 @@ class ConfirmarVentaViewModelTest {
 
     @Test
     fun clienteConCedula_muestraCedula() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirModo(ModoCliente.REGISTRADO)
         viewModel.elegirCliente(Cliente(nombre = "Carlos Mejía", documento = "16780012"))
         assertEquals("Cédula 16780012", viewModel.uiState.value.clienteDocumentoTexto)
@@ -52,7 +55,7 @@ class ConfirmarVentaViewModelTest {
 
     @Test
     fun ventaSinRegistrar_apareceComoSinRegistrarYSinDocumento() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirModo(ModoCliente.SIN_REGISTRAR)
         assertEquals("Sin registrar", viewModel.uiState.value.clienteTexto)
         assertNull(viewModel.uiState.value.clienteDocumentoTexto)
@@ -60,7 +63,7 @@ class ConfirmarVentaViewModelTest {
 
     @Test
     fun sinRegistrar_ignoraUnClienteElegidoAntes() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirCliente(exportadora)
         viewModel.elegirModo(ModoCliente.SIN_REGISTRAR)
         assertEquals("Sin registrar", viewModel.uiState.value.clienteTexto)
@@ -68,14 +71,14 @@ class ConfirmarVentaViewModelTest {
 
     @Test
     fun laFechaPorDefectoEsHoy() {
-        val estado = SaleViewModel().uiState.value
+        val estado = viewModelDeVentasDePrueba().uiState.value
         assertEquals(fechaDeHoy(), estado.fecha)
         assertEquals(estado.hoy, estado.fecha)
     }
 
     @Test
     fun cambiarFecha_usaLosMilisDelCalendario() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.cambiarFecha(fechaAMilis(Fecha(3, 11, 2026)))
         assertEquals(Fecha(3, 11, 2026), viewModel.uiState.value.fecha)
         assertEquals("3 de noviembre de 2026", viewModel.uiState.value.fechaResumenTexto)
@@ -83,7 +86,7 @@ class ConfirmarVentaViewModelTest {
 
     @Test
     fun fechaMilis_esLaFechaElegidaParaElCalendario() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.cambiarFecha(fechaAMilis(Fecha(3, 11, 2026)))
         assertEquals(fechaAMilis(Fecha(3, 11, 2026)), viewModel.uiState.value.fechaMilis)
     }
@@ -148,7 +151,7 @@ class ConfirmarVentaViewModelTest {
 
     @Test
     fun cafeEnResumen_unaTarjetaPorSublote() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarTodos()
         assertEquals(4, viewModel.uiState.value.cafesEnResumen.size)
         assertEquals(
@@ -159,7 +162,7 @@ class ConfirmarVentaViewModelTest {
 
     @Test
     fun cafeEnResumen_sinPrecioMuestraCero() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         assertEquals("$ 0", viewModel.uiState.value.cafesEnResumen.single().total)
     }
@@ -171,7 +174,7 @@ class ConfirmarVentaViewModelTest {
 
     @Test
     fun cafeResumenTexto_variosSublotesDiceCuantos() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarTodos()
         assertEquals("Seco · 4 sublotes", viewModel.uiState.value.cafeResumenTexto)
     }
@@ -201,7 +204,7 @@ class ConfirmarVentaViewModelTest {
 
     @Test
     fun confirmar_vendiendoTodoElSubloteSeAgota_yYaNoSeOfrece() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirModo(ModoCliente.SIN_REGISTRAR)
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
@@ -227,7 +230,7 @@ class ConfirmarVentaViewModelTest {
 
     @Test
     fun confirmar_sinHaberElegidoModoDeCliente_noHaceNada() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         viewModel.confirmarVenta()
@@ -237,7 +240,7 @@ class ConfirmarVentaViewModelTest {
 
     @Test
     fun confirmar_conClienteRegistradoSinElegirNadie_noHaceNada() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirModo(ModoCliente.REGISTRADO)
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
@@ -247,7 +250,7 @@ class ConfirmarVentaViewModelTest {
 
     @Test
     fun confirmar_sinSublotes_noHaceNada() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirModo(ModoCliente.SIN_REGISTRAR)
         viewModel.confirmarVenta()
         assertFalse(viewModel.uiState.value.ventaRegistrada)
@@ -255,7 +258,7 @@ class ConfirmarVentaViewModelTest {
 
     @Test
     fun confirmar_sinPrecio_noHaceNada() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirModo(ModoCliente.SIN_REGISTRAR)
         viewModel.elegir(5)
         viewModel.confirmarVenta()
@@ -281,7 +284,7 @@ class ConfirmarVentaViewModelTest {
 
     @Test
     fun confirmar_conClienteNuevoValido_loRegistraYLoUsaEnLaVenta() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirModo(ModoCliente.NUEVO)
         viewModel.cambiarDocumento("1114059684")
         viewModel.cambiarNombre("Ana Gómez")
@@ -324,14 +327,16 @@ class ConfirmarVentaViewModelTest {
     fun registrarNuevaVenta_conservaLosClientes_yElInventarioDescontado() {
         val viewModel = ventaLista()
         viewModel.confirmarVenta()
+        val clientesAntes = viewModel.uiState.value.clientes
+        assertTrue(clientesAntes.isNotEmpty())
         viewModel.reiniciarVenta()
-        assertEquals(SaleUiState().clientes, viewModel.uiState.value.clientes)
+        assertEquals(clientesAntes, viewModel.uiState.value.clientes)
         assertEquals(50.0, viewModel.disponibleDelSublote(5), 0.0)
     }
 
     @Test
     fun registrarNuevaVenta_conservaUnClienteNuevoCreado() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirModo(ModoCliente.NUEVO)
         viewModel.cambiarDocumento("1114059684")
         viewModel.cambiarNombre("Ana Gómez")

@@ -8,17 +8,20 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 
 // "Modificar cliente" en la hoja "Clientes": igual que "Modificar productor" de Compras.
 // Cada prueba es una accion de la vista (tocar "Editar", escribir, "Guardar cambios", "Cancelar").
 class ModificarClienteViewModelTest {
 
+    @get:Rule val principal = PrincipalDeVentasRule()
+
     private val beneficiadora = clientesDeEjemplo[0]
     private val carlos = clientesDeEjemplo[1]
 
     // Un viewModel con "Editar" tocado en Carlos Mejía.
-    private fun editandoACarlos() = SaleViewModel().apply { editarCliente(carlos) }
+    private fun editandoACarlos() = viewModelDeVentasDePrueba().apply { editarCliente(carlos) }
 
     @Test
     fun editar_cargaLosDatosDelClienteEnElFormulario() {
@@ -42,7 +45,7 @@ class ModificarClienteViewModelTest {
 
     @Test
     fun editar_unNit_marcaElFormularioComoEmpresa() {
-        val viewModel = SaleViewModel().apply { editarCliente(beneficiadora) }
+        val viewModel = viewModelDeVentasDePrueba().apply { editarCliente(beneficiadora) }
         assertTrue(viewModel.uiState.value.edicionEsEmpresa)
     }
 
@@ -97,7 +100,7 @@ class ModificarClienteViewModelTest {
 
     @Test
     fun guardar_tambienCambiaAlClienteQueEstabaElegido() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirCliente(carlos)
         viewModel.editarCliente(carlos)
         viewModel.cambiarNombreEdicion("Carlos Mejía Ruiz")
@@ -107,7 +110,7 @@ class ModificarClienteViewModelTest {
 
     @Test
     fun guardar_noTocaAOtroClienteElegido() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirCliente(beneficiadora)
         viewModel.editarCliente(carlos)
         viewModel.cambiarNombreEdicion("Carlos Mejía Ruiz")
@@ -129,7 +132,7 @@ class ModificarClienteViewModelTest {
 
     @Test
     fun guardar_sinHaberTocadoEditar_noHaceNada() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.guardarEdicion()
         assertEquals(clientesDeEjemplo, viewModel.uiState.value.clientes)
     }
