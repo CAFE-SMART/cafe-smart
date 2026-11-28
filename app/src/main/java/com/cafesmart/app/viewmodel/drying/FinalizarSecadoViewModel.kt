@@ -1,6 +1,7 @@
 package com.cafesmart.app.viewmodel.drying
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.model.SecadoConDetalle
@@ -18,6 +19,7 @@ import com.cafesmart.app.viewmodel.purchase.pesoEnPantalla
 import com.cafesmart.app.viewmodel.sale.cantidadDesdeTexto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 // Pasos 5 y 6 de Secado: datos de finalizacion (kilos secos por calidad, factor, fecha, gastos) y resumen final.
@@ -59,6 +61,8 @@ data class CalidadSecada(val calidad: Calidad, val kg: Double) {
 data class FinalizarSecadoUiState(
     // El secado en curso que se finaliza; null si ya no esta en curso (o no existe).
     val secado: SecadoConDetalle? = null,
+    // true hasta que el repositorio entrega el secado: mientras tanto la pantalla no dice "ya no esta en curso".
+    val cargando: Boolean = false,
     // Lo que se escribe, ya limpio y con punto decimal ("12.5"); vacio = 0.
     val kilosBuena: String = "",
     val kilosRegular: String = "",
@@ -192,10 +196,16 @@ class FinalizarSecadoViewModel(
     hoy: Fecha = fechaDeHoy()
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(
-        FinalizarSecadoUiState(secado = repositorio.secadosEnCurso().firstOrNull { it.secado.id == secadoId }, hoy = hoy)
-    )
+    // Empieza "cargando": el secado llega del repositorio (suspend) un instante despues de crearse.
+    private val _uiState = MutableStateFlow(FinalizarSecadoUiState(cargando = true, hoy = hoy))
     val uiState: StateFlow<FinalizarSecadoUiState> = _uiState
+
+    init {
+        viewModelScope.launch {
+            val secado = repositorio.secadosEnCurso().firstOrNull { it.secado.id == secadoId }
+            _uiState.value = _uiState.value.copy(secado = secado, cargando = false)
+        }
+    }
 
     // Despues de finalizar no se puede cambiar nada.
     private fun editable(): Boolean = _uiState.value.resultado == null && !_uiState.value.bloqueado
@@ -230,29 +240,34 @@ class FinalizarSecadoViewModel(
 
     // "Confirmar": el repositorio crea los sublotes secos y deja el secado FINALIZADO; el resultado queda en el estado
     // (con gastos o sin ellos). Si falta algo, o ya se finalizo, no hace nada (asi no se finaliza dos veces).
-    fun confirmar() {
+    // onConfirmado se llama solo cuando el secado quedo finalizado; si el repositorio lo rechaza no se llama.
+    fun confirmar(onConfirmado: () -> Unit = {}) {
         val estado = _uiState.value
         if (!estado.puedeConfirmar) return
         val secado = estado.secado ?: return
         // Opcional: con el campo vacio queda null y se guarda sin factor.
         val factor = factorDesdeTexto(estado.factorTexto)
         _uiState.value = estado.copy(bloqueado = true, errorAlConfirmar = null)
-        try {
-            val kilos = estado.kilosSecos
-            val resultado = repositorio.finalizarSecado(
-                secadoId = secado.secado.id,
-                fechaFin = estado.fechaFin,
-                kilosSecos = kilos,
-                factorRendimiento = factor
-            )
-            _uiState.value = _uiState.value.copy(
-                resultado = resultado,
-                calidadesSecadas = Calidad.entries
-                    .map { CalidadSecada(it, redondearKg(kilos.getValue(it))) }
-                    .filter { it.kg > 0 }
-            )
-        } catch (e: IllegalArgumentException) {
-            _uiState.value = _uiState.value.copy(bloqueado = false, errorAlConfirmar = e.message)
+        viewModelScope.launch {
+            try {
+                val kilos = estado.kilosSecos
+                val resultado = repositorio.finalizarSecado(
+                    secadoId = secado.secado.id,
+                    fechaFin = estado.fechaFin,
+                    kilosSecos = kilos,
+                    factorRendimiento = factor
+                )
+                _uiState.value = _uiState.value.copy(
+                    resultado = resultado,
+                    calidadesSecadas = Calidad.entries
+                        .map { CalidadSecada(it, redondearKg(kilos.getValue(it))) }
+                        .filter { it.kg > 0 }
+                )
+            } catch (e: IllegalArgumentException) {
+                _uiState.value = _uiState.value.copy(bloqueado = false, errorAlConfirmar = e.message)
+                return@launch
+            }
+            onConfirmado()
         }
     }
 }

@@ -1,5 +1,18 @@
 package com.cafesmart.app.data.secado
 
+import android.content.Context
+import com.cafesmart.app.data.local.AppDatabase
+import com.cafesmart.app.data.local.LoteDao
+import com.cafesmart.app.data.local.LoteEntity
+import com.cafesmart.app.data.local.SecadoConEnviosFila
+import com.cafesmart.app.data.local.SecadoDao
+import com.cafesmart.app.data.local.SecadoSubloteEntity
+import com.cafesmart.app.data.local.SubloteDao
+import com.cafesmart.app.data.local.SubloteEntity
+import com.cafesmart.app.data.local.Transaccion
+import com.cafesmart.app.data.local.TransaccionRoom
+import com.cafesmart.app.data.gastos.aModelo
+import com.cafesmart.app.viewmodel.purchase.fechaAMilis
 import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.EstadoSecado
 import com.cafesmart.app.data.model.EnvioSecado
@@ -28,23 +41,24 @@ data class EnvioASecar(
 )
 
 // Repositorio (MVVM): de donde salen los datos de Secado y donde se guardan los cambios.
-// Hoy solo existe la version de ejemplo (en memoria). Cuando exista la tarjeta "Secado conectado a Room",
-// se agrega otra clase que cumpla esta misma interfaz y el ViewModel no cambia.
+// Todas las funciones son suspend (como las de Room): los ViewModels las llaman dentro de viewModelScope.launch.
+// Hay dos versiones: la de ejemplo (en memoria, para previews y pruebas) y RoomSecadoRepository (la real, sobre
+// Room). Las dos cumplen esta misma interfaz, asi que los ViewModels no cambian.
 interface SecadoRepository {
     // Sublotes con cafe disponible, de todos los tipos. La pantalla se queda solo con el verde.
-    fun inventario(): List<SubloteConLote>
+    suspend fun inventario(): List<SubloteConLote>
 
     // Inicia un secado: le resta a cada sublote lo que se envia y devuelve el secado EN_CURSO.
     // Lanza IllegalArgumentException si el envio no es valido (sin sublotes, repetido, no es verde o pasa de lo disponible).
-    fun iniciarSecado(fechaInicio: Fecha, envios: List<EnvioASecar>): Secado
+    suspend fun iniciarSecado(fechaInicio: Fecha, envios: List<EnvioASecar>): Secado
 
     // Secados EN_CURSO, el de inicio mas reciente primero. Sus resultantes van vacios (todavia no hay cafe seco).
-    fun secadosEnCurso(): List<SecadoConDetalle>
+    suspend fun secadosEnCurso(): List<SecadoConDetalle>
 
     // Finaliza un secado: crea un sublote seco por cada calidad con kg > 0 y marca el secado FINALIZADO.
     // Valida todo antes de cambiar algo. Lanza IllegalArgumentException si el secado no existe o no esta EN_CURSO,
     // si la fecha de fin es anterior al inicio, si los kilos secos no son validos o si el factor (opcional; null = sin factor) no esta entre FACTOR_RENDIMIENTO_MIN y FACTOR_RENDIMIENTO_MAX.
-    fun finalizarSecado(
+    suspend fun finalizarSecado(
         secadoId: Long,
         fechaFin: Fecha,
         kilosSecos: Map<Calidad, Double>,
@@ -53,7 +67,142 @@ interface SecadoRepository {
 
     // Cancela un secado EN_CURSO y devuelve al inventario el cafe que se habia enviado.
     // Lanza IllegalArgumentException si el secado no existe o no esta EN_CURSO.
-    fun cancelarSecado(secadoId: Long)
+    suspend fun cancelarSecado(secadoId: Long)
+
+    companion object {
+        /** Versión real, sobre Room. */
+        fun de(context: Context): SecadoRepository {
+            val base = AppDatabase.obtener(context)
+            return RoomSecadoRepository(
+                secadoDao = base.secadoDao(),
+                subloteDao = base.subloteDao(),
+                loteDao = base.loteDao(),
+                transaccion = TransaccionRoom(base),
+            )
+        }
+    }
+}
+
+// Versión de Room. Cada función que escribe corre en una sola transacción: si algo falla (lanza una excepción)
+// no queda nada a medias. Los errores de reglas son IllegalArgumentException, igual que en la versión de ejemplo,
+// que es lo único que capturan los ViewModels.
+class RoomSecadoRepository(
+    private val secadoDao: SecadoDao,
+    private val subloteDao: SubloteDao,
+    private val loteDao: LoteDao,
+    private val transaccion: Transaccion,
+) : SecadoRepository {
+
+    override suspend fun inventario(): List<SubloteConLote> {
+        val lotes = loteDao.listar().associate { it.id to it.aModelo() }
+        return subloteDao.listar()
+            .filter { it.pesoDisponibleKg > 0.0 }
+            .mapNotNull { sublote -> lotes[sublote.loteId]?.let { SubloteConLote(sublote.aModelo(), it) } }
+    }
+
+    override suspend fun iniciarSecado(fechaInicio: Fecha, envios: List<EnvioASecar>): Secado {
+        require(envios.isNotEmpty()) { "Elige al menos un sublote para secar." }
+        require(envios.map { it.subloteId }.toSet().size == envios.size) { "Un sublote no puede repetirse en el secado." }
+        return transaccion.ejecutar {
+            envios.forEach { envio ->
+                val sublote = subloteDao.buscarPorId(envio.subloteId)
+                requireNotNull(sublote) { "El sublote ${envio.subloteId} no existe." }
+                require(loteDao.buscarPorId(sublote.loteId)?.tipoCafe == TipoCafe.VERDE.name) { "Solo se seca cafe verde." }
+                require(cantidadValida(envio.pesoKg, sublote.pesoDisponibleKg)) {
+                    "La cantidad del sublote ${envio.subloteId} debe ser mayor a 0 y no pasar de lo disponible."
+                }
+            }
+            val secado = Secado(fechaInicio = fechaInicio)
+            // El secadoId 0 se reemplaza por el id nuevo dentro de guardarConEnvios.
+            val id = secadoDao.guardarConEnvios(
+                secado.aEntidad(),
+                envios.map { SecadoSubloteEntity(secadoId = 0, subloteId = it.subloteId, pesoEnviadoKg = it.pesoKg) },
+            )
+            envios.forEach { envio ->
+                // 0 filas cambiadas = ya no alcanzaba el cafe: se lanza para que Room deshaga todo el secado.
+                require(subloteDao.descontar(envio.subloteId, envio.pesoKg) > 0) {
+                    "La cantidad del sublote ${envio.subloteId} debe ser mayor a 0 y no pasar de lo disponible."
+                }
+            }
+            secado.copy(id = id)
+        }
+    }
+
+    override suspend fun secadosEnCurso(): List<SecadoConDetalle> =
+        secadoDao.listarEnCurso().map { fila -> SecadoConDetalle(fila.secado.aModelo(), enviosDe(fila), emptyList()) }
+
+    override suspend fun finalizarSecado(
+        secadoId: Long,
+        fechaFin: Fecha,
+        kilosSecos: Map<Calidad, Double>,
+        factorRendimiento: Int?
+    ): SecadoConDetalle = transaccion.ejecutar {
+        // Primero se valida todo; mientras no pase, no se escribe nada.
+        val fila = enCurso(secadoId)
+        val secado = fila.secado.aModelo()
+        require(fechaFin.clave() >= secado.fechaInicio.clave()) {
+            "La fecha de finalizacion no puede ser anterior al inicio."
+        }
+        val enviados = enviosDe(fila)
+        val enviadoKg = redondearKg(enviados.sumOf { it.envio.pesoEnviadoKg })
+        errorKilosSecos(kilosSecos, enviadoKg)?.let { throw IllegalArgumentException(it) }
+        factorRendimiento?.let { errorFactorEntero(it) }?.let { throw IllegalArgumentException(it) }
+
+        // Cierra primero: si otro toque ya lo finalizo o cancelo, no cambia ninguna fila y no se crea nada.
+        require(secadoDao.cerrar(secadoId, EstadoSecado.FINALIZADO.name, fechaAMilis(fechaFin), factorRendimiento) > 0) {
+            "El secado $secadoId ya no esta en curso."
+        }
+        val costoKg = costoKgSeco(enviados, kilosSecosTotal(kilosSecos))
+        val resultantes = Calidad.entries.mapNotNull { calidad ->
+            val kg = redondearKg(kilosSecos[calidad] ?: 0.0)
+            if (kg <= 0.0) return@mapNotNull null
+            // Un solo lote por (tipo, calidad): se usa el seco que ya exista; si no, se crea.
+            val loteId = loteDao.buscarPorTipoYCalidad(TipoCafe.SECO.name, calidad.name)?.id
+                ?: loteDao.insertar(LoteEntity(tipoCafe = TipoCafe.SECO.name, calidad = calidad.name))
+            val entidad = SubloteEntity(
+                loteId = loteId,
+                secadoId = secadoId,
+                pesoInicialKg = kg,
+                pesoDisponibleKg = kg,
+                costoKg = costoKg,
+                fechaIngreso = fechaAMilis(fechaFin),
+                factorRendimiento = factorRendimiento,
+            )
+            entidad.copy(id = subloteDao.insertar(entidad)).aModelo()
+        }
+        val finalizado = secado.copy(fechaFin = fechaFin, estado = EstadoSecado.FINALIZADO, factorRendimiento = factorRendimiento)
+        SecadoConDetalle(finalizado, enviados, resultantes)
+    }
+
+    override suspend fun cancelarSecado(secadoId: Long) {
+        transaccion.ejecutar {
+            val fila = enCurso(secadoId)
+            require(secadoDao.cerrar(secadoId, EstadoSecado.CANCELADO.name, null, null) > 0) {
+                "El secado $secadoId ya no esta en curso."
+            }
+            fila.envios.forEach { envio ->
+                // 0 filas cambiadas = el sublote ya no existe: se lanza para que Room deshaga la cancelacion.
+                require(subloteDao.devolver(envio.subloteId, envio.pesoEnviadoKg) > 0) {
+                    "El sublote ${envio.subloteId} ya no esta en el inventario; no se puede cancelar el secado $secadoId."
+                }
+            }
+        }
+    }
+
+    // El secado con sus envios, si existe y sigue EN_CURSO.
+    private suspend fun enCurso(secadoId: Long): SecadoConEnviosFila {
+        val fila = secadoDao.buscarConEnvios(secadoId)
+        requireNotNull(fila) { "El secado $secadoId no existe." }
+        require(fila.secado.estado == EstadoSecado.EN_CURSO.name) { "El secado $secadoId ya no esta en curso." }
+        return fila
+    }
+
+    // Los envios con el sublote actual (de ahi sale el costo por kg), en el orden de los sublotes.
+    private suspend fun enviosDe(fila: SecadoConEnviosFila): List<EnvioSecado> =
+        fila.envios.sortedBy { it.subloteId }.map { envio ->
+            val sublote = checkNotNull(subloteDao.buscarPorId(envio.subloteId)) { "El sublote ${envio.subloteId} no existe." }
+            EnvioSecado(envio.aModelo(), sublote.aModelo())
+        }
 }
 
 // Lo que guarda la version de ejemplo de cada secado: el secado, sus envios (con el sublote como estaba
@@ -78,9 +227,9 @@ class SecadoRepositoryEjemplo(
     private var ultimoLoteId = inventarioInicial.maxOfOrNull { it.lote.id } ?: 0L
     private var secados: List<RegistroSecado> = emptyList()
 
-    override fun inventario(): List<SubloteConLote> = inventario
+    override suspend fun inventario(): List<SubloteConLote> = inventario
 
-    override fun iniciarSecado(fechaInicio: Fecha, envios: List<EnvioASecar>): Secado {
+    override suspend fun iniciarSecado(fechaInicio: Fecha, envios: List<EnvioASecar>): Secado {
         require(envios.isNotEmpty()) { "Elige al menos un sublote para secar." }
         require(envios.map { it.subloteId }.toSet().size == envios.size) { "Un sublote no puede repetirse en el secado." }
         envios.forEach { envio ->
@@ -104,13 +253,13 @@ class SecadoRepositoryEjemplo(
         return secado
     }
 
-    override fun secadosEnCurso(): List<SecadoConDetalle> =
+    override suspend fun secadosEnCurso(): List<SecadoConDetalle> =
         secados
             .filter { it.secado.estado == EstadoSecado.EN_CURSO }
             .sortedWith(compareByDescending<RegistroSecado> { it.secado.fechaInicio.clave() }.thenByDescending { it.secado.id })
             .map { it.conDetalle() }
 
-    override fun finalizarSecado(
+    override suspend fun finalizarSecado(
         secadoId: Long,
         fechaFin: Fecha,
         kilosSecos: Map<Calidad, Double>,
@@ -163,7 +312,7 @@ class SecadoRepositoryEjemplo(
         return nuevo.conDetalle()
     }
 
-    override fun cancelarSecado(secadoId: Long) {
+    override suspend fun cancelarSecado(secadoId: Long) {
         val registro = enCurso(secadoId)
         // Se valida todo antes de cambiar nada: cada sublote enviado debe seguir en el inventario.
         registro.enviados.forEach { e ->

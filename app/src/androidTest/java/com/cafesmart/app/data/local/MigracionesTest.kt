@@ -62,7 +62,7 @@ class MigracionesTest {
     }
 
     private fun abrirActual() = Room.databaseBuilder(contexto, AppDatabase::class.java, nombre)
-        .addMigrations(MIGRACION_3_4)
+        .addMigrations(*MIGRACIONES)
         .allowMainThreadQueries()
         .build()
 
@@ -79,13 +79,87 @@ class MigracionesTest {
         db.openHelper.writableDatabase.query("SELECT COUNT(*) FROM gasto_sublote").use { it.moveToFirst(); assertEquals(2, it.getInt(0)) }
     }
 
+    // Tablas que agrega la versión 4 (mismo SQL que MIGRACION_3_4).
+    private fun tablasV4(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS `cliente` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nombre` TEXT NOT NULL, `documento` TEXT NOT NULL, `tipo_documento` TEXT NOT NULL, `telefono` TEXT NOT NULL)")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_cliente_documento` ON `cliente` (`documento`)")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `venta` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `cliente_id` INTEGER, `fecha` INTEGER NOT NULL, `total_recibido` INTEGER NOT NULL, FOREIGN KEY(`cliente_id`) REFERENCES `cliente`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_venta_cliente_id` ON `venta` (`cliente_id`)")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `venta_sublote` (`venta_id` INTEGER NOT NULL, `sublote_id` INTEGER NOT NULL, `peso_kg` REAL NOT NULL, `precio_kg` INTEGER NOT NULL, PRIMARY KEY(`venta_id`, `sublote_id`), FOREIGN KEY(`venta_id`) REFERENCES `venta`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`sublote_id`) REFERENCES `sublote`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_venta_sublote_venta_id` ON `venta_sublote` (`venta_id`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_venta_sublote_sublote_id` ON `venta_sublote` (`sublote_id`)")
+    }
+
+    // Una instalación v4 con ventas: un cliente, una venta de los dos sublotes (que además tienen gasto repartido).
+    private fun ventasV4(db: SQLiteDatabase) {
+        tablasV4(db)
+        db.execSQL("INSERT INTO cliente (id, nombre, documento, tipo_documento, telefono) VALUES (1, 'Cliente QA', '900000001', 'NIT', '')")
+        db.execSQL("INSERT INTO venta (id, cliente_id, fecha, total_recibido) VALUES (1, 1, 1700000100000, 600000)")
+        db.execSQL("INSERT INTO venta_sublote (venta_id, sublote_id, peso_kg, precio_kg) VALUES (1, 1, 20.0, 15000), (1, 2, 20.0, 15000)")
+        db.execSQL("UPDATE sublote SET peso_disponible_kg = peso_disponible_kg - 20.0")
+    }
+
+    private fun contar(db: AppDatabase, sql: String): Int =
+        db.openHelper.readableDatabase.query(sql).use { it.moveToFirst(); it.getInt(0) }
+
     @Test
-    fun de3a4ConservaDatosYAdmiteVentas() {
+    fun de4a5ConservaVentasGastosYSublotesConSusIds() = runBlocking<Unit> {
+        crearBase(4, ::ventasV4)
+        val db = abrirActual()
+        try {
+            assertEquals(5, db.openHelper.readableDatabase.version)
+            assertEquals(1, db.productorDao().listar().size)
+            assertEquals(1, db.compraDao().listar().size)
+            assertEquals(listOf(1L, 2L), db.subloteDao().listar().map { it.id })
+            assertEquals(794.0, db.subloteDao().listar().sumOf { it.pesoDisponibleKg }, 0.0)
+            assertEquals(1, contar(db, "SELECT COUNT(*) FROM cliente"))
+            assertEquals(1, contar(db, "SELECT COUNT(*) FROM venta"))
+            assertEquals(2, contar(db, "SELECT COUNT(*) FROM venta_sublote"))
+            assertEquals(2, contar(db, "SELECT COUNT(*) FROM gasto_sublote"))
+            assertEquals(120000, contar(db, "SELECT SUM(monto_asignado) FROM gasto_sublote"))
+            assertEquals(0, contar(db, "SELECT COUNT(*) FROM migracion_5_secado_huerfano"))
+            db.openHelper.writableDatabase.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
+            db.openHelper.writableDatabase.query("PRAGMA integrity_check").use { it.moveToFirst(); assertEquals("ok", it.getString(0)) }
+            // La llave nueva funciona: un sublote seco que apunta a un secado real se guarda; uno a un secado
+            // inexistente no.
+            val sql = db.openHelper.writableDatabase
+            sql.execSQL("INSERT INTO secado (id, fecha_inicio, fecha_fin, estado, factor_rendimiento) VALUES (1, 1700000200000, 1700000300000, 'FINALIZADO', 92)")
+            sql.execSQL("INSERT INTO sublote (lote_id, secado_id, peso_inicial_kg, peso_disponible_kg, costo_kg, fecha_ingreso) VALUES (1, 1, 80.0, 80.0, 17500, 1700000300000)")
+            val rechazado = runCatching {
+                sql.execSQL("INSERT INTO sublote (lote_id, secado_id, peso_inicial_kg, peso_disponible_kg, costo_kg, fecha_ingreso) VALUES (1, 99, 1.0, 1.0, 1, 1)")
+            }.isFailure
+            assertTrue(rechazado)
+        } finally { db.close() }
+    }
+
+    @Test
+    fun referenciaASecadoInexistenteSeRespaldaYNoSeInventaUnSecado() = runBlocking<Unit> {
+        crearBase(4) {
+            ventasV4(it)
+            it.execSQL("UPDATE sublote SET secado_id = 7 WHERE id = 2")
+            it.execSQL("UPDATE gasto SET secado_id = 7 WHERE id = 1")
+        }
+        val db = abrirActual()
+        try {
+            assertEquals(0, contar(db, "SELECT COUNT(*) FROM secado"))
+            assertEquals(2, contar(db, "SELECT COUNT(*) FROM migracion_5_secado_huerfano WHERE secado_id = 7"))
+            assertEquals(1, contar(db, "SELECT COUNT(*) FROM migracion_5_secado_huerfano WHERE tabla = 'sublote' AND fila_id = 2"))
+            assertEquals(0, contar(db, "SELECT COUNT(*) FROM sublote WHERE secado_id IS NOT NULL"))
+            // Lo demás del sublote y del gasto no cambia.
+            assertEquals(2, db.subloteDao().listar().size)
+            assertEquals(120000, contar(db, "SELECT monto FROM gasto WHERE id = 1"))
+            assertEquals(2, contar(db, "SELECT COUNT(*) FROM venta_sublote"))
+            db.openHelper.writableDatabase.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
+        } finally { db.close() }
+    }
+
+    @Test
+    fun de3a5EncadenaLasDosMigracionesYAdmiteVentas() {
         crearBase(3)
         val db = abrirActual()
         try {
             comprobarDatosV3(db)
-            assertEquals(4, db.openHelper.readableDatabase.version)
+            assertEquals(5, db.openHelper.readableDatabase.version)
             val sql = db.openHelper.writableDatabase
             sql.execSQL("INSERT INTO cliente (id, nombre, documento, tipo_documento, telefono) VALUES (1, 'Cliente QA', '900000001', 'NIT', '')")
             sql.execSQL("INSERT INTO venta (id, cliente_id, fecha, total_recibido) VALUES (1, 1, 1700000100000, 300000)")

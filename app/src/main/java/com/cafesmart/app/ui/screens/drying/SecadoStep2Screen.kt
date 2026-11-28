@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,6 +17,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.cafesmart.app.data.sale.SubloteElegido
 import com.cafesmart.app.data.secado.SecadoRepositoryEjemplo
@@ -24,9 +26,11 @@ import com.cafesmart.app.ui.screens.purchase.PurchaseBottomBar
 import com.cafesmart.app.ui.screens.purchase.PurchaseDatePickerDialog
 import com.cafesmart.app.ui.theme.AppTypography
 import com.cafesmart.app.ui.theme.CafesmartTheme
+import com.cafesmart.app.ui.theme.ErrorText
 import com.cafesmart.app.ui.theme.Spacing
 import com.cafesmart.app.ui.theme.SurfaceScreen
 import com.cafesmart.app.viewmodel.drying.SecadoUiState
+import kotlinx.coroutines.runBlocking
 
 // Paso 2 de Secado: Confirma el inicio.
 // Vista (MVVM): no tiene logica. Solo recuerda algo visual: si el calendario esta abierto.
@@ -78,6 +82,15 @@ fun SecadoStep2Screen(
         PurchaseBottomBar {
             // Solo se activa cuando el ViewModel dice que el secado se puede iniciar.
             ContinueButton(text = "Iniciar secado", enabled = estado.puedeIniciar, onClick = onIniciar)
+            // Mismo estilo de error que el paso 5 ("Confirmar resultado"): texto pequeno en rojo y centrado.
+            estado.errorAlIniciar?.let {
+                Text(
+                    text = it,
+                    style = AppTypography.helper.copy(color = ErrorText),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
             TextButton(onClick = onCancelar, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                 Text(text = "Cancelar", style = AppTypography.labelSection)
             }
@@ -98,7 +111,7 @@ fun SecadoStep2Screen(
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
 private fun Paso2Preview() {
-    val inventario = SecadoRepositoryEjemplo().inventario()
+    val inventario = runBlocking { SecadoRepositoryEjemplo().inventario() }
     val verdes = inventario.filter { it.tipoCafe.name == "VERDE" }
     CafesmartTheme {
         SecadoStep2Screen(

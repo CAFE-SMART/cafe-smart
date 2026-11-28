@@ -1,6 +1,7 @@
 package com.cafesmart.app.viewmodel.drying
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.model.SecadoConDetalle
@@ -12,6 +13,7 @@ import com.cafesmart.app.viewmodel.purchase.formatoKg
 import com.cafesmart.app.viewmodel.sale.diasDesde
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 // Paso 4 de Secado: los secados en curso y la cancelacion de uno.
 
@@ -54,14 +56,16 @@ data class SecadosEnCursoUiState(
     // Secado que el usuario eligio; si es null (o ya no esta) se usa el primero.
     val elegidoId: Long? = null,
     // true mientras se muestra el dialogo "¿Cancelar este secado?"
-    val confirmandoCancelacion: Boolean = false
+    val confirmandoCancelacion: Boolean = false,
+    // true hasta que el repositorio entrega la lista por primera vez (asi no se ve "no hay secados" por un instante)
+    val cargando: Boolean = false
 ) {
     // El elegido: el que se toco o, si no, el primero (con uno solo, ese mismo).
     val elegido: SecadoConDetalle?
         get() = secados.firstOrNull { it.secado.id == elegidoId } ?: secados.firstOrNull()
 
     val mensajeSinSecados: String?
-        get() = if (secados.isEmpty()) MENSAJE_SIN_SECADOS_EN_CURSO else null
+        get() = if (!cargando && secados.isEmpty()) MENSAJE_SIN_SECADOS_EN_CURSO else null
 
     val tarjetas: List<SecadoEnCursoEnPantalla>
         get() = secados.map { aPantalla(it) }
@@ -91,16 +95,20 @@ class SecadosEnCursoViewModel(
     hoy: Fecha = fechaDeHoy()
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SecadosEnCursoUiState(
-        secados = repositorio.secadosEnCurso(),
-        inventario = repositorio.inventario(),
-        hoy = hoy
-    ))
+    private val _uiState = MutableStateFlow(SecadosEnCursoUiState(hoy = hoy, cargando = true))
     val uiState: StateFlow<SecadosEnCursoUiState> = _uiState
+
+    init {
+        refrescar()
+    }
 
     // Vuelve a leer los secados del repositorio (por ejemplo al volver a la pantalla).
     fun refrescar() {
-        _uiState.value = _uiState.value.copy(secados = repositorio.secadosEnCurso(), inventario = repositorio.inventario())
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                secados = repositorio.secadosEnCurso(), inventario = repositorio.inventario(), cargando = false
+            )
+        }
     }
 
     // Elige una tarjeta. Si el id no es de un secado en curso no hace nada.
@@ -123,21 +131,27 @@ class SecadosEnCursoViewModel(
     }
 
     // "Sí, cancelar": el repositorio devuelve el cafe al inventario y la lista se vuelve a leer.
-    // Si el dialogo no esta abierto no hace nada (asi no se cancela dos veces).
-    fun confirmarCancelar() {
+    // Si el dialogo no esta abierto no hace nada (asi no se cancela dos veces: el dialogo se cierra al empezar).
+    // onCancelado se llama solo cuando el repositorio cancelo con exito y la lista ya se volvio a leer.
+    fun confirmarCancelar(onCancelado: () -> Unit = {}) {
         val estado = _uiState.value
         val id = estado.elegido?.secado?.id ?: return
         if (!estado.confirmandoCancelacion) return
-        // Si el repositorio dice que ya no esta en curso, igual se refresca la lista y se cierra el dialogo.
-        try {
-            repositorio.cancelarSecado(id)
-        } catch (_: IllegalArgumentException) {
+        _uiState.value = estado.copy(confirmandoCancelacion = false)
+        viewModelScope.launch {
+            // Si el repositorio dice que ya no esta en curso, igual se refresca la lista (y no se avisa exito).
+            val exito = try {
+                repositorio.cancelarSecado(id)
+                true
+            } catch (_: IllegalArgumentException) {
+                false
+            }
+            _uiState.value = _uiState.value.copy(
+                secados = repositorio.secadosEnCurso(),
+                inventario = repositorio.inventario(),
+                elegidoId = null
+            )
+            if (exito) onCancelado()
         }
-        _uiState.value = estado.copy(
-            secados = repositorio.secadosEnCurso(),
-            inventario = repositorio.inventario(),
-            elegidoId = null,
-            confirmandoCancelacion = false
-        )
     }
 }

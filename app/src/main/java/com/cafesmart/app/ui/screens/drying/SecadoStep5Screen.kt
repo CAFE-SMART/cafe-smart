@@ -48,6 +48,7 @@ import com.cafesmart.app.ui.theme.SurfaceScreen
 import com.cafesmart.app.viewmodel.drying.FinalizarSecadoUiState
 import com.cafesmart.app.viewmodel.drying.SecadoEnCursoEnPantalla
 import com.cafesmart.app.viewmodel.drying.SecadosEnCursoUiState
+import kotlinx.coroutines.runBlocking
 
 // Paso 5 de Secado: Finalizar secado (Figma "Secado · Paso 5 · Finalizar").
 // Vista (MVVM): no tiene logica. Solo recuerda algo visual: si el calendario esta abierto.
@@ -77,6 +78,9 @@ fun SecadoStep5Screen(
             .imePadding()
     ) {
         EncabezadoPantalla(titulo = "Finalizar secado", onBack = onBack)
+
+        // Mientras el repositorio no entrega el secado no se dice "ya no esta en curso": solo se ve la cabecera.
+        if (estado.cargando) return@Column
 
         if (estado.secado == null || tarjeta == null) {
             // Estado vacio: el secado ya no esta en curso (por ejemplo, ya se finalizo o se cancelo).
@@ -249,16 +253,16 @@ private fun TarjetaDelSecado(tarjeta: SecadoEnCursoEnPantalla) {
 @Composable
 private fun Paso5Preview() {
     val repositorio = SecadoRepositoryEjemplo()
-    val verde = repositorio.inventario().first { it.tipoCafe == TipoCafe.VERDE }
-    val id = repositorio.iniciarSecado(Fecha(3, 6, 2026), listOf(EnvioASecar(verde.sublote.id, 1.0))).id
+    val verde = runBlocking { repositorio.inventario() }.first { it.tipoCafe == TipoCafe.VERDE }
+    val id = runBlocking { repositorio.iniciarSecado(Fecha(3, 6, 2026), listOf(EnvioASecar(verde.sublote.id, 1.0))) }.id
     val hoy = Fecha(6, 6, 2026)
     val enCurso = SecadosEnCursoUiState(
-        secados = repositorio.secadosEnCurso(), inventario = repositorio.inventario(), hoy = hoy
+        secados = runBlocking { repositorio.secadosEnCurso() }, inventario = runBlocking { repositorio.inventario() }, hoy = hoy
     )
     CafesmartTheme {
         SecadoStep5Screen(
             estado = FinalizarSecadoUiState(
-                secado = repositorio.secadosEnCurso().first { it.secado.id == id },
+                secado = runBlocking { repositorio.secadosEnCurso() }.first { it.secado.id == id },
                 kilosBuena = "0.5", factorTexto = "92", hoy = hoy
             ),
             tarjeta = enCurso.tarjetaElegida,

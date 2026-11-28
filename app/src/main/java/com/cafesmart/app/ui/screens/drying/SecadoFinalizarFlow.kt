@@ -31,9 +31,9 @@ fun SecadoStep4Flow(
         onElegir = { viewModel.elegirSecado(it) },
         onFinalizar = onFinalizar,
         onPedirCancelar = { viewModel.pedirCancelar() },
+        // El callback se llama al terminar la cancelacion; solo se sale del flujo si ya no queda ningun secado.
         onConfirmarCancelar = {
-            viewModel.confirmarCancelar()
-            if (viewModel.uiState.value.secados.isEmpty()) onSinSecados()
+            viewModel.confirmarCancelar { if (viewModel.uiState.value.secados.isEmpty()) onSinSecados() }
         },
         onDescartarCancelar = { viewModel.descartarCancelar() },
         onBack = onVolver,
@@ -63,12 +63,8 @@ fun SecadoStep5Flow(
         // El calendario entrega milisegundos; el ViewModel recibe una Fecha.
         onFechaChange = { viewModel.cambiarFecha(milisAFecha(it)) },
         onGastosChange = { viewModel.elegirGastos(it) },
-        onConfirmar = {
-            viewModel.confirmar()
-            // Solo se avanza si el ViewModel finalizo el secado.
-            val nuevo = viewModel.uiState.value
-            if (nuevo.finalizado) onConfirmado(nuevo.huboGastos)
-        },
+        // Solo se avanza cuando el ViewModel finalizo el secado (el callback se llama al terminar).
+        onConfirmar = { viewModel.confirmar { onConfirmado(viewModel.uiState.value.huboGastos) } },
         onBack = onVolver,
         modifier = modifier
     )

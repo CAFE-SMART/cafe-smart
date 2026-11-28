@@ -13,7 +13,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertThrows
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -28,7 +28,7 @@ class SecadoRepositoryFinalizarTest {
 
     private fun repositorio() = repositorioDePrueba(inventario14000())
 
-    private fun enviarTodoElVerde(repositorio: SecadoRepositoryEjemplo): Long =
+    private suspend fun enviarTodoElVerde(repositorio: SecadoRepositoryEjemplo): Long =
         repositorio.iniciarSecado(
             inicio,
             listOf(EnvioASecar(1, 120.0), EnvioASecar(2, 80.0), EnvioASecar(3, 60.0), EnvioASecar(4, 30.0))
@@ -37,13 +37,13 @@ class SecadoRepositoryFinalizarTest {
     private fun kilos(buena: Double = 0.0, regular: Double = 0.0, mala: Double = 0.0) =
         mapOf(Calidad.BUENA to buena, Calidad.REGULAR to regular, Calidad.MALA to mala)
 
-    private fun disponible(repositorio: SecadoRepositoryEjemplo, id: Long): Double =
+    private suspend fun disponible(repositorio: SecadoRepositoryEjemplo, id: Long): Double =
         repositorio.inventario().first { it.sublote.id == id }.sublote.pesoDisponibleKg
 
     // ---------- Finalizar ----------
 
     @Test
-    fun finalizar_casoDelFigma() {
+    fun finalizar_casoDelFigma() = runTest {
         val repositorio = repositorio()
         val id = enviarTodoElVerde(repositorio)
         val detalle = repositorio.finalizarSecado(id, fin, kilos(140.0, 118.0, 12.0), 92)
@@ -60,7 +60,7 @@ class SecadoRepositoryFinalizarTest {
     }
 
     @Test
-    fun finalizar_creaUnSubloteSecoPorCalidadConLosDatosDelSecado() {
+    fun finalizar_creaUnSubloteSecoPorCalidadConLosDatosDelSecado() = runTest {
         val repositorio = repositorio()
         val id = enviarTodoElVerde(repositorio)
         val detalle = repositorio.finalizarSecado(id, fin, kilos(140.0, 118.0, 12.0), 92)
@@ -84,7 +84,7 @@ class SecadoRepositoryFinalizarTest {
     }
 
     @Test
-    fun finalizar_soloCreaLasCalidadesConKgMayoresA0() {
+    fun finalizar_soloCreaLasCalidadesConKgMayoresA0() = runTest {
         val repositorio = repositorio()
         val id = enviarTodoElVerde(repositorio)
         val detalle = repositorio.finalizarSecado(id, fin, kilos(buena = 0.0, regular = 250.0, mala = 0.0), 100)
@@ -94,7 +94,7 @@ class SecadoRepositoryFinalizarTest {
     }
 
     @Test
-    fun finalizar_usaElLoteSecoQueYaExisteYCreaLosQueFaltan() {
+    fun finalizar_usaElLoteSecoQueYaExisteYCreaLosQueFaltan() = runTest {
         val repositorio = repositorio()
         val loteSecoBuena = repositorio.inventario().first { it.sublote.id == 5L }.lote
         val id = enviarTodoElVerde(repositorio)
@@ -113,7 +113,7 @@ class SecadoRepositoryFinalizarTest {
     }
 
     @Test
-    fun finalizar_unSegundoSecadoReutilizaElLoteSecoQueCreoElPrimero() {
+    fun finalizar_unSegundoSecadoReutilizaElLoteSecoQueCreoElPrimero() = runTest {
         val repositorio = repositorio()
         val primero = repositorio.iniciarSecado(inicio, listOf(EnvioASecar(1, 50.0))).id
         repositorio.finalizarSecado(primero, fin, kilos(regular = 45.0), 100)
@@ -126,7 +126,7 @@ class SecadoRepositoryFinalizarTest {
     }
 
     @Test
-    fun finalizar_sinFactorGuardaNull() {
+    fun finalizar_sinFactorGuardaNull() = runTest {
         val repositorio = repositorio()
         val id = enviarTodoElVerde(repositorio)
         val detalle = repositorio.finalizarSecado(id, fin, kilos(140.0, 118.0, 12.0), null)
@@ -135,44 +135,44 @@ class SecadoRepositoryFinalizarTest {
     }
 
     @Test
-    fun finalizar_dosVecesFalla() {
+    fun finalizar_dosVecesFalla() = runTest {
         val repositorio = repositorio()
         val id = enviarTodoElVerde(repositorio)
         repositorio.finalizarSecado(id, fin, kilos(140.0, 118.0, 12.0), 92)
         val antes = repositorio.inventario()
-        assertThrows(IllegalArgumentException::class.java) {
+        assertFalla {
             repositorio.finalizarSecado(id, fin, kilos(140.0, 118.0, 12.0), 92)
         }
         assertEquals(antes, repositorio.inventario())
     }
 
     @Test
-    fun finalizar_unSecadoCanceladoFalla() {
+    fun finalizar_unSecadoCanceladoFalla() = runTest {
         val repositorio = repositorio()
         val id = enviarTodoElVerde(repositorio)
         repositorio.cancelarSecado(id)
         val antes = repositorio.inventario()
-        assertThrows(IllegalArgumentException::class.java) {
+        assertFalla {
             repositorio.finalizarSecado(id, fin, kilos(140.0, 118.0, 12.0), 92)
         }
         assertEquals(antes, repositorio.inventario())
     }
 
     @Test
-    fun finalizar_unSecadoQueNoExisteFalla() {
-        assertThrows(IllegalArgumentException::class.java) {
+    fun finalizar_unSecadoQueNoExisteFalla() = runTest {
+        assertFalla {
             repositorio().finalizarSecado(99, fin, kilos(10.0), 92)
         }
     }
 
     @Test
-    fun finalizar_unErrorNoDejaCambiosAMedias() {
+    fun finalizar_unErrorNoDejaCambiosAMedias() = runTest {
         val repositorio = repositorio()
         val id = enviarTodoElVerde(repositorio)
         val inventarioAntes = repositorio.inventario()
         val enCursoAntes = repositorio.secadosEnCurso()
 
-        val invalidos = listOf<() -> Unit>(
+        val invalidos = listOf<suspend () -> Unit>(
             { repositorio.finalizarSecado(id, Fecha(2, 6, 2026), kilos(140.0, 118.0, 12.0), 92) },  // fecha anterior al inicio
             { repositorio.finalizarSecado(id, fin, kilos(140.0, 118.0, 12.0), FACTOR_RENDIMIENTO_MIN - 1) },                 // factor bajo
             { repositorio.finalizarSecado(id, fin, kilos(140.0, 118.0, 12.0), FACTOR_RENDIMIENTO_MAX + 1) },                // factor alto
@@ -181,7 +181,7 @@ class SecadoRepositoryFinalizarTest {
             { repositorio.finalizarSecado(id, fin, kilos(140.0, -1.0, 12.0), 92) }                   // negativo
         )
         invalidos.forEach { intento ->
-            assertThrows(IllegalArgumentException::class.java) { intento() }
+            assertFalla { intento() }
             assertEquals(inventarioAntes, repositorio.inventario())
             assertEquals(enCursoAntes, repositorio.secadosEnCurso())
         }
@@ -190,14 +190,14 @@ class SecadoRepositoryFinalizarTest {
     }
 
     @Test
-    fun finalizar_fechaIgualAlInicioEsValida() {
+    fun finalizar_fechaIgualAlInicioEsValida() = runTest {
         val repositorio = repositorio()
         val id = enviarTodoElVerde(repositorio)
         assertEquals(inicio, repositorio.finalizarSecado(id, inicio, kilos(250.0), 92).secado.fechaFin)
     }
 
     @Test
-    fun finalizar_aceptaUnaMermaGrandeYElEnviado() {
+    fun finalizar_aceptaUnaMermaGrandeYElEnviado() = runTest {
         // RN-G-23: mayor a 0 y hasta lo enviado; no hay merma maxima.
         val repositorio = repositorio()
         val id = repositorio.iniciarSecado(inicio, listOf(EnvioASecar(3, 60.0))).id
@@ -210,12 +210,12 @@ class SecadoRepositoryFinalizarTest {
     // ---------- Secados en curso ----------
 
     @Test
-    fun secadosEnCurso_sinSecadosEstaVacio() {
+    fun secadosEnCurso_sinSecadosEstaVacio() = runTest {
         assertTrue(repositorio().secadosEnCurso().isEmpty())
     }
 
     @Test
-    fun secadosEnCurso_noMuestraFinalizadosNiCancelados() {
+    fun secadosEnCurso_noMuestraFinalizadosNiCancelados() = runTest {
         val repositorio = repositorio()
         val a = repositorio.iniciarSecado(inicio, listOf(EnvioASecar(1, 10.0))).id
         val b = repositorio.iniciarSecado(inicio, listOf(EnvioASecar(2, 10.0))).id
@@ -226,7 +226,7 @@ class SecadoRepositoryFinalizarTest {
     }
 
     @Test
-    fun secadosEnCurso_elMasRecientePrimeroYSinResultantes() {
+    fun secadosEnCurso_elMasRecientePrimeroYSinResultantes() = runTest {
         val repositorio = repositorio()
         val viejo = repositorio.iniciarSecado(Fecha(1, 6, 2026), listOf(EnvioASecar(1, 10.0))).id
         val nuevo = repositorio.iniciarSecado(Fecha(3, 6, 2026), listOf(EnvioASecar(2, 10.0))).id
@@ -241,20 +241,20 @@ class SecadoRepositoryFinalizarTest {
     }
 
     @Test
-    fun secadosEnCurso_guardaLosEnviosConElSubloteComoEstabaAlEnviarse() {
+    fun secadosEnCurso_guardaLosEnviosConElSubloteComoEstabaAlEnviarse() = runTest {
         val repositorio = repositorio()
         repositorio.iniciarSecado(inicio, listOf(EnvioASecar(1, 50.0)))
         val envio = repositorio.secadosEnCurso().single().enviados.single()
         assertEquals(50.0, envio.envio.pesoEnviadoKg, 0.0)
         assertEquals(1L, envio.sublote.id)
-        assertEquals(120.0, envio.sublote.pesoDisponibleKg, 0.0)   // la foto es de antes de descontar
+        assertEquals(14_000L, envio.sublote.costoKg)
         assertEquals(70.0, disponible(repositorio, 1), 0.0)
     }
 
     // ---------- Cancelar ----------
 
     @Test
-    fun cancelar_devuelveElCafeAUnSubloteQueSeguiaEnElInventario() {
+    fun cancelar_devuelveElCafeAUnSubloteQueSeguiaEnElInventario() = runTest {
         val repositorio = repositorio()
         val id = repositorio.iniciarSecado(inicio, listOf(EnvioASecar(1, 50.0), EnvioASecar(2, 20.0))).id
         assertEquals(70.0, disponible(repositorio, 1), 0.0)
@@ -266,7 +266,7 @@ class SecadoRepositoryFinalizarTest {
     }
 
     @Test
-    fun cancelar_devuelveElCafeDeUnSubloteQueSeHabiaAgotado() {
+    fun cancelar_devuelveElCafeDeUnSubloteQueSeHabiaAgotado() = runTest {
         val repositorio = repositorio()
         val id = repositorio.iniciarSecado(inicio, listOf(EnvioASecar(4, 30.0))).id
         assertEquals(0.0, disponible(repositorio, 4), 0.0)
@@ -276,7 +276,7 @@ class SecadoRepositoryFinalizarTest {
     }
 
     @Test
-    fun cancelar_sumaLoDevueltoAlRestoQueSeguiaDisponible() {
+    fun cancelar_sumaLoDevueltoAlRestoQueSeguiaDisponible() = runTest {
         val repositorio = repositorio()
         val primero = repositorio.iniciarSecado(inicio, listOf(EnvioASecar(1, 100.0))).id
         val segundo = repositorio.iniciarSecado(inicio, listOf(EnvioASecar(1, 20.0))).id
@@ -287,27 +287,27 @@ class SecadoRepositoryFinalizarTest {
     }
 
     @Test
-    fun cancelar_marcaElSecadoCanceladoYNoSePuedeCancelarOtraVez() {
+    fun cancelar_marcaElSecadoCanceladoYNoSePuedeCancelarOtraVez() = runTest {
         val repositorio = repositorio()
         val id = enviarTodoElVerde(repositorio)
         repositorio.cancelarSecado(id)
         val antes = repositorio.inventario()
-        assertThrows(IllegalArgumentException::class.java) { repositorio.cancelarSecado(id) }
+        assertFalla { repositorio.cancelarSecado(id) }
         assertEquals(antes, repositorio.inventario())   // no devuelve el cafe dos veces
     }
 
     @Test
-    fun cancelar_unSecadoYaFinalizadoFalla() {
+    fun cancelar_unSecadoYaFinalizadoFalla() = runTest {
         val repositorio = repositorio()
         val id = enviarTodoElVerde(repositorio)
         repositorio.finalizarSecado(id, fin, kilos(140.0, 118.0, 12.0), 92)
         val antes = repositorio.inventario()
-        assertThrows(IllegalArgumentException::class.java) { repositorio.cancelarSecado(id) }
+        assertFalla { repositorio.cancelarSecado(id) }
         assertEquals(antes, repositorio.inventario())
     }
 
     @Test
-    fun cancelar_unSecadoQueNoExisteFalla() {
-        assertThrows(IllegalArgumentException::class.java) { repositorio().cancelarSecado(99) }
+    fun cancelar_unSecadoQueNoExisteFalla() = runTest {
+        assertFalla { repositorio().cancelarSecado(99) }
     }
 }

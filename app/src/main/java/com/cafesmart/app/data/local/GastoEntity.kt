@@ -12,11 +12,19 @@ import androidx.room.PrimaryKey
 /**
  * - tipo, estadoPago y aplicaA: el nombre del enum como texto (TipoGasto, EstadoPago, AplicaGasto).
  * - monto: pesos enteros. fecha: milisegundos UTC (fechaAMilis / milisAFecha).
- * - secadoId: todavía SIN llave foránea porque la tabla de Secado no existe; quien agregue
- *   SecadoEntity le pone el ForeignKey y sube la versión de la base (igual que sublote.secado_id).
+ * - secadoId: el secado al que pertenece el gasto (null si no es de secado). Con RESTRICT no se puede
+ *   borrar un secado mientras tenga gastos (igual que sublote.secado_id).
  */
 @Entity(
     tableName = "gasto",
+    foreignKeys = [
+        ForeignKey(
+            entity = SecadoEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["secado_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+    ],
     indices = [Index(value = ["secado_id"])],
 )
 data class GastoEntity(

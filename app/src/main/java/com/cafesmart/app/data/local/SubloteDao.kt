@@ -37,4 +37,17 @@ interface SubloteDao {
             "WHERE id = :id AND peso_disponible_kg >= :kg - 0.0005",
     )
     suspend fun descontar(id: Long, kg: Double): Int
+
+    /**
+     * Suma kg al peso disponible del sublote (por ejemplo, al cancelar un secado) y devuelve cuántas filas
+     * cambió (0 o 1). 0 significa que el sublote no existe.
+     *
+     * Igual que [descontar], el resultado se redondea a 3 decimales. MIN(peso_inicial_kg, ...) evita que el
+     * sublote quede con más café del que entró, algo que la data class Sublote no acepta.
+     */
+    @Query(
+        "UPDATE sublote SET peso_disponible_kg = MIN(peso_inicial_kg, ROUND(peso_disponible_kg + :kg, 3)) " +
+            "WHERE id = :id",
+    )
+    suspend fun devolver(id: Long, kg: Double): Int
 }

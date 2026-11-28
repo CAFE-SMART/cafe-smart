@@ -51,15 +51,9 @@ fun SecadoStep2Flow(
     SecadoStep2Screen(
         estado = estado,
         onFechaChange = { viewModel.cambiarFecha(it) },
-        onIniciar = {
-            viewModel.iniciarSecado()
-            // Solo se pasa a la pantalla final si el ViewModel inicio el secado.
-            if (viewModel.uiState.value.secadoIniciado) onIniciado()
-        },
-        onCancelar = {
-            viewModel.reiniciar()
-            onCancelado()
-        },
+        // Solo se pasa a la pantalla final cuando el ViewModel inicio el secado (el callback se llama al terminar).
+        onIniciar = { viewModel.iniciarSecado(onIniciado) },
+        onCancelar = { viewModel.reiniciar(onCancelado) },
         onBack = onVolver,
         modifier = modifier
     )

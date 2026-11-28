@@ -6,10 +6,10 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 // Base de datos local de la app. Tiene Negocio, Productor, Compra, Lote, Sublote, Gasto, GastoSublote,
-// Cliente, Venta y VentaSublote.
-// Las demás entidades (Secado...) se agregan aquí mismo, en la lista entities, con su DAO abstracto.
-// Al agregar entidades o cambiar columnas hay que subir version. Mientras la app no esté publicada,
-// basta con desinstalarla en el emulador; después habrá que escribir una migración.
+// Cliente, Venta, VentaSublote, Secado y SecadoSublote.
+// Las demás entidades se agregan aquí mismo, en la lista entities, con su DAO abstracto.
+// Al agregar entidades o cambiar columnas hay que subir version y escribir su migración en Migraciones.kt
+// (nunca se borra la base para subir de versión).
 
 @Database(
     entities = [
@@ -20,11 +20,13 @@ import androidx.room.RoomDatabase
         SubloteEntity::class,
         GastoEntity::class,
         GastoSubloteEntity::class,
+        SecadoEntity::class,
+        SecadoSubloteEntity::class,
         ClienteEntity::class,
         VentaEntity::class,
         VentaSubloteEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -35,6 +37,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun loteDao(): LoteDao
     abstract fun subloteDao(): SubloteDao
     abstract fun gastoDao(): GastoDao
+    abstract fun secadoDao(): SecadoDao
     abstract fun clienteDao(): ClienteDao
     abstract fun ventaDao(): VentaDao
 
@@ -48,7 +51,7 @@ abstract class AppDatabase : RoomDatabase() {
         fun obtener(context: Context): AppDatabase =
             instancia ?: synchronized(this) {
                 instancia ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NOMBRE)
-                    .addMigrations(MIGRACION_3_4)
+                    .addMigrations(*MIGRACIONES)
                     .build()
                     .also { instancia = it }
             }

@@ -14,22 +14,35 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.Before
+import org.junit.Rule
+import kotlinx.coroutines.test.runTest
 
 class SecadoViewModelTest {
 
+    // El ViewModel usa viewModelScope: se crea dentro de cada test, cuando la regla ya puso el dispatcher de prueba.
+    @get:Rule
+    val main = MainDispatcherRule()
+
     private val repositorio = repositorioDePrueba()
-    private val vm = SecadoViewModel(repositorio)
+    private lateinit var vm: SecadoViewModel
+
+    @Before
+    fun crearViewModel() {
+        vm = SecadoViewModel(repositorio)
+    }
+
     private val estado get() = vm.uiState.value
 
     private fun sublote(id: Long) = estado.inventario.first { it.sublote.id == id }
 
-    private fun disponibleEnRepositorio(id: Long): Double =
+    private suspend fun disponibleEnRepositorio(id: Long): Double =
         repositorio.inventario().first { it.sublote.id == id }.sublote.pesoDisponibleKg
 
     // ---------- Paso 1: elegir el cafe ----------
 
     @Test
-    fun alEntrar_nadaElegido_noSePuedeContinuarYDiceQueFalta() {
+    fun alEntrar_nadaElegido_noSePuedeContinuarYDiceQueFalta() = runTest {
         assertTrue(estado.elegidos.isEmpty())
         assertFalse(estado.puedeContinuar)
         assertEquals(MENSAJE_ELEGIR_SUBLOTE_SECADO, estado.mensajePendientePaso1)
@@ -37,7 +50,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun soloAparecenLosSublotesVerdes_agrupadosPorCalidad() {
+    fun soloAparecenLosSublotesVerdes_agrupadosPorCalidad() = runTest {
         val ids = estado.grupos.flatMap { grupo -> grupo.sublotes.map { it.sublote.sublote.id } }
         // El sublote 5 es seco: no se ofrece.
         assertEquals(listOf(3L, 1L, 2L, 4L), ids)
@@ -47,7 +60,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun cadaGrupoMuestraSuEtiquetaYSuResumen() {
+    fun cadaGrupoMuestraSuEtiquetaYSuResumen() = runTest {
         val regular = estado.grupos.first { it.calidad == Calidad.REGULAR }
         assertEquals("Calidad regular", regular.etiqueta)
         assertEquals("2 sublotes · 200 kg", regular.resumen)
@@ -56,7 +69,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun cadaSubloteDiceSusKgDisponiblesYCuantoHaceQueSeCompro() {
+    fun cadaSubloteDiceSusKgDisponiblesYCuantoHaceQueSeCompro() = runTest {
         // Con "hoy" del Figma (3 de junio de 2026): el sublote 1 se compro hoy, el 3 hace 3 dias y el 4 hace 5.
         val figma = SecadoUiState(inventario = inventarioFigma(), hoy = HOY_FIGMA)
         val filas = figma.grupos.flatMap { it.sublotes }.associateBy { it.sublote.sublote.id }
@@ -68,7 +81,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun alternarTodos_eligeLosCuatroYElTotalEsElDelFigma() {
+    fun alternarTodos_eligeLosCuatroYElTotalEsElDelFigma() = runTest {
         vm.alternarTodos()
         assertEquals(4, estado.elegidos.size)
         assertTrue(estado.todosElegidos)
@@ -80,7 +93,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun alternarTodos_conTodosElegidosLosQuita() {
+    fun alternarTodos_conTodosElegidosLosQuita() = runTest {
         vm.alternarTodos()
         vm.alternarTodos()
         assertTrue(estado.elegidos.isEmpty())
@@ -88,7 +101,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun alternarTodos_conAlgunosElegidosLosCompletaYRespetaLaCantidadYaAjustada() {
+    fun alternarTodos_conAlgunosElegidosLosCompletaYRespetaLaCantidadYaAjustada() = runTest {
         vm.alternarSublote(sublote(1))
         vm.abrirAjuste(1)
         vm.escribirAjuste("50")
@@ -100,7 +113,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun alternarSublote_alElegirloSeMandaTodoLoDisponible() {
+    fun alternarSublote_alElegirloSeMandaTodoLoDisponible() = runTest {
         vm.alternarSublote(sublote(1))
         assertEquals(120.0, estado.elegidos.single().cantidadKg, 0.0)
         assertTrue(estado.algunosElegidos)
@@ -110,7 +123,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun alternarSublote_alTocarloDeNuevoLoQuita() {
+    fun alternarSublote_alTocarloDeNuevoLoQuita() = runTest {
         vm.alternarSublote(sublote(1))
         vm.alternarSublote(sublote(1))
         assertTrue(estado.elegidos.isEmpty())
@@ -118,7 +131,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun sinCafeVerde_diceQueNoHayYNoSePuedeContinuar() {
+    fun sinCafeVerde_diceQueNoHayYNoSePuedeContinuar() = runTest {
         val soloSeco = SecadoViewModel(repositorioDePrueba(listOf(subloteDePrueba(5, TipoCafe.SECO, Calidad.BUENA, 200.0))))
         val e = soloSeco.uiState.value
         assertEquals(MENSAJE_SIN_CAFE_VERDE, e.mensajeSinCafe)
@@ -128,7 +141,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun conInventarioVacio_tambienDiceQueNoHayCafe() {
+    fun conInventarioVacio_tambienDiceQueNoHayCafe() = runTest {
         val vacio = SecadoViewModel(repositorioDePrueba(emptyList())).uiState.value
         assertEquals(MENSAJE_SIN_CAFE_VERDE, vacio.mensajeSinCafe)
         assertFalse(vacio.puedeContinuar)
@@ -137,7 +150,7 @@ class SecadoViewModelTest {
     // ---------- Hoja "Ajustar cantidad" ----------
 
     @Test
-    fun cambiar_abreLaHojaConLaCantidadElegidaYLoDisponible() {
+    fun cambiar_abreLaHojaConLaCantidadElegidaYLoDisponible() = runTest {
         vm.alternarSublote(sublote(1))
         vm.abrirAjuste(1)
         val ajuste = estado.ajusteEnPantalla!!
@@ -150,14 +163,14 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun cambiar_enUnSubloteNoElegidoNoAbreNada() {
+    fun cambiar_enUnSubloteNoElegidoNoAbreNada() = runTest {
         vm.abrirAjuste(1)
         assertNull(estado.ajuste)
         assertNull(estado.ajusteEnPantalla)
     }
 
     @Test
-    fun confirmar_unaParteValida_cambiaLaCantidadYElTotalYCierraLaHoja() {
+    fun confirmar_unaParteValida_cambiaLaCantidadYElTotalYCierraLaHoja() = runTest {
         vm.alternarSublote(sublote(1))
         vm.abrirAjuste(1)
         vm.escribirAjuste("50")
@@ -169,7 +182,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun confirmar_todoElSublote_esValido() {
+    fun confirmar_todoElSublote_esValido() = runTest {
         vm.alternarSublote(sublote(1))
         vm.abrirAjuste(1)
         vm.escribirAjuste("120")
@@ -179,7 +192,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun ajuste_masDeLoDisponible_muestraElErrorYNoSePuedeConfirmar() {
+    fun ajuste_masDeLoDisponible_muestraElErrorYNoSePuedeConfirmar() = runTest {
         vm.alternarSublote(sublote(1))
         vm.abrirAjuste(1)
         vm.escribirAjuste("130")
@@ -193,7 +206,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun ajuste_ceroOVacio_noSePuedeConfirmarPeroNoMuestraError() {
+    fun ajuste_ceroOVacio_noSePuedeConfirmarPeroNoMuestraError() = runTest {
         vm.alternarSublote(sublote(1))
         vm.abrirAjuste(1)
         vm.escribirAjuste("0")
@@ -210,7 +223,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun ajuste_conComaDecimal_seMuestraConComaYSeGuardaComoNumero() {
+    fun ajuste_conComaDecimal_seMuestraConComaYSeGuardaComoNumero() = runTest {
         vm.alternarSublote(sublote(1))
         vm.abrirAjuste(1)
         vm.escribirAjuste("12,5")
@@ -221,7 +234,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun ajuste_limpiaLetrasYDejaSoloTresDecimales() {
+    fun ajuste_limpiaLetrasYDejaSoloTresDecimales() = runTest {
         vm.alternarSublote(sublote(1))
         vm.abrirAjuste(1)
         vm.escribirAjuste("ab5,1234")
@@ -229,7 +242,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun cancelarElAjuste_descartaLoEscritoYDejaLaCantidadComoEstaba() {
+    fun cancelarElAjuste_descartaLoEscritoYDejaLaCantidadComoEstaba() = runTest {
         vm.alternarSublote(sublote(1))
         vm.abrirAjuste(1)
         vm.escribirAjuste("50")
@@ -242,7 +255,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun sinHojaAbierta_escribirOConfirmarNoHaceNada() {
+    fun sinHojaAbierta_escribirOConfirmarNoHaceNada() = runTest {
         vm.alternarSublote(sublote(1))
         vm.escribirAjuste("50")
         vm.confirmarAjuste()
@@ -253,7 +266,7 @@ class SecadoViewModelTest {
     // ---------- Paso 2: confirmar el inicio ----------
 
     @Test
-    fun resumenDelPaso2_conLosCuatroSublotes() {
+    fun resumenDelPaso2_conLosCuatroSublotes() = runTest {
         vm.alternarTodos()
         assertEquals(listOf(Calidad.BUENA, Calidad.REGULAR, Calidad.MALA), estado.calidadesElegidas)
         assertEquals("4 sublotes", estado.sublotesElegidosTexto)
@@ -262,14 +275,14 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun resumenDelPaso2_conUnSoloSubloteDiceSublote_ySoloSuCalidad() {
+    fun resumenDelPaso2_conUnSoloSubloteDiceSublote_ySoloSuCalidad() = runTest {
         vm.alternarSublote(sublote(1))
         assertEquals("1 sublote", estado.sublotesElegidosTexto)
         assertEquals(listOf(Calidad.REGULAR), estado.calidadesElegidas)
     }
 
     @Test
-    fun cambiarFecha_actualizaLaFechaDeInicio() {
+    fun cambiarFecha_actualizaLaFechaDeInicio() = runTest {
         vm.cambiarFecha(fechaAMilis(Fecha(5, 6, 2026)))
         assertEquals(Fecha(5, 6, 2026), estado.fechaInicio)
         assertEquals("5 de junio de 2026", estado.fechaResumenTexto)
@@ -278,7 +291,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun iniciarSinElegirNada_noHaceNada() {
+    fun iniciarSinElegirNada_noHaceNada() = runTest {
         vm.iniciarSecado()
         assertFalse(estado.secadoIniciado)
         assertEquals(120.0, disponibleEnRepositorio(1), 0.0)
@@ -286,7 +299,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun iniciarSecado_conTodo_descuentaDelInventarioYQuedaIniciado() {
+    fun iniciarSecado_conTodo_descuentaDelInventarioYQuedaIniciado() = runTest {
         vm.alternarTodos()
         assertTrue(estado.puedeIniciar)
         vm.iniciarSecado()
@@ -300,7 +313,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun iniciarSecado_conlaCantidadAjustada_soloDescuentaEsaParte() {
+    fun iniciarSecado_conlaCantidadAjustada_soloDescuentaEsaParte() = runTest {
         vm.alternarSublote(sublote(1))
         vm.abrirAjuste(1)
         vm.escribirAjuste("50")
@@ -313,7 +326,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun iniciarSecado_conservaLoElegidoParaElResumenDelPaso3() {
+    fun iniciarSecado_conservaLoElegidoParaElResumenDelPaso3() = runTest {
         vm.alternarTodos()
         vm.iniciarSecado()
         assertEquals("290 kg", estado.totalKgTexto)
@@ -322,7 +335,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun iniciarSecado_dosVeces_soloDescuentaUna() {
+    fun iniciarSecado_dosVeces_soloDescuentaUna() = runTest {
         vm.alternarSublote(sublote(1))
         vm.abrirAjuste(1)
         vm.escribirAjuste("50")
@@ -333,7 +346,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun iniciarSecado_laFechaDeInicioSeGuardaEnElSecado() {
+    fun iniciarSecado_laFechaDeInicioSeGuardaEnElSecado() = runTest {
         vm.alternarSublote(sublote(1))
         vm.cambiarFecha(fechaAMilis(Fecha(5, 6, 2026)))
         vm.iniciarSecado()
@@ -344,7 +357,7 @@ class SecadoViewModelTest {
     // ---------- Empezar otro secado ----------
 
     @Test
-    fun reiniciar_dejaElPasoUnoLimpioYConElInventarioAlDia() {
+    fun reiniciar_dejaElPasoUnoLimpioYConElInventarioAlDia() = runTest {
         vm.alternarSublote(sublote(1))
         vm.abrirAjuste(1)
         vm.escribirAjuste("50")
@@ -360,7 +373,7 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun cancelarElSecado_conReiniciar_noDescuentaNada() {
+    fun cancelarElSecado_conReiniciar_noDescuentaNada() = runTest {
         vm.alternarTodos()
         vm.reiniciar()
         assertTrue(estado.elegidos.isEmpty())
@@ -368,12 +381,114 @@ class SecadoViewModelTest {
     }
 
     @Test
-    fun unSubloteAgotadoPorUnSecadoAnteriorYaNoSeOfrece() {
+    fun unSubloteAgotadoPorUnSecadoAnteriorYaNoSeOfrece() = runTest {
         vm.alternarSublote(sublote(4))
         vm.iniciarSecado()
         vm.reiniciar()
         val ids = estado.grupos.flatMap { grupo -> grupo.sublotes.map { it.sublote.sublote.id } }
         assertEquals(listOf(3L, 1L, 2L), ids)
         assertEquals("0 de 3 seleccionados", estado.textoSeleccionarTodo)
+    }
+
+    // ---------- Estado cargando y callbacks (el repositorio es suspend) ----------
+
+    @Test
+    fun alCrear_empiezaCargandoYSinMensajeDeSinCafe_yTerminaAlLlegarElInventario() = runTest {
+        val lento = RepositorioConPuerta(repositorio)
+        val vmLento = SecadoViewModel(lento)
+        assertTrue(vmLento.uiState.value.cargando)
+        assertNull(vmLento.uiState.value.mensajeSinCafe)
+        lento.puerta.complete(Unit)
+        assertFalse(vmLento.uiState.value.cargando)
+        assertEquals(5, vmLento.uiState.value.inventario.size)
+    }
+
+    @Test
+    fun iniciarSecado_llamaOnIniciadoUnaVezSiSaleBien() = runTest {
+        vm.alternarTodos()
+        var llamadas = 0
+        vm.iniciarSecado { llamadas++ }
+        assertEquals(1, llamadas)
+        assertTrue(estado.secadoIniciado)
+        assertFalse(estado.iniciando)
+        // Un segundo toque no vuelve a iniciar ni a llamar.
+        vm.iniciarSecado { llamadas++ }
+        assertEquals(1, llamadas)
+    }
+
+    @Test
+    fun iniciarSecado_noLlamaOnIniciadoSiElRepositorioRechaza() = runTest {
+        vm.alternarTodos()
+        // Entre elegir y pulsar "Iniciar", el sublote 1 se gasta en otro secado: el repositorio rechaza el envio.
+        repositorio.iniciarSecado(Fecha(1, 6, 2026), listOf(com.cafesmart.app.data.secado.EnvioASecar(1, 120.0)))
+        var llamadas = 0
+        vm.iniciarSecado { llamadas++ }
+        assertEquals(0, llamadas)
+        assertFalse(estado.secadoIniciado)
+        // Se puede volver a intentar.
+        assertFalse(estado.iniciando)
+    }
+
+    @Test
+    fun iniciarSinElegirNada_noLlamaOnIniciado() = runTest {
+        var llamadas = 0
+        vm.iniciarSecado { llamadas++ }
+        assertEquals(0, llamadas)
+    }
+
+    @Test
+    fun reiniciar_llamaOnListoCuandoElEstadoYaQuedoLimpio() = runTest {
+        vm.alternarTodos()
+        var elegidosAlAvisar = -1
+        vm.reiniciar { elegidosAlAvisar = estado.elegidos.size }
+        assertEquals(0, elegidosAlAvisar)
+    }
+
+    // ---------- Error al iniciar (Paso 2) ----------
+
+    @Test
+    fun errorAlIniciar_apareceCuandoElRepositorioRechaza() = runTest {
+        vm.alternarTodos()
+        assertNull(estado.errorAlIniciar)
+        // El sublote 1 se gasta en otro secado: el repositorio rechaza el envio.
+        repositorio.iniciarSecado(Fecha(1, 6, 2026), listOf(com.cafesmart.app.data.secado.EnvioASecar(1, 120.0)))
+        vm.iniciarSecado()
+        assertEquals("No se pudo iniciar el secado. Revisa el café disponible e intenta de nuevo.", estado.errorAlIniciar)
+        assertFalse(estado.secadoIniciado)
+    }
+
+    @Test
+    fun errorAlIniciar_desapareceAlReintentarYSaleBien() = runTest {
+        vm.alternarTodos()
+        val otro = repositorio.iniciarSecado(Fecha(1, 6, 2026), listOf(com.cafesmart.app.data.secado.EnvioASecar(1, 120.0)))
+        vm.iniciarSecado()
+        assertNotNull(estado.errorAlIniciar)
+        // El otro secado se cancela: el cafe vuelve y el reintento funciona.
+        repositorio.cancelarSecado(otro.id)
+        var llamadas = 0
+        vm.iniciarSecado { llamadas++ }
+        assertNull(estado.errorAlIniciar)
+        assertTrue(estado.secadoIniciado)
+        assertEquals(1, llamadas)
+    }
+
+    @Test
+    fun errorAlIniciar_seLimpiaAlEmpezarElReintentoAunqueVuelvaAFallar() = runTest {
+        vm.alternarTodos()
+        repositorio.iniciarSecado(Fecha(1, 6, 2026), listOf(com.cafesmart.app.data.secado.EnvioASecar(1, 120.0)))
+        vm.iniciarSecado()
+        val primero = estado.errorAlIniciar
+        vm.iniciarSecado()
+        // Sigue rechazando: el mensaje vuelve a estar (se limpio y se puso de nuevo), nunca duplicado ni distinto.
+        assertEquals(primero, estado.errorAlIniciar)
+        assertFalse(estado.iniciando)
+    }
+
+    @Test
+    fun errorAlIniciar_noApareceSiSaleBien() = runTest {
+        vm.alternarTodos()
+        vm.iniciarSecado()
+        assertTrue(estado.secadoIniciado)
+        assertNull(estado.errorAlIniciar)
     }
 }
