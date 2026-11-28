@@ -19,7 +19,6 @@ import com.cafesmart.app.viewmodel.drying.errorFactor
 import com.cafesmart.app.viewmodel.drying.errorFechaFin
 import com.cafesmart.app.viewmodel.drying.ayudaKilosSecos
 import com.cafesmart.app.viewmodel.drying.errorKilosSecos
-import com.cafesmart.app.viewmodel.drying.minimoKilosSecos
 import com.cafesmart.app.viewmodel.drying.factorDesdeTexto
 import com.cafesmart.app.viewmodel.drying.factorValido
 import com.cafesmart.app.viewmodel.drying.kilosSecosTotal
@@ -85,16 +84,12 @@ class SecadoFinalizarRulesTest {
         assertEquals("Entre los tres, máximo 12,5 kg.", errorKilosSecos(kilos(13.0), 12.5))
     }
 
-    // Con 60 kg enviados el rango valido es de 48 a 60 kg (PORCENTAJE_MINIMO_SECO = 80 %).
+    // RN-G-23: no hay merma maxima. Cualquier total mayor a 0 y hasta lo enviado es valido.
     @Test
-    fun errorKilosSecos_justoEnElMinimoEsValido() {
-        assertNull(errorKilosSecos(kilos(40.0, 5.0, 3.0), 60.0))
-    }
-
-    @Test
-    fun errorKilosSecos_pocoDebajoDelMinimoDiceElMinimo() {
-        assertEquals("Entre los tres, mínimo 48 kg.", errorKilosSecos(kilos(40.0, 5.0, 2.9), 60.0))
-        assertEquals("Entre los tres, mínimo 48 kg.", errorKilosSecos(kilos(mala = 1.0), 60.0))
+    fun errorKilosSecos_unaMermaGrandeEsValida() {
+        assertNull(errorKilosSecos(kilos(40.0, 5.0, 2.9), 60.0))   // 47,9 de 60 kg (20,2 %)
+        assertNull(errorKilosSecos(kilos(mala = 1.0), 60.0))       // 1 de 60 kg
+        assertNull(errorKilosSecos(kilos(mala = 0.001), 60.0))     // el minimo es apenas mayor a 0
     }
 
     @Test
@@ -109,10 +104,9 @@ class SecadoFinalizarRulesTest {
     }
 
     @Test
-    fun minimoYAyuda_muestranElRango() {
-        assertEquals(48.0, minimoKilosSecos(60.0), 0.0)
-        assertEquals("Entre los tres, entre 48 y 60 kg.", ayudaKilosSecos(60.0))
-        assertEquals("Entre los tres, entre 232 y 290 kg.", ayudaKilosSecos(290.0))
+    fun ayuda_muestraSoloElMaximo() {
+        assertEquals("Entre los tres, máximo 60 kg.", ayudaKilosSecos(60.0))
+        assertEquals("Entre los tres, máximo 290 kg.", ayudaKilosSecos(290.0))
     }
 
     // ---------- Factor de rendimiento ----------

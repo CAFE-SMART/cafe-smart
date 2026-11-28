@@ -197,16 +197,11 @@ class SecadoRepositoryFinalizarTest {
     }
 
     @Test
-    fun finalizar_rechazaDebajoDelMinimoYAceptaElMinimoYElEnviado() {
+    fun finalizar_aceptaUnaMermaGrandeYElEnviado() {
+        // RN-G-23: mayor a 0 y hasta lo enviado; no hay merma maxima.
         val repositorio = repositorio()
         val id = repositorio.iniciarSecado(inicio, listOf(EnvioASecar(3, 60.0))).id
-        val antes = repositorio.inventario()
-        val e = assertThrows(IllegalArgumentException::class.java) {
-            repositorio.finalizarSecado(id, fin, kilos(regular = 47.9), 100)
-        }
-        assertEquals("Entre los tres, mínimo 48 kg.", e.message)
-        assertEquals(antes, repositorio.inventario())
-        assertEquals(48.0, repositorio.finalizarSecado(id, fin, kilos(regular = 48.0), 100).pesoSecoKg, 0.0)
+        assertEquals(47.9, repositorio.finalizarSecado(id, fin, kilos(regular = 47.9), 100).pesoSecoKg, 0.0)
 
         val id2 = repositorio.iniciarSecado(inicio, listOf(EnvioASecar(1, 60.0))).id
         assertEquals(60.0, repositorio.finalizarSecado(id2, fin, kilos(regular = 60.0), 100).pesoSecoKg, 0.0)
