@@ -87,6 +87,7 @@ import com.cafesmart.app.ui.screens.sale.SaleStep2Flow
 import com.cafesmart.app.ui.screens.sale.SaleStep3Flow
 import com.cafesmart.app.ui.screens.sale.SaleSuccessFlow
 import com.cafesmart.app.data.model.TipoCafe
+import com.cafesmart.app.ui.inventory.DetalleSubloteRoute
 import com.cafesmart.app.ui.inventory.InventoryScreen
 import com.cafesmart.app.ui.settings.NegocioInfoScreen
 import com.cafesmart.app.ui.settings.SettingsScreen
@@ -486,11 +487,14 @@ fun AppNavHost(
             arguments = listOf(navArgument(Routes.ARG_BATCH_ID) { type = NavType.StringType })
         ) { entry ->
             val batchId = entry.arguments?.getString(Routes.ARG_BATCH_ID).orEmpty()
-            NavPlaceholder(
-                navController,
-                "Detalle del sublote #$batchId", Routes.inventoryDetail(batchId), true,
-                "Gastos del sublote" to Routes.inventoryBatchExpenses(batchId),
-                "Vender sublote" to Routes.saleBatchStep1(batchId)
+            DetalleSubloteRoute(
+                inventario = inventario,
+                negocios = negocios,
+                uid = FirebaseSessionGateway.usuarioActual()?.uid,
+                batchId = batchId,
+                onBack = { navController.popBackStack() },
+                onVerGastos = { navController.navigateTo(Routes.inventoryBatchExpenses(batchId)) },
+                onVender = { navController.navigateTo(Routes.saleBatchStep1(batchId)) },
             )
         }
         composable(
