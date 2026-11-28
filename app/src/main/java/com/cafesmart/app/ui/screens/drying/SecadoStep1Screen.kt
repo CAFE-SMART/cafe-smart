@@ -50,6 +50,7 @@ import com.cafesmart.app.viewmodel.drying.AjusteEnPantalla
 import com.cafesmart.app.viewmodel.drying.GrupoSecado
 import com.cafesmart.app.viewmodel.drying.SecadoUiState
 import com.cafesmart.app.viewmodel.drying.SubloteSecadoEnPantalla
+import kotlinx.coroutines.runBlocking
 
 // Paso 1 de Secado: ¿Qué café vas a secar?
 // Vista (MVVM): no tiene logica. Todo llega calculado en el estado (textos, errores, true/false)
@@ -324,7 +325,7 @@ private fun Paso1Preview(estado: SecadoUiState) {
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
 private fun Paso1SinElegirPreview() {
-    Paso1Preview(SecadoUiState(inventario = SecadoRepositoryEjemplo().inventario()))
+    Paso1Preview(SecadoUiState(inventario = runBlocking { SecadoRepositoryEjemplo().inventario() }))
 }
 
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)

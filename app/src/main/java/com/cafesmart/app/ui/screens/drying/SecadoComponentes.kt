@@ -14,10 +14,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +33,7 @@ import com.cafesmart.app.ui.theme.AppShapes
 import com.cafesmart.app.ui.theme.AppTypography
 import com.cafesmart.app.ui.theme.BorderDefault
 import com.cafesmart.app.ui.theme.BorderField
+import com.cafesmart.app.ui.theme.ButtonSoft
 import com.cafesmart.app.ui.theme.ErrorBg
 import com.cafesmart.app.ui.theme.ErrorDot
 import com.cafesmart.app.ui.theme.ErrorText
@@ -39,6 +43,7 @@ import com.cafesmart.app.ui.theme.PrimaryDark
 import com.cafesmart.app.ui.theme.Spacing
 import com.cafesmart.app.ui.theme.SuccessBg
 import com.cafesmart.app.ui.theme.SuccessDot
+import com.cafesmart.app.ui.theme.SuccessSolid
 import com.cafesmart.app.ui.theme.SuccessText
 import com.cafesmart.app.ui.theme.SurfaceCard
 import com.cafesmart.app.ui.theme.SurfaceSelected
@@ -160,27 +165,86 @@ fun ResumenDeSecado(
                     Text(text = fechaInicio, style = AppTypography.valueStrongBold)
                 }
             }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(SurfaceSelected)
-                    .padding(Spacing.s16),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = etiquetaKg,
-                    style = AppTypography.labelField.copy(color = PrimaryDark),
-                    modifier = Modifier.weight(1f)
-                )
-                Text(text = kg, style = AppTypography.titleScreen.copy(color = PrimaryDark))
-            }
+            FilaFinalAzul(etiqueta = etiquetaKg, valor = kg)
         }
+    }
+}
+
+// Ultima fila azul de un resumen: etiqueta a la izquierda y el valor grande a la derecha.
+@Composable
+fun FilaFinalAzul(etiqueta: String, valor: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(SurfaceSelected)
+            .padding(Spacing.s16),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = etiqueta,
+            style = AppTypography.labelField.copy(color = PrimaryDark),
+            modifier = Modifier.weight(1f)
+        )
+        Text(text = valor, style = AppTypography.titleScreen.copy(color = PrimaryDark))
+    }
+}
+
+// Tarjeta con el icono de calendario, una fecha y "Cambiar" (inicio en el paso 2, finalizacion en el paso 5)
+@Composable
+fun TarjetaFecha(etiqueta: String, fecha: String, onCambiar: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(SurfaceCard, AppShapes.medium)
+            .border(1.dp, BorderDefault, AppShapes.medium)
+            .padding(start = Spacing.s16, top = Spacing.s8, end = Spacing.s4, bottom = Spacing.s8),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s12)
+    ) {
+        Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+            Icon(imageVector = AppIcons.Calendar, contentDescription = null, tint = Primary, modifier = Modifier.size(20.dp))
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = etiqueta, style = AppTypography.caption)
+            Text(text = fecha, style = AppTypography.valueStrong)
+        }
+        TextButton(onClick = onCambiar) {
+            Text(text = "Cambiar", style = AppTypography.buttonLink)
+        }
+    }
+}
+
+// Circulo verde con chulito de las pantallas finales (pasos 3 y 6)
+@Composable
+fun CirculoCheck() {
+    Box(
+        modifier = Modifier
+            .size(80.dp)
+            .background(SuccessSolid, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(imageVector = AppIcons.Check, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(44.dp))
+    }
+}
+
+// Boton secundario con fondo azul suave ("Ir a inventario")
+@Composable
+fun BotonSuave(texto: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        shape = AppShapes.medium,
+        colors = ButtonDefaults.buttonColors(containerColor = ButtonSoft, contentColor = PrimaryDark),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(54.dp)
+    ) {
+        Text(text = texto, style = AppTypography.buttonPrimary.copy(color = PrimaryDark))
     }
 }
 
 // Una fila "etiqueta ........ valor" del resumen
 @Composable
-private fun FilaDeResumen(etiqueta: String, valor: @Composable () -> Unit) {
+fun FilaDeResumen(etiqueta: String, valor: @Composable () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

@@ -2,6 +2,7 @@ package com.cafesmart.app.sale
 
 import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.Fecha
+import com.cafesmart.app.data.sale.sublotesParaVenderEjemplo
 import com.cafesmart.app.data.model.SubloteConLote
 import com.cafesmart.app.data.model.TipoCafe
 import com.cafesmart.app.viewmodel.sale.SaleUiState
@@ -11,27 +12,30 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 
 // Paso 2 de Ventas: pestanas, "Seleccionar todo", sublotes, cantidad y precio.
 // Usa los sublotes de ejemplo (cafe seco): 5 y 6 buena (200 y 100 kg), 8 regular (150 kg) y 9 mala (71 kg).
 class CafeViewModelTest {
 
+    @get:Rule val principal = PrincipalDeVentasRule()
+
     // ---------- Al empezar ----------
 
     @Test
     fun alEmpezar_laPestanaEsSeco() {
-        assertEquals(TipoCafe.SECO, SaleViewModel().uiState.value.tipoCafe)
+        assertEquals(TipoCafe.SECO, viewModelDeVentasDePrueba().uiState.value.tipoCafe)
     }
 
     @Test
     fun alEmpezar_haySeisPestanasEnElOrdenDelFigma() {
-        assertEquals(listOf(TipoCafe.VERDE, TipoCafe.SECO, TipoCafe.TRILLADO, TipoCafe.PASILLA), SaleViewModel().uiState.value.tipos)
+        assertEquals(listOf(TipoCafe.VERDE, TipoCafe.SECO, TipoCafe.TRILLADO, TipoCafe.PASILLA), viewModelDeVentasDePrueba().uiState.value.tipos)
     }
 
     @Test
     fun alEmpezar_nadaEstaElegido() {
-        val estado = SaleViewModel().uiState.value
+        val estado = viewModelDeVentasDePrueba().uiState.value
         assertEquals("0 de 4 seleccionados", estado.textoSeleccionarTodo)
         assertFalse(estado.todosElegidos)
         assertFalse(estado.algunosElegidos)
@@ -43,7 +47,7 @@ class CafeViewModelTest {
 
     @Test
     fun alEmpezar_losGruposVanPorCalidad() {
-        val grupos = SaleViewModel().uiState.value.grupos
+        val grupos = viewModelDeVentasDePrueba().uiState.value.grupos
         assertEquals(listOf(Calidad.BUENA, Calidad.REGULAR, Calidad.MALA), grupos.map { it.calidad })
         assertEquals(listOf("Calidad buena", "Calidad regular", "Calidad mala"), grupos.map { it.etiqueta })
         assertEquals(listOf("2 sublotes · 300 kg", "1 sublote · 150 kg", "1 sublote · 71 kg"), grupos.map { it.resumen })
@@ -51,25 +55,25 @@ class CafeViewModelTest {
 
     @Test
     fun alEmpezar_ningunGrupoPideAunPrecio() {
-        assertTrue(SaleViewModel().uiState.value.grupos.all { it.precio == null })
+        assertTrue(viewModelDeVentasDePrueba().uiState.value.grupos.all { it.precio == null })
     }
 
     @Test
     fun losTitulosDeLosSublotesLlevanSuNumero() {
-        val titulos = SaleViewModel().uiState.value.grupos.flatMap { it.sublotes }.map { it.titulo }
+        val titulos = viewModelDeVentasDePrueba().uiState.value.grupos.flatMap { it.sublotes }.map { it.titulo }
         assertEquals(listOf("Sublote 5", "Sublote 6", "Sublote 8", "Sublote 9"), titulos)
     }
 
     @Test
     fun elDetalleDelSubloteDiceCuantoHayYHaceCuantoLlego() {
         // El sublote 5 entro el 20 de octubre de 2026: el 26 de octubre hace 6 dias
-        val estado = SaleUiState(hoy = Fecha(26, 10, 2026))
+        val estado = SaleUiState(hoy = Fecha(26, 10, 2026), inventario = sublotesParaVenderEjemplo())
         assertEquals("200 kg disponibles · Comprado hace 6 días", estado.grupos.first().sublotes.first().detalle)
     }
 
     @Test
     fun elDetalleDeUnSubloteDeHoy() {
-        val estado = SaleUiState(hoy = Fecha(20, 10, 2026))
+        val estado = SaleUiState(hoy = Fecha(20, 10, 2026), inventario = sublotesParaVenderEjemplo())
         assertEquals("200 kg disponibles · Comprado hoy", estado.grupos.first().sublotes.first().detalle)
     }
 
@@ -77,7 +81,7 @@ class CafeViewModelTest {
 
     @Test
     fun cambiarDePestana_muestraLosSublotesDeEseTipo() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirTipoCafe(TipoCafe.VERDE)
         val estado = viewModel.uiState.value
         assertEquals(TipoCafe.VERDE, estado.tipoCafe)
@@ -87,7 +91,7 @@ class CafeViewModelTest {
 
     @Test
     fun cambiarDePestana_borraLoElegidoYLosPrecios() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         viewModel.escribirCantidad(5, "150")
@@ -101,7 +105,7 @@ class CafeViewModelTest {
 
     @Test
     fun tocarLaPestanaQueYaEstaActiva_noBorraNada() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         viewModel.elegirTipoCafe(TipoCafe.SECO)
@@ -111,7 +115,7 @@ class CafeViewModelTest {
 
     @Test
     fun pestanaSinCafe_muestraMensajeYNoTieneGrupos() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirTipoCafe(TipoCafe.PASILLA)
         val estado = viewModel.uiState.value
         assertEquals("No tienes café pasilla disponible para vender.", estado.mensajeSinCafe)
@@ -121,7 +125,7 @@ class CafeViewModelTest {
 
     @Test
     fun pestanaSinCafe_seleccionarTodoNoElegirNada() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegirTipoCafe(TipoCafe.PASILLA)
         viewModel.alternarTodos()
         assertTrue(viewModel.uiState.value.elegidos.isEmpty())
@@ -130,14 +134,14 @@ class CafeViewModelTest {
 
     @Test
     fun pestanaConCafe_noMuestraMensajeDeVacio() {
-        assertNull(SaleViewModel().uiState.value.mensajeSinCafe)
+        assertNull(viewModelDeVentasDePrueba().uiState.value.mensajeSinCafe)
     }
 
     // ---------- Seleccionar todo ----------
 
     @Test
     fun seleccionarTodo_eligeLosCuatroConTodoLoDisponible() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarTodos()
         val estado = viewModel.uiState.value
         assertTrue(estado.todosElegidos)
@@ -148,7 +152,7 @@ class CafeViewModelTest {
 
     @Test
     fun seleccionarTodo_otraVezLosQuitaTodos() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarTodos()
         viewModel.alternarTodos()
         val estado = viewModel.uiState.value
@@ -158,7 +162,7 @@ class CafeViewModelTest {
 
     @Test
     fun conAlgunosElegidos_laCasillaEstaAMedias() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         val estado = viewModel.uiState.value
         assertTrue(estado.algunosElegidos)
@@ -168,7 +172,7 @@ class CafeViewModelTest {
 
     @Test
     fun conAlgunosElegidos_seleccionarTodoCompletaLosQueFaltan() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.alternarTodos()
         assertTrue(viewModel.uiState.value.todosElegidos)
@@ -177,7 +181,7 @@ class CafeViewModelTest {
 
     @Test
     fun seleccionarTodo_respetaLaCantidadYaCambiada() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.escribirCantidad(5, "150")
         viewModel.alternarTodos()
@@ -189,7 +193,7 @@ class CafeViewModelTest {
 
     @Test
     fun desmarcarUnoDespuesDeSeleccionarTodo_dejaLaCasillaAMedias() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarTodos()
         viewModel.alternarSublote(viewModel.sublote(9))
         assertTrue(viewModel.uiState.value.algunosElegidos)
@@ -200,7 +204,7 @@ class CafeViewModelTest {
 
     @Test
     fun alElegirUnSublote_aparecenSuCantidadYElPrecioDeSuCalidad() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         val grupos = viewModel.uiState.value.grupos
         val buena = grupos.first { it.calidad == Calidad.BUENA }
@@ -215,7 +219,7 @@ class CafeViewModelTest {
 
     @Test
     fun dosSublotesDeLaMismaCalidadComparteUnSoloPrecio() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5, 6)
         assertEquals(1, viewModel.uiState.value.grupos.count { it.precio != null })
         assertEquals(listOf(Calidad.BUENA), viewModel.uiState.value.calidadesElegidas)
@@ -223,7 +227,7 @@ class CafeViewModelTest {
 
     @Test
     fun quitarElUltimoSubloteDeUnaCalidad_haceDesaparecerSuPrecio() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.alternarSublote(viewModel.sublote(5))
         assertTrue(viewModel.uiState.value.grupos.all { it.precio == null })
@@ -231,7 +235,7 @@ class CafeViewModelTest {
 
     @Test
     fun laAyudaDelPrecio_traeElCostoPromedioDeLoQueSeVende() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         // El sublote 5 costo $ 21.000 por kg
         assertEquals(
@@ -244,7 +248,7 @@ class CafeViewModelTest {
 
     @Test
     fun cantidad_dentroDeLoDisponibleSeAcepta() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.escribirCantidad(5, "150")
         val fila = viewModel.uiState.value.grupos.first().sublotes.first()
@@ -255,7 +259,7 @@ class CafeViewModelTest {
 
     @Test
     fun cantidad_quePasaLoDisponibleMuestraError_yNoCambiaLoElegido() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.escribirCantidad(5, "250")
         val fila = viewModel.uiState.value.grupos.first().sublotes.first()
@@ -266,7 +270,7 @@ class CafeViewModelTest {
 
     @Test
     fun cantidad_conError_impideContinuar() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         viewModel.escribirCantidad(5, "250")
@@ -275,7 +279,7 @@ class CafeViewModelTest {
 
     @Test
     fun cantidad_exactaALoDisponibleSeAcepta() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.escribirCantidad(5, "200")
         assertNull(viewModel.uiState.value.errorDeCantidad(5))
@@ -283,7 +287,7 @@ class CafeViewModelTest {
 
     @Test
     fun cantidad_unGramoDeMasMuestraError() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.escribirCantidad(5, "200,001")
         assertEquals("Debe ser menor o igual a 200 kg.", viewModel.uiState.value.errorDeCantidad(5))
@@ -291,7 +295,7 @@ class CafeViewModelTest {
 
     @Test
     fun cantidad_laFilaDiceSiLoEscritoSirve() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         val sirve = { viewModel.uiState.value.grupos.first().sublotes.first().cantidadValida }
         assertTrue(sirve())
@@ -307,7 +311,7 @@ class CafeViewModelTest {
 
     @Test
     fun cantidad_cero_noMuestraErrorPeroNoDejaContinuar() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         viewModel.escribirCantidad(5, "0")
@@ -317,7 +321,7 @@ class CafeViewModelTest {
 
     @Test
     fun cantidad_vacia_noDejaContinuar() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         viewModel.escribirCantidad(5, "")
@@ -326,7 +330,7 @@ class CafeViewModelTest {
 
     @Test
     fun cantidad_letrasYSimbolosSeQuitan() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.escribirCantidad(5, "abc")
         assertEquals("", viewModel.uiState.value.textoCantidad(5))
@@ -336,7 +340,7 @@ class CafeViewModelTest {
 
     @Test
     fun cantidad_negativaNoExiste_elSignoSeQuita() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.escribirCantidad(5, "-50")
         assertEquals("50", viewModel.uiState.value.textoCantidad(5))
@@ -344,7 +348,7 @@ class CafeViewModelTest {
 
     @Test
     fun cantidad_aceptaComaDecimal() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.escribirCantidad(5, "12,5")
         assertEquals(12.5, viewModel.uiState.value.elegidos.first().cantidadKg, 0.0)
@@ -352,7 +356,7 @@ class CafeViewModelTest {
 
     @Test
     fun cantidad_arreglaUnError_yVuelveAContar() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         viewModel.escribirCantidad(5, "250")
@@ -364,7 +368,7 @@ class CafeViewModelTest {
 
     @Test
     fun cantidad_cadaSubloteTieneSuPropioMaximo() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5, 6)
         // 150 sirve para el sublote 5 (200 kg) pero no para el 6 (100 kg)
         viewModel.escribirCantidad(5, "150")
@@ -375,7 +379,7 @@ class CafeViewModelTest {
 
     @Test
     fun cantidad_alDesmarcarYVolverAMarcar_empiezaDeNuevoConTodo() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.escribirCantidad(5, "50")
         viewModel.alternarSublote(viewModel.sublote(5))
@@ -387,7 +391,7 @@ class CafeViewModelTest {
 
     @Test
     fun total_menosDeCincoKg_muestraErrorYNoDejaContinuar() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         viewModel.escribirCantidad(5, "4,5")
@@ -397,7 +401,7 @@ class CafeViewModelTest {
 
     @Test
     fun total_cincoKgExactos_dejaContinuar() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         viewModel.escribirCantidad(5, "5")
@@ -407,7 +411,7 @@ class CafeViewModelTest {
 
     @Test
     fun total_dosSublotesQueSumanCincoKg_sirven() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5, 6)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         viewModel.escribirCantidad(5, "2")
@@ -418,14 +422,14 @@ class CafeViewModelTest {
 
     @Test
     fun total_sinNadaElegido_noMuestraErrorDeMinimo() {
-        assertNull(SaleViewModel().uiState.value.errorDeTotal)
+        assertNull(viewModelDeVentasDePrueba().uiState.value.errorDeTotal)
     }
 
     // ---------- Precio por kg ----------
 
     @Test
     fun precio_seMuestraConPuntoDeMiles() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         assertEquals("20.000", viewModel.uiState.value.grupos.first().precio!!.texto)
@@ -433,7 +437,7 @@ class CafeViewModelTest {
 
     @Test
     fun precio_letrasYSimbolosSeQuitan() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "2a0.0,0$0")
         assertEquals("20000", viewModel.uiState.value.precios[Calidad.BUENA])
@@ -441,7 +445,7 @@ class CafeViewModelTest {
 
     @Test
     fun precio_maximoSeisDigitos() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "12345678")
         assertEquals("123456", viewModel.uiState.value.precios[Calidad.BUENA])
@@ -449,7 +453,7 @@ class CafeViewModelTest {
 
     @Test
     fun precio_conTresDigitosNoMarcaErrorMientrasSeEscribe_peroNoSirve() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "999")
         assertNull(viewModel.uiState.value.grupos.first().precio!!.error)
@@ -458,7 +462,7 @@ class CafeViewModelTest {
 
     @Test
     fun precio_pocoConCuatroDigitosMuestraError() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "0999")
         assertNotNull(viewModel.uiState.value.grupos.first().precio!!.error)
@@ -466,7 +470,7 @@ class CafeViewModelTest {
 
     @Test
     fun precio_demasiadoMuestraError() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "100001")
         assertNotNull(viewModel.uiState.value.grupos.first().precio!!.error)
@@ -474,7 +478,7 @@ class CafeViewModelTest {
 
     @Test
     fun precio_losLimitesSeAceptan() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "1000")
         assertNull(viewModel.uiState.value.grupos.first().precio!!.error)
@@ -484,7 +488,7 @@ class CafeViewModelTest {
 
     @Test
     fun precio_cadaCalidadTieneElSuyo() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5, 8)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         viewModel.cambiarPrecio(Calidad.REGULAR, "18000")
@@ -495,14 +499,14 @@ class CafeViewModelTest {
 
     @Test
     fun sinPrecio_noSePuedeContinuar() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         assertFalse(viewModel.uiState.value.puedeContinuar)
     }
 
     @Test
     fun falta_elPrecioDeUnaCalidad_noSePuedeContinuar() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5, 8)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         assertFalse(viewModel.uiState.value.puedeContinuar)
@@ -514,7 +518,7 @@ class CafeViewModelTest {
 
     @Test
     fun total_ciento50KgPor20000SonTresMillones() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.escribirCantidad(5, "150")
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
@@ -525,7 +529,7 @@ class CafeViewModelTest {
 
     @Test
     fun total_deTodoElCafeSecoConPrecioPorCalidad() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.alternarTodos()
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         viewModel.cambiarPrecio(Calidad.REGULAR, "18000")
@@ -538,7 +542,7 @@ class CafeViewModelTest {
 
     @Test
     fun total_sinPrecioNoSumaNada() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         assertEquals("$ 0", viewModel.uiState.value.totalARecibirTexto)
         assertEquals("200 kg", viewModel.uiState.value.totalKgTexto)
@@ -546,7 +550,7 @@ class CafeViewModelTest {
 
     @Test
     fun total_cambiaAlCambiarLaCantidad() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "20000")
         viewModel.escribirCantidad(5, "100")
@@ -555,7 +559,7 @@ class CafeViewModelTest {
 
     @Test
     fun total_conDecimalesSeRedondeaAPesos() {
-        val viewModel = SaleViewModel()
+        val viewModel = viewModelDeVentasDePrueba()
         viewModel.elegir(5)
         viewModel.cambiarPrecio(Calidad.BUENA, "15555")
         viewModel.escribirCantidad(5, "2,5")

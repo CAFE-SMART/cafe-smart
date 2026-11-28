@@ -1,6 +1,7 @@
 package com.cafesmart.app.viewmodel.drying
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.Fecha
 import com.cafesmart.app.data.model.SubloteConLote
@@ -25,6 +26,7 @@ import com.cafesmart.app.viewmodel.sale.textoComprado
 import com.cafesmart.app.viewmodel.sale.textoSeleccionados
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 // Modelo de lo que muestra la vista (textos ya listos), igual que en Ventas.
 
@@ -86,7 +88,13 @@ data class SecadoUiState(
     val hoy: Fecha = fechaDeHoy(),
     val fechaInicio: Fecha = hoy,
     // true cuando se inicia el secado: evita iniciarlo dos veces
-    val secadoIniciado: Boolean = false
+    val secadoIniciado: Boolean = false,
+    // true mientras el repositorio guarda el inicio: tambien evita iniciarlo dos veces (doble toque)
+    val iniciando: Boolean = false,
+    // Mensaje bajo "Iniciar secado" cuando el repositorio rechazo el inicio; null si no hay error. Se limpia al reintentar.
+    val errorAlIniciar: String? = null,
+    // true hasta que el repositorio entrega el inventario por primera vez
+    val cargando: Boolean = false
 ) {
     // ---------- Paso 1: elegir el cafe ----------
 
@@ -97,7 +105,7 @@ data class SecadoUiState(
 
     // Mensaje cuando no hay cafe verde para secar (null si si hay)
     val mensajeSinCafe: String?
-        get() = if (sublotes.isEmpty()) MENSAJE_SIN_CAFE_VERDE else null
+        get() = if (!cargando && sublotes.isEmpty()) MENSAJE_SIN_CAFE_VERDE else null
 
     // "Seleccionar todo": "4 de 4 seleccionados"
     val textoSeleccionarTodo: String
@@ -185,7 +193,7 @@ data class SecadoUiState(
 
     // "Iniciar secado": el paso 1 esta completo y el secado no se ha iniciado ya
     val puedeIniciar: Boolean
-        get() = !secadoIniciado && puedeContinuar
+        get() = !secadoIniciado && !iniciando && puedeContinuar
 }
 
 // ViewModel (MVVM): aqui esta la logica de los pasos 1 a 3 de Secado.
@@ -193,9 +201,16 @@ data class SecadoUiState(
 class SecadoViewModel(private val repositorio: SecadoRepository) : ViewModel() {
 
     // _uiState es privado: solo el ViewModel puede cambiar el estado.
-    private val _uiState = MutableStateFlow(SecadoUiState(inventario = repositorio.inventario()))
+    // Empieza "cargando": el inventario llega del repositorio (suspend) un instante despues de crearse.
+    private val _uiState = MutableStateFlow(SecadoUiState(cargando = true))
     // uiState es de solo lectura: la vista lo observa y se redibuja cuando cambia.
     val uiState: StateFlow<SecadoUiState> = _uiState
+
+    init {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(inventario = repositorio.inventario(), cargando = false)
+        }
+    }
 
     // ---------------- Paso 1: elegir el cafe ----------------
 
@@ -267,17 +282,34 @@ class SecadoViewModel(private val repositorio: SecadoRepository) : ViewModel() {
     }
 
     // "Iniciar secado": el repositorio descuenta lo enviado de cada sublote y el estado queda como iniciado.
-    // Si falta algo, o ya se inicio, no hace nada (asi no se puede iniciar dos veces).
-    fun iniciarSecado() {
+    // Si falta algo, o ya se inicio (o se esta iniciando), no hace nada (asi no se puede iniciar dos veces).
+    // onIniciado se llama solo cuando el repositorio guardo el secado con exito.
+    fun iniciarSecado(onIniciado: () -> Unit = {}) {
         val estado = _uiState.value
         if (!estado.puedeIniciar) return
-        repositorio.iniciarSecado(estado.fechaInicio, estado.elegidos.map { EnvioASecar(it.id, it.cantidadKg) })
-        // Se conservan los elegidos para el resumen del paso 3; el inventario ya trae lo que quedo.
-        _uiState.value = estado.copy(inventario = repositorio.inventario(), ajuste = null, secadoIniciado = true)
+        _uiState.value = estado.copy(iniciando = true, errorAlIniciar = null)
+        viewModelScope.launch {
+            try {
+                repositorio.iniciarSecado(estado.fechaInicio, estado.elegidos.map { EnvioASecar(it.id, it.cantidadKg) })
+            } catch (_: IllegalArgumentException) {
+                // El repositorio rechazo el envio: no se inicio nada, se puede volver a intentar y no se avisa exito.
+                _uiState.value = _uiState.value.copy(iniciando = false, errorAlIniciar = MENSAJE_NO_SE_PUDO_INICIAR_SECADO)
+                return@launch
+            }
+            // Se conservan los elegidos para el resumen del paso 3; el inventario ya trae lo que quedo.
+            _uiState.value = _uiState.value.copy(
+                inventario = repositorio.inventario(), ajuste = null, secadoIniciado = true, iniciando = false
+            )
+            onIniciado()
+        }
     }
 
     // Empieza un secado desde cero (al cancelarlo o despues de iniciarlo): sin sublotes elegidos y con el inventario al dia.
-    fun reiniciar() {
-        _uiState.value = SecadoUiState(inventario = repositorio.inventario())
+    // onListo se llama cuando el estado ya quedo reiniciado.
+    fun reiniciar(onListo: () -> Unit = {}) {
+        viewModelScope.launch {
+            _uiState.value = SecadoUiState(inventario = repositorio.inventario())
+            onListo()
+        }
     }
 }

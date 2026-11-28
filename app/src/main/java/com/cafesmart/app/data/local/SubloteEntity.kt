@@ -14,8 +14,8 @@ import androidx.room.PrimaryKey
  * - compraId / secadoId: el sublote nace de una compra o de un secado, nunca de ambos (la regla se
  *   valida en la data class Sublote). Con RESTRICT, ni el lote ni la compra se pueden borrar
  *   mientras tengan sublotes.
- * - secadoId: todavía SIN llave foránea porque la tabla de Secado no existe; quien agregue
- *   SecadoEntity le pone el ForeignKey y sube la versión de la base.
+ * - secadoId: el secado del que nace este sublote (café seco). Con RESTRICT no se puede borrar un secado
+ *   mientras tenga sublotes.
  * - fechaIngreso: milisegundos UTC (fechaAMilis / milisAFecha).
  * - costoKg: pesos enteros por kg.
  * - humedadPorcentaje y factorRendimiento: opcionales (null si no se registraron).
@@ -33,6 +33,12 @@ import androidx.room.PrimaryKey
             entity = CompraEntity::class,
             parentColumns = ["id"],
             childColumns = ["compra_id"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+        ForeignKey(
+            entity = SecadoEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["secado_id"],
             onDelete = ForeignKey.RESTRICT,
         ),
     ],

@@ -2,40 +2,27 @@ package com.cafesmart.app.ui.screens.drying
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.cafesmart.app.data.sale.SubloteElegido
 import com.cafesmart.app.data.secado.SecadoRepositoryEjemplo
-import com.cafesmart.app.ui.components.AppIcons
 import com.cafesmart.app.ui.components.ContinueButton
-import com.cafesmart.app.ui.theme.AppShapes
 import com.cafesmart.app.ui.theme.AppTypography
-import com.cafesmart.app.ui.theme.ButtonSoft
 import com.cafesmart.app.ui.theme.CafesmartTheme
-import com.cafesmart.app.ui.theme.OnPrimary
-import com.cafesmart.app.ui.theme.PrimaryDark
 import com.cafesmart.app.ui.theme.Spacing
-import com.cafesmart.app.ui.theme.SuccessSolid
 import com.cafesmart.app.ui.theme.SurfaceScreen
 import com.cafesmart.app.viewmodel.drying.SecadoUiState
+import kotlinx.coroutines.runBlocking
 
 // Paso 3 de Secado: Secado iniciado. Circulo verde con chulito, resumen y los botones
 // "Ver secados en curso" / "Ir a inventario".
@@ -62,14 +49,7 @@ fun SecadoStep3Screen(
                 .padding(top = Spacing.s48),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .background(SuccessSolid, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(imageVector = AppIcons.Check, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(44.dp))
-            }
+            CirculoCheck()
             Text(
                 text = "Secado iniciado",
                 style = AppTypography.titleExito,
@@ -103,17 +83,7 @@ fun SecadoStep3Screen(
             verticalArrangement = Arrangement.spacedBy(Spacing.s12)
         ) {
             ContinueButton(text = "Ver secados en curso", onClick = onVerEnCurso)
-            Button(
-                onClick = onIrAInventario,
-                shape = AppShapes.medium,
-                // Boton secundario con fondo azul suave.
-                colors = ButtonDefaults.buttonColors(containerColor = ButtonSoft, contentColor = PrimaryDark),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp)
-            ) {
-                Text(text = "Ir a inventario", style = AppTypography.buttonPrimary.copy(color = PrimaryDark))
-            }
+            BotonSuave(texto = "Ir a inventario", onClick = onIrAInventario)
         }
     }
 }
@@ -121,7 +91,7 @@ fun SecadoStep3Screen(
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
 private fun Paso3Preview() {
-    val inventario = SecadoRepositoryEjemplo().inventario()
+    val inventario = runBlocking { SecadoRepositoryEjemplo().inventario() }
     val verdes = inventario.filter { it.tipoCafe.name == "VERDE" }
     CafesmartTheme {
         SecadoStep3Screen(

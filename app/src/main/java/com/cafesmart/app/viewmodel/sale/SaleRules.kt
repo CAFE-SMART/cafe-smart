@@ -42,14 +42,15 @@ fun filtrarClientes(clientes: List<Cliente>, busqueda: String): List<Cliente> =
 
 // Los clientes se guardan del mas antiguo al mas reciente; "Recientes" los muestra al reves.
 // Sin busqueda muestra solo los ultimos; con busqueda, todos los que coinciden.
-fun clientesVisibles(clientes: List<Cliente>, busqueda: String): List<Cliente> {
-    val recientesPrimero = clientes.reversed()
-    return if (busqueda.isNotBlank()) filtrarClientes(recientesPrimero, busqueda) else recientesPrimero.take(CANTIDAD_RECIENTES)
-}
+fun clientesVisibles(clientes: List<Cliente>, busqueda: String): List<Cliente> =
+    if (busqueda.isNotBlank()) clientesDeLaLista(clientes, busqueda) else clientes.reversed().take(CANTIDAD_RECIENTES)
 
 // true cuando hay que mostrar el boton "Ver más clientes".
 fun hayMasClientes(clientes: List<Cliente>, busqueda: String): Boolean =
     busqueda.isBlank() && clientes.size > CANTIDAD_RECIENTES
+
+// "Cédula 16780012" / "NIT 9003421215": tipo y número del documento de un cliente.
+fun documentoTexto(cliente: Cliente): String = "${cliente.tipoDocumento.etiqueta} ${cliente.documento}"
 
 // Lista de la hoja "Clientes": todos, del mas reciente al mas antiguo, segun la busqueda.
 fun clientesDeLaLista(clientes: List<Cliente>, busqueda: String): List<Cliente> =

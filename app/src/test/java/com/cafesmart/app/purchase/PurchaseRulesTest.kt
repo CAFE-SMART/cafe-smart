@@ -199,8 +199,6 @@ class PurchaseRulesTest {
         assertNull(crearSublote(cafeCompleto.copy(tipoCafe = null)))
         assertNull(crearSublote(cafeCompleto.copy(calidad = null)))
         assertNull(crearSublote(cafeCompleto.copy(peso = "0")))
-        // Minimo 1 kg: 0,5 kg no es una compra de cafe.
-        assertNull(crearSublote(cafeCompleto.copy(peso = "0.5")))
         assertNull(crearSublote(cafeCompleto.copy(peso = "100000")))
         assertNull(crearSublote(cafeCompleto.copy(precio = "100001")))
         // RF-COM-10: minimo $1.000
@@ -219,6 +217,14 @@ class PurchaseRulesTest {
         // Mientras escribe "14" no marca error; con 4 digitos ya revisa el minimo
         assertNull(errorPrecio("14"))
         assertNull(errorPrecio("1000"))
+    }
+
+    @Test
+    fun pesoMenorAUnKg_seRechazaYUnKgEsValido() {
+        assertNull(crearSublote(cafeCompleto.copy(peso = "0.5")))
+        assertNull(crearSublote(cafeCompleto.copy(peso = "0.001")))
+        assertNotNull(errorPeso(cafeCompleto.copy(peso = "0.5")))
+        assertNotNull(errorPeso(cafeCompleto.copy(peso = "0.001")))
     }
 
     @Test
