@@ -14,6 +14,7 @@ import com.cafesmart.app.data.model.Productor
 import com.cafesmart.app.data.purchase.CafeValidado
 import com.cafesmart.app.data.model.TipoDocumento
 import com.cafesmart.app.data.purchase.productorSinRegistrar
+import com.cafesmart.app.data.borradores.BorradorDeOperacion
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -287,13 +288,34 @@ data class PurchaseUiState(
 // El repositorio (Room) y el origen de la ocupacion llegan por el constructor: asi las pruebas usan versiones falsas.
 class PurchaseViewModel(
     private val repositorio: PurchaseRepository,
-    private val ocupacion: OrigenOcupacion
+    private val ocupacion: OrigenOcupacion,
+    // Recuperar una compra interrumpida (ver BorradorCompra). null = sin borrador (pruebas y vistas previas).
+    private val borrador: BorradorDeOperacion? = null,
 ) : ViewModel() {
 
     // _uiState es privado: solo el ViewModel puede cambiar el estado.
     private val _uiState = MutableStateFlow(PurchaseUiState())
     // uiState es de solo lectura: la vista lo observa y se redibuja cuando cambia.
     val uiState: StateFlow<PurchaseUiState> = _uiState
+
+    // Borrador recuperado que todavía espera la lista de productores para volver al paso 2 o 3.
+    private var borradorPendiente: BorradorCompra? = null
+
+    init {
+        if (borrador != null) {
+            decodificarBorradorCompra(borrador.leer())?.let { recuperado ->
+                _uiState.value = recuperado.aplicar(_uiState.value)
+                if (recuperado.esperaProductor) borradorPendiente = recuperado
+            }
+            // Cada cambio del formulario se recuerda; un formulario vacío o una compra registrada borran el borrador.
+            // Mientras se espera la lista de productores no se guarda, para no perder el paso recuperado.
+            viewModelScope.launch {
+                _uiState.collect { estado ->
+                    if (borradorPendiente == null) borrador.guardar(BorradorCompra.de(estado)?.codificar())
+                }
+            }
+        }
+    }
 
     // Lee los productores guardados en Room. La vista lo pide una vez al abrir Compras.
     fun cargarProductores() {
@@ -312,7 +334,13 @@ class PurchaseViewModel(
     // Vuelve a leer la lista desde Room (por ejemplo, si el documento ya existia y la copia estaba desactualizada).
     private suspend fun recargarProductores() {
         val guardados = repositorio.listarProductores()
-        _uiState.update { it.copy(productores = guardados, errorProductor = null) }
+        val pendiente = borradorPendiente
+        borradorPendiente = null
+        _uiState.update {
+            val conLista = it.copy(productores = guardados, errorProductor = null)
+            // El borrador recuperado vuelve a su paso solo si su productor sigue existiendo.
+            if (pendiente != null && it.paso == 1) pendiente.aplicar(conLista, guardados) else conLista
+        }
     }
 
     // ---------------- Paso 1 ----------------

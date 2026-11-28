@@ -1,5 +1,6 @@
 package com.cafesmart.app.ui.screens.purchase
 
+import com.cafesmart.app.viewmodel.limites.ayudaPrecioKg
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -274,7 +275,8 @@ private fun TarjetaCafe(
                 placeholder = "14.000",
                 keyboardType = KeyboardType.Number,
                 leadingText = "$",
-                helper = "Entre $ 1.000 y $ 100.000.",
+                // Sale de los límites unificados: hoy "Entre $ 1.000 y $ 100.000.".
+                helper = ayudaPrecioKg(),
                 error = cafe.errorPrecio,
                 modifier = Modifier.weight(1f)
             )

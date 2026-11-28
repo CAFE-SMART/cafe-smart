@@ -14,7 +14,6 @@ import com.cafesmart.app.data.model.SubloteConLote
 import com.cafesmart.app.data.model.TipoCafe
 import com.cafesmart.app.viewmodel.purchase.milisAFecha
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 // Lectura del inventario guardado en Room: los lotes con sus sublotes. Es una interfaz para probar con JUnit
@@ -55,18 +54,18 @@ interface InventoryRepository {
 
 class RoomInventoryRepository(
     private val loteDao: LoteDao,
-    private val subloteDao: SubloteDao,
+    // Ya no se usa para leer (observarConSublotes trae ambas tablas); se conserva para no cambiar a quienes lo crean.
+    @Suppress("unused") private val subloteDao: SubloteDao,
 ) : InventoryRepository {
 
-    // Se observan las dos tablas y se vuelven a juntar cada vez que cualquiera cambia.
-    // Al confirmar una compra, Room guarda el lote y los sublotes en una sola transacción y avisa después
-    // de terminarla, así que lo normal es que ambas listas lleguen completas. Si por un instante llegara
-    // una a medias, no se rompe nada: un lote sin sublotes no cuenta café, y un sublote cuyo lote aún no
-    // llegó se ignora hasta que llegue.
+    // Una sola consulta (@Transaction + @Relation) para lotes y sublotes. Antes se juntaban dos Flows
+    // independientes con combine(): tras una compra podía llegar el lote nuevo sin su sublote, y en la
+    // primera compra la pantalla mostraba un instante "Aún no tienes café". Los sublotes se ordenan por id.
     override fun observarLotes(): Flow<List<LoteConSublotes>> =
-        combine(loteDao.observarTodos(), subloteDao.observarTodos()) { lotes, sublotes ->
-            val sublotesPorLote = sublotes.map { it.aModelo() }.groupBy { it.loteId }
-            lotes.map { lote -> LoteConSublotes(lote.aModelo(), sublotesPorLote[lote.id].orEmpty()) }
+        loteDao.observarConSublotes().map { filas ->
+            filas.map { fila ->
+                LoteConSublotes(fila.lote.aModelo(), fila.sublotes.sortedBy { it.id }.map { it.aModelo() })
+            }
         }
 }
 

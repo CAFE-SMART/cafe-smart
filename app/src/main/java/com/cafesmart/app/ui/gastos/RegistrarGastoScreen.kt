@@ -62,7 +62,9 @@ import com.cafesmart.app.viewmodel.purchase.precioEnPantalla
 @Composable
 fun RegistrarGastoScreen(estado: GastosUiState, onEditar: ((GastoFormulario) -> GastoFormulario) -> Unit,
     onGuardar: () -> Unit, onCancelar: () -> Unit, modifier: Modifier = Modifier,
-    onSeleccionarSublotes: () -> Unit = {}) {
+    onSeleccionarSublotes: () -> Unit = {},
+    // true solo con el repositorio de demostración (en memoria). Con Room los gastos sí se guardan.
+    demostracion: Boolean = false) {
     // Se toma el borrador de presentación y solo se habilita la edición en EDICION.
     val form = estado.formulario
     val habilitado = estado.resultado == ResultadoGasto.EDICION
@@ -141,7 +143,8 @@ fun RegistrarGastoScreen(estado: GastosUiState, onEditar: ((GastoFormulario) -> 
                     Text("Cancelar", style = AppTypography.valueStrong, color = TextSecondary)
                 }
             }
-            Text("Demostración temporal · valores en COP, sin centavos.", style = AppTypography.helper)
+            Text(if (demostracion) "Demostración temporal · valores en COP, sin centavos." else "Valores en COP, sin centavos.",
+                style = AppTypography.helper, modifier = Modifier.testTag("gastos_nota_formulario"))
             Spacer(Modifier.height(Spacing.s12))
         }
     }

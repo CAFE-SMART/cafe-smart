@@ -1,6 +1,8 @@
 package com.cafesmart.app
 
 import android.os.Bundle
+import com.cafesmart.app.data.limites.AlmacenLimitesPreferencias
+import com.cafesmart.app.data.limites.ConfiguracionLimites
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,6 +21,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Límites de entrada que el usuario guardó en Ajustes (o los predeterminados). Lectura corta de SharedPreferences.
+        ConfiguracionLimites(AlmacenLimitesPreferencias(applicationContext)).cargar()
         // Datos de ejemplo para demos: solo en debug y solo la primera vez. En release la función no hace nada.
         lifecycleScope.launch { cargarSemillaSiEsPrimeraVez(applicationContext) }
         setContent {

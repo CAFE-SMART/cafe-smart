@@ -85,7 +85,8 @@ fun GastosRoute(navController: NavHostController, backStackEntry: NavBackStackEn
             Unit
         }
         BackHandler(onBack = volverAlFormulario)
-        AsociarSublotesScreen(estado, modelo::alternarSublote, volverAlFormulario, contenido)
+        AsociarSublotesScreen(estado, modelo::alternarSublote, volverAlFormulario, contenido,
+            demostracion = modelo.permiteEjemplos)
         return
     }
     // El resultado exitoso se muestra sobre el listado ya actualizado, como en Figma.
@@ -118,19 +119,20 @@ fun GastosRoute(navController: NavHostController, backStackEntry: NavBackStackEn
         RegistrarGastoScreen(estado, modelo::editar, modelo::solicitarConfirmacion, salir,
             modifier = contenido, onSeleccionarSublotes = {
                 navController.navigate(Routes.EXPENSE_LINK_BATCHES) { launchSingleTop = true }
-            })
+            }, demostracion = modelo.permiteEjemplos)
     } else {
         ListaGastosScreen(estado, { navController.popBackStack() }, {
             modelo.nuevoRegistro()
             navController.navigate(Routes.EXPENSE_NEW) { launchSingleTop = true }
         }, modelo::filtrar, modifier = contenido, onActualizar = modelo::actualizar,
             // "Ver datos de ejemplo" solo existe con la demostración en memoria; con Room no se inventan gastos.
-            onCargarEjemplos = if (modelo.permiteEjemplos) modelo::cargarEjemplos else null)
+            onCargarEjemplos = if (modelo.permiteEjemplos) modelo::cargarEjemplos else null,
+            demostracion = modelo.permiteEjemplos)
     }
-    GastosResultado(estado, modelo::confirmar, modelo::volverAEditar, listado) {
+    GastosResultado(estado, modelo::confirmar, modelo::volverAEditar, listado, onOtro = {
         modelo.nuevoRegistro()
         if (!registro) navController.navigate(Routes.EXPENSE_NEW) { launchSingleTop = true }
-    }
+    }, demostracion = modelo.permiteEjemplos)
 }
 
 // ============================================================
@@ -150,21 +152,24 @@ fun GastosRoute(navController: NavHostController, backStackEntry: NavBackStackEn
  */
 @Composable
 fun GastosResultado(estado: GastosUiState, onConfirmar: () -> Unit, onEditar: () -> Unit,
-    onVerGastos: () -> Unit, onOtro: () -> Unit) {
+    onVerGastos: () -> Unit, onOtro: () -> Unit,
+    // true solo con el repositorio de demostración (en memoria). Con Room el gasto se guarda de verdad.
+    demostracion: Boolean = false) {
     // CONFIRMACION pide permiso al usuario para guardar; GUARDANDO bloquea el cierre.
     // EXITO solo se muestra cuando el repositorio termina y ERROR permite conservar datos y reintentar.
     when (estado.resultado) {
         ResultadoGasto.CONFIRMACION -> ConfirmSheet(
             icon = AppIcons.Warning, iconBackground = WarningBg, iconTint = WarningText,
             title = "¿Registrar este gasto?",
-            message = "${estado.formulario.concepto.trim()} · ${dineroGasto(GastosValidation.pesos(estado.formulario.monto) ?: 0L)}\nSe guardará temporalmente en esta demostración.",
+            message = "${estado.formulario.concepto.trim()} · ${dineroGasto(GastosValidation.pesos(estado.formulario.monto) ?: 0L)}\n" + if (demostracion) "Se guardará temporalmente en esta demostración." else "Se guardará en los gastos de tu cuenta.",
             actionText = "Registrar gasto", onAction = onConfirmar, linkText = "Regresar", onLink = onEditar)
         ResultadoGasto.GUARDANDO -> Dialog(onDismissRequest = {}, properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
             Surface(shape = AppShapes.medium) { Box(Modifier.padding(32.dp)) { CircularProgressIndicator() } }
         }
         ResultadoGasto.EXITO -> ConfirmSheet(
             icon = AppIcons.Check, iconBackground = SuccessBg, iconTint = SuccessIcon,
-            title = "Gasto registrado con éxito", message = "El gasto se agregó a la lista temporal. No se guardó en una base de datos.",
+            title = "Gasto registrado con éxito", message = if (demostracion) "El gasto se agregó a la lista temporal. No se guardó en una base de datos."
+                else "El gasto se guardó correctamente.",
             actionText = "Ver gastos", onAction = onVerGastos, linkText = "Registrar otro gasto", onLink = onOtro, onDismiss = onVerGastos)
         ResultadoGasto.ERROR -> ConfirmSheet(
             icon = AppIcons.Warning, iconBackground = ErrorBg, iconTint = ErrorIcon,

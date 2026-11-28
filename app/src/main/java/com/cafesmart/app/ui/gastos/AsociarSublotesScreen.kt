@@ -26,7 +26,9 @@ fun AsociarSublotesScreen(
     estado: GastosUiState,
     onAlternar: (Long) -> Unit,
     onVolver: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // true solo con el inventario de ejemplo de la demostración; con Room son los sublotes reales de la cuenta.
+    demostracion: Boolean = false,
 ) {
     val habilitado = estado.resultado == ResultadoGasto.EDICION
     Column(modifier.fillMaxSize().background(SurfaceScreen).safeDrawingPadding()) {
@@ -40,7 +42,8 @@ fun AsociarSublotesScreen(
             item {
                 Text("Selecciona los sublotes y asigna sus montos al regresar al formulario.",
                     style = AppTypography.bodyMd, color = TextMuted)
-                Text("Sublotes de ejemplo del inventario.", style = AppTypography.helper)
+                Text(if (demostracion) "Sublotes de ejemplo del inventario." else "Sublotes con café de tu inventario.",
+                    style = AppTypography.helper, modifier = Modifier.testTag("gastos_sublotes_origen"))
             }
             if (estado.sublotes.isEmpty()) item {
                 Text("No hay sublotes disponibles", style = AppTypography.titleCard)

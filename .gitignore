@@ -26,3 +26,6 @@ app/google-services.json
 
 # Copias de trabajo temporales de Claude Code
 .claude/worktrees/
+
+# Configuraciones de Firebase por variante (p. ej. QA en src/debug): nunca se versionan.
+app/src/*/google-services.json

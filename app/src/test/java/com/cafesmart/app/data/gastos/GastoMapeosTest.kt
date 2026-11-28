@@ -77,7 +77,8 @@ class GastoMapeosTest {
     @Test
     fun elResumenRecibeElMontoCompletoElConceptoYLaFecha() {
         assertEquals(
-            GastoRegistrado(fecha, 125_000, "Pago de jornaleros", "Gasto general"),
+            // Ciclo 3: también llega la categoría, para la gráfica de distribución de gastos.
+            GastoRegistrado(fecha, 125_000, "Pago de jornaleros", "Gasto general", TipoGasto.TRANSPORTE),
             gasto().aGastoRegistrado(),
         )
     }

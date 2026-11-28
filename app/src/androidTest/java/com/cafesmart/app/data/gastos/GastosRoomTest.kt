@@ -19,7 +19,8 @@ import com.cafesmart.app.viewmodel.purchase.fechaAMilis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -53,9 +54,12 @@ class GastosRoomTest {
         repo = RoomGastosRepository(db.gastoDao(), alcance)
     }
 
+    // Primero se espera a que termine la lectura de fondo del repositorio y después se cierra la base. Con
+    // cancel() + close() seguidos, una consulta en curso caía sobre la base cerrada ("attempt to re-open an
+    // already-closed object") y tumbaba el proceso de pruebas.
     @After
-    fun cerrar() {
-        alcance.cancel()
+    fun cerrar() = runBlocking {
+        alcance.coroutineContext.job.cancelAndJoin()
         db.close()
     }
 
@@ -215,7 +219,7 @@ class GastosRoomTest {
             val alcance1 = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             RoomGastosRepository(primera.gastoDao(), alcance1)
                 .guardar(gasto(monto = 8_000, aplicaA = AplicaGasto.SUBLOTES), listOf(GastoSublote(1, subloteId, 8_000)))
-            alcance1.cancel()
+            alcance1.coroutineContext.job.cancelAndJoin()
             primera.close()
 
             val segunda = Room.databaseBuilder(contexto, AppDatabase::class.java, nombre).build()

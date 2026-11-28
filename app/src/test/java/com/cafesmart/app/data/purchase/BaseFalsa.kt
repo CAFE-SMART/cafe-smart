@@ -4,6 +4,7 @@ import com.cafesmart.app.data.local.ClienteDao
 import com.cafesmart.app.data.local.ClienteEntity
 import com.cafesmart.app.data.local.CompraDao
 import com.cafesmart.app.data.local.CompraEntity
+import com.cafesmart.app.data.local.LoteConSublotesFila
 import com.cafesmart.app.data.local.LoteDao
 import com.cafesmart.app.data.local.LoteEntity
 import com.cafesmart.app.data.local.ProductorDao
@@ -22,6 +23,7 @@ import com.cafesmart.app.data.sale.RoomVentaRepository
 import com.cafesmart.app.data.secado.RoomSecadoRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 // DAOs falsos en memoria para probar los repositorios con JUnit, sin Room ni emulador.
@@ -53,7 +55,10 @@ class ProductorDaoFalso : ProductorDao {
 }
 
 class CompraDaoFalso : CompraDao {
-    var filas = listOf<CompraEntity>()
+    private val flujo = MutableStateFlow(listOf<CompraEntity>())
+    var filas: List<CompraEntity>
+        get() = flujo.value
+        set(valor) { flujo.value = valor }
     private var siguienteId = 1L
 
     fun copiarEstado() = filas to siguienteId
@@ -66,6 +71,7 @@ class CompraDaoFalso : CompraDao {
     }
     override suspend fun listar() = filas.sortedBy { it.id }
     override suspend fun buscarPorId(id: Long) = filas.firstOrNull { it.id == id }
+    override fun observarTodas(): Flow<List<CompraEntity>> = flujo.map { lista -> lista.sortedBy { it.id } }
 }
 
 class LoteDaoFalso : LoteDao {
@@ -89,6 +95,14 @@ class LoteDaoFalso : LoteDao {
     override suspend fun buscarPorTipoYCalidad(tipoCafe: String, calidad: String) =
         filas.firstOrNull { it.tipoCafe == tipoCafe && it.calidad == calidad }
     override fun observarTodos(): Flow<List<LoteEntity>> = flujo.map { lista -> lista.sortedBy { it.id } }
+
+    // Los sublotes de la misma BaseFalsa (para observarConSublotes). Room lee las dos tablas en una transacción;
+    // aquí se juntan los dos flujos, lo que basta para las pruebas de JVM. La garantía real se prueba en androidTest.
+    var sublotes: SubloteDaoFalso? = null
+    override fun observarConSublotes(): Flow<List<LoteConSublotesFila>> =
+        combine(flujo, checkNotNull(sublotes) { "LoteDaoFalso sin sublotes" }.observarTodos()) { lotes, subs ->
+            lotes.sortedBy { it.id }.map { lote -> LoteConSublotesFila(lote, subs.filter { it.loteId == lote.id }) }
+        }
 }
 
 class SubloteDaoFalso : SubloteDao {
@@ -234,6 +248,8 @@ class BaseFalsa {
     val clientes = ClienteDaoFalso()
     val ventas = VentaDaoFalso()
     val secados = SecadoDaoFalso(sublotes)
+
+    init { lotes.sublotes = sublotes }
 
     val transaccion = object : Transaccion {
         override suspend fun <T> ejecutar(bloque: suspend () -> T): T {
