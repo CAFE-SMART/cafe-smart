@@ -45,6 +45,8 @@ fun AppTextField(
     placeholder: String = "",
     keyboardType: KeyboardType = KeyboardType.Text,
     leadingText: String? = null,
+    // Texto pegado al final dentro del campo, por ejemplo "kg". Opcional: sin el, el campo queda como antes.
+    suffixText: String? = null,
     // Texto de ayuda debajo del campo (p. ej. "Máx. 99.999 kg")
     helper: String? = null,
     // Mensaje de error debajo del campo; null si el valor es valido. Reemplaza al helper.
@@ -85,6 +87,11 @@ fun AppTextField(
             // leadingIcon, que reserva ancho de icono y lo hacia ver mas grande que los demas campos.
             prefix = if (leadingText != null) {
                 { Text(text = "$leadingText ", style = AppTypography.bodyLg) }
+            } else {
+                null
+            },
+            suffix = if (suffixText != null) {
+                { Text(text = suffixText, style = AppTypography.bodyLg.copy(color = TextMuted)) }
             } else {
                 null
             },
