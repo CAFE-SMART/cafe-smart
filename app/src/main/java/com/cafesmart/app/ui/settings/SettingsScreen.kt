@@ -106,6 +106,8 @@ fun SettingsScreen(
     onInformacionEmpresa: () -> Unit,
     onResumenFinanciero: () -> Unit,
     onCapacidadBodega: () -> Unit = {},
+    onLimitesEntrada: () -> Unit = {},
+    onContactos: () -> Unit = {},
     onProcesoSecado: () -> Unit = {},
     onPedirCerrarSesion: () -> Unit,
     onCancelarCierre: () -> Unit,
@@ -154,12 +156,13 @@ fun SettingsScreen(
                         onNotificaciones = onNotificaciones,
                         onInformacionEmpresa = onInformacionEmpresa,
                         onGastosOperativos = onGastosOperativos,
+                        onLimitesEntrada = onLimitesEntrada,
                         onProcesoSecado = onProcesoSecado,
                         proximamente = proximamente
                     )
                     PestanaAjustes.BODEGA -> OpcionesBodega(onCapacidadBodega, proximamente)
                     PestanaAjustes.CALIDADES -> OpcionesCalidades(proximamente)
-                    PestanaAjustes.USUARIOS -> OpcionesUsuarios(proximamente)
+                    PestanaAjustes.USUARIOS -> OpcionesUsuarios(proximamente, onContactos)
                 }
 
                 TarjetaResumenFinanciero(onAcceder = onResumenFinanciero)
@@ -262,6 +265,7 @@ private fun OpcionesNegocio(
     onNotificaciones: (Boolean) -> Unit,
     onInformacionEmpresa: () -> Unit,
     onGastosOperativos: () -> Unit,
+    onLimitesEntrada: () -> Unit,
     onProcesoSecado: () -> Unit,
     proximamente: () -> Unit,
 ) {
@@ -273,7 +277,7 @@ private fun OpcionesNegocio(
         onInformacionEmpresa
     )
     FilaAjuste(IconoGota, "Proceso de secado", "Registra el secado de tu café", onProcesoSecado)
-    FilaAjuste(IconoAjustes, "Límites de entrada", "Lo mínimo y lo máximo al registrar", proximamente)
+    FilaAjuste(IconoAjustes, "Límites de entrada", "Lo mínimo y lo máximo al registrar", onLimitesEntrada)
     FilaAjuste(IconoGastos, "Gastos operativos", "Mira y registra tus gastos", onGastosOperativos)
     FilaAjuste(
         IconoCampana, "Notificaciones", "Avisos cuando un sublote lleva mucho tiempo en bodega", {},
@@ -296,12 +300,11 @@ private fun OpcionesCalidades(proximamente: () -> Unit) {
 }
 
 @Composable
-private fun OpcionesUsuarios(proximamente: () -> Unit) {
+private fun OpcionesUsuarios(proximamente: () -> Unit, onContactos: () -> Unit) {
     TituloSeccion("Gestión de personas")
     FilaAjuste(IconoClientes, "Permisos y roles", "Qué puede hacer cada trabajador", proximamente, modo = ModoFila.PROXIMAMENTE)
     FilaAjuste(AppIcons.User, "Personal", "Tus trabajadores", proximamente, modo = ModoFila.PROXIMAMENTE)
-    // Contactos todavía no tiene pantalla: por ahora muestra el aviso de "próximamente".
-    FilaAjuste(IconoClientes, "Clientes y productores", "Directorio de tus contactos", proximamente)
+    FilaAjuste(IconoClientes, "Clientes y productores", "Directorio de tus contactos", onContactos)
 }
 
 // Tarjeta de perfil (Figma, sección NUEVAS de Flujos): avatar con iniciales y lápiz, nombre, correo completo

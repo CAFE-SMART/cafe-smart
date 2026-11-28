@@ -1,6 +1,7 @@
 package com.cafesmart.app.data.finanzas
 
 import com.cafesmart.app.data.model.Fecha
+import com.cafesmart.app.data.model.TipoGasto
 import com.cafesmart.app.viewmodel.finance.calcularUtilidad
 import java.util.Calendar
 import java.util.GregorianCalendar
@@ -33,6 +34,9 @@ data class ResumenFinanciero(
     val compras: Int = 0,
     // Todos los gastos registrados en el periodo.
     val gastosPeriodo: Long = 0,
+    // false = las ventas todavía no están conectadas (PR #43): ingresos, costo de lo vendido y ganancia son
+    // desconocidos y se muestran "No disponible", nunca 0.
+    val ventasDisponibles: Boolean = true,
 ) {
     /** Costo de venta: el costo de comprar el café vendido más sus gastos asociados. */
     val costoVenta: Long get() = costoCafe + gastos
@@ -85,6 +89,8 @@ data class GastoRegistrado(
     val montoPesos: Long,
     val concepto: String = "Gasto",
     val detalle: String = "",
+    // Categoría del gasto (Transporte, Cargue...): la usa la gráfica de distribución de gastos.
+    val tipo: TipoGasto = TipoGasto.OTROS,
 )
 
 /** Café perdido al secar: [kg] de merma de un secado terminado el día [fecha]. */
@@ -156,6 +162,8 @@ fun restarDias(fecha: Fecha, dias: Int): Fecha {
  * Para conectarlo basta escribir otra implementación y cambiarla en AppNavHost: ni el repositorio ni las pantallas cambian.
  */
 interface OrigenFinanciero {
+    /** false mientras las ventas no estén en Room: el Resumen muestra "No disponible" en vez de ventas en 0. */
+    val ventasConectadas: Boolean get() = true
     suspend fun ventas(): List<VentaRegistrada> = emptyList()
     suspend fun compras(): List<CompraRegistrada> = emptyList()
     suspend fun gastos(): List<GastoRegistrado> = emptyList()
@@ -172,6 +180,7 @@ class FinanzasLocal(
 ) : FinanzasRepository {
     override suspend fun resumen(periodo: PeriodoFinanciero): ResumenFinanciero =
         resumirPeriodo(periodo, hoy(), origen.ventas(), origen.compras(), origen.gastos(), origen.mermas())
+            .copy(ventasDisponibles = origen.ventasConectadas)
 
     override suspend fun movimientos(): List<MovimientoFinanciero> =
         armarMovimientos(origen.ventas(), origen.compras(), origen.gastos())

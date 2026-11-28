@@ -38,8 +38,8 @@ class ExpenseRulesTest {
 
     @Test
     fun lasConstantesPorDefectoSonLasEsperadas() {
-        assertEquals(1_000L, VALOR_GASTO_MINIMO_COP)
-        assertEquals(50_000_000L, VALOR_GASTO_MAXIMO_COP)
+        assertEquals(1_000L, com.cafesmart.app.viewmodel.limites.GASTO_MINIMO_COP)
+        assertEquals(50_000_000L, com.cafesmart.app.viewmodel.limites.GASTO_MAXIMO_COP)
         assertEquals(60, LARGO_CONCEPTO_GASTO_MAXIMO)
         assertEquals(200, LARGO_DESCRIPCION_GASTO_MAXIMO)
     }
