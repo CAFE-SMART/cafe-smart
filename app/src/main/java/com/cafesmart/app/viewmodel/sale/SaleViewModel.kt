@@ -21,12 +21,14 @@ import com.cafesmart.app.viewmodel.purchase.conTipo
 import com.cafesmart.app.viewmodel.purchase.errorPrecio
 import com.cafesmart.app.viewmodel.purchase.fechaAMilis
 import com.cafesmart.app.viewmodel.purchase.fechaDeHoy
+import com.cafesmart.app.viewmodel.inventory.redondearKg
 import com.cafesmart.app.viewmodel.purchase.formatoDinero
 import com.cafesmart.app.viewmodel.purchase.formatoFecha
 import com.cafesmart.app.viewmodel.purchase.formatoKg
 import com.cafesmart.app.viewmodel.purchase.limpiarPeso
 import com.cafesmart.app.viewmodel.purchase.limpiarPrecio
 import com.cafesmart.app.viewmodel.purchase.milisAFecha
+import com.cafesmart.app.viewmodel.purchase.pesoEnPantalla
 import com.cafesmart.app.viewmodel.purchase.precioEnPantalla
 import com.cafesmart.app.viewmodel.purchase.precioKg
 import com.cafesmart.app.viewmodel.purchase.precioValido
@@ -201,7 +203,7 @@ data class SaleUiState(
     private fun aPantalla(cliente: Cliente) = ClienteEnPantalla(
         cliente = cliente,
         nombre = cliente.nombre,
-        documento = "${cliente.tipoDocumento.etiqueta} ${cliente.documento}",
+        documento = documentoTexto(cliente),
         elegido = cliente == this.cliente
     )
 
@@ -258,7 +260,7 @@ data class SaleUiState(
             detalle = "${formatoKg(disponible)} disponibles · ${textoComprado(diasDesde(item.sublote.fechaIngreso, hoy))}",
             elegido = estaElegido(item),
             cantidadTexto = formatoKg(elegidos.firstOrNull { it.id == id }?.cantidadKg ?: 0.0),
-            cantidadCampo = textoCantidad(id),
+            cantidadCampo = campoCantidad(id),
             ayudaCantidad = mensajeCantidad(disponible),
             errorCantidad = errorDeCantidad(id),
             cantidadValida = cantidadValida(cantidadDesdeTexto(textoCantidad(id)), disponible)
@@ -278,6 +280,9 @@ data class SaleUiState(
     fun textoCantidad(subloteId: Long): String =
         textosCantidad[subloteId] ?: elegidos.firstOrNull { it.id == subloteId }?.cantidadKg?.let(::formatoKgCampo).orEmpty()
 
+    // Lo que se ve en el campo: coma para decimales y punto para miles, como en Compras.
+    fun campoCantidad(subloteId: Long): String = pesoEnPantalla(textoCantidad(subloteId))
+
     // Error de la cantidad escrita: solo aparece cuando pasa de lo disponible (con el campo vacio o en 0 no hay error).
     fun errorDeCantidad(subloteId: Long): String? {
         val elegido = elegidos.firstOrNull { it.id == subloteId } ?: return null
@@ -291,8 +296,9 @@ data class SaleUiState(
             textosCantidad[elegido.id]?.let { cantidadValida(cantidadDesdeTexto(it), elegido.disponibleKg) } ?: true
         }
 
+    // Redondeado a gramos: sumar decimales puede dar 4.999999 cuando son 5 kg y rechazaria una venta valida.
     val totalKg: Double
-        get() = elegidos.sumOf { it.cantidadKg }
+        get() = redondearKg(elegidos.sumOf { it.cantidadKg })
 
     // Cada sublote vale su cantidad por el precio de su calidad (0 mientras no se escribe el precio).
     val totalARecibir: Long
@@ -314,6 +320,11 @@ data class SaleUiState(
         get() = elegidos.isNotEmpty() && cantidadesValidas && errorDeTotal == null &&
             calidadesElegidas.all { precioValido(textoPrecio(it)) }
 
+    // Un precio de 1 a 3 digitos no sale en rojo mientras se escribe: el aviso dice de que calidad es.
+    private fun avisoPrecioSinMarcar(): String? =
+        calidadesElegidas.firstOrNull { errorDePrecio(it) == null && textoPrecio(it).isNotEmpty() && !precioValido(textoPrecio(it)) }
+            ?.let { "Revisa el precio por kg de la calidad ${it.etiqueta.lowercase()}." }
+
     // Texto sobre "Continuar" del paso 2. Si hay un campo en rojo (precio o cantidad) solo avisa que se revise;
     // el error exacto esta en el campo. El minimo de kg no se repite: ya se ve en rojo arriba.
     val mensajePendientePaso2: String?
@@ -325,7 +336,7 @@ data class SaleUiState(
                 "Escribe la cantidad a vender de cada sublote elegido."
             }
             errorDeTotal != null -> null
-            calidadesElegidas.any { mensajePrecioPendiente(it, textoPrecio(it)) != null } -> MENSAJE_REVISA_CAMPOS
+            calidadesElegidas.any { mensajePrecioPendiente(it, textoPrecio(it)) != null } -> avisoPrecioSinMarcar() ?: MENSAJE_REVISA_CAMPOS
             else -> null
         }
 
@@ -337,7 +348,7 @@ data class SaleUiState(
 
     // "Cédula 16780012" / "NIT 9003421215"; null cuando la venta es sin registrar.
     val clienteDocumentoTexto: String?
-        get() = clienteDeLaVenta?.let { "${it.tipoDocumento.etiqueta} ${it.documento}" }
+        get() = clienteDeLaVenta?.let(::documentoTexto)
 
     val fechaResumenTexto: String
         get() = formatoFecha(fecha)
@@ -495,7 +506,7 @@ class SaleViewModel : ViewModel() {
         val estado = _uiState.value
         val delTipo = sublotesDelTipo(estado.inventario, estado.tipoCafe)
         _uiState.value = if (estado.todosElegidos) {
-            estado.copy(elegidos = emptyList(), textosCantidad = emptyMap())
+            estado.copy(elegidos = emptyList(), textosCantidad = emptyMap(), precios = emptyMap())
         } else {
             estado.copy(elegidos = delTipo.map { item ->
                 estado.elegidos.firstOrNull { it.id == item.sublote.id } ?: SubloteElegido(item, item.sublote.pesoDisponibleKg)
@@ -514,8 +525,12 @@ class SaleViewModel : ViewModel() {
             elegidos + SubloteElegido(sublote, sublote.sublote.pesoDisponibleKg)
         }
         // Al marcar o desmarcar, el campo vuelve a mostrar la cantidad elegida (se borra lo escrito antes).
-        _uiState.value = _uiState.value.copy(elegidos = nuevos, textosCantidad = _uiState.value.textosCantidad - id)
+        _uiState.value = _uiState.value.copy(elegidos = nuevos, textosCantidad = _uiState.value.textosCantidad - id).sinPreciosSueltos()
     }
+
+    // El precio es por calidad: si ya no queda un sublote elegido de esa calidad, su precio se borra.
+    private fun SaleUiState.sinPreciosSueltos(): SaleUiState =
+        copy(precios = precios.filterKeys { it in calidadesElegidas })
 
     // Lo que la persona escribe en "Cantidad a vender". Se guarda el texto tal cual (limpiado como el peso de
     // Compras) para mostrarlo con su error; la cantidad elegida solo cambia cuando el valor es valido.
@@ -563,10 +578,12 @@ class SaleViewModel : ViewModel() {
     // "Confirmar venta": descuenta lo vendido del inventario y marca la venta como registrada.
     // Si falta algo, o ya se registro, no hace nada (asi no se puede registrar dos veces).
     // Temporal: cuando exista Room aqui se guardan la Venta y sus VentaSublote.
-    fun confirmarVenta() {
+    // Devuelve true solo si esta llamada registro la venta: un segundo toque no la registra otra vez.
+    fun confirmarVenta(): Boolean {
         val estado = _uiState.value
-        if (!estado.puedeConfirmar) return
+        if (!estado.puedeConfirmar) return false
         _uiState.value = estado.copy(inventario = descontarVenta(estado.inventario, estado.elegidos), ventaRegistrada = true)
+        return true
     }
 }
 
