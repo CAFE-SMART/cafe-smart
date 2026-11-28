@@ -10,6 +10,7 @@ import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.Lote
 import com.cafesmart.app.data.model.LoteConSublotes
 import com.cafesmart.app.data.model.Sublote
+import com.cafesmart.app.data.model.SubloteConLote
 import com.cafesmart.app.data.model.TipoCafe
 import com.cafesmart.app.viewmodel.purchase.milisAFecha
 import kotlinx.coroutines.flow.Flow
@@ -29,6 +30,18 @@ interface InventoryRepository {
      * Un lote sin sublotes aparece con la lista vacía.
      */
     fun observarLotes(): Flow<List<LoteConSublotes>>
+
+    /**
+     * El sublote con ese id junto con su lote (tipo y calidad), o null si no existe. Se vuelve a emitir cuando
+     * cambia el inventario (una venta o un ajuste bajan su peso). Incluye sublotes agotados: el detalle debe
+     * poder abrirse aunque ya no quede café. Sale de [observarLotes], así que no necesita otra consulta a Room.
+     */
+    fun observarSublote(id: Long): Flow<SubloteConLote?> =
+        observarLotes().map { lotes ->
+            lotes.firstNotNullOfOrNull { grupo ->
+                grupo.sublotes.firstOrNull { it.id == id }?.let { SubloteConLote(it, grupo.lote) }
+            }
+        }
 
     companion object {
         /** Versión real, sobre Room. */

@@ -25,9 +25,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,7 +95,10 @@ fun SaleStep2Screen(
     modifier: Modifier = Modifier
 ) {
     // Estado visual: ids de los sublotes que tienen abierto el campo de cantidad.
-    var editando by remember { mutableStateOf(setOf<Long>()) }
+    var editando by rememberSaveable { mutableStateOf(setOf<Long>()) }
+    // Si un sublote deja de estar elegido ("Seleccionar todo" o cambio de pestaña), su campo "Cambiar" se cierra.
+    val idsElegidos = estado.elegidos.map { it.id }.toSet()
+    LaunchedEffect(idsElegidos) { editando = editando.intersect(idsElegidos) }
     val desplazamiento = rememberScrollState()
 
     // imePadding(): cuando sale el teclado, la pantalla se encoge para que no tape el campo ni el boton.

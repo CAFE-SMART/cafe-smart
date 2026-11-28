@@ -1,5 +1,6 @@
 package com.cafesmart.app.ui.screens.sale
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,6 +23,7 @@ import com.cafesmart.app.data.model.Calidad
 import com.cafesmart.app.data.model.Cliente
 import com.cafesmart.app.data.sale.ModoCliente
 import com.cafesmart.app.data.sale.SubloteElegido
+import com.cafesmart.app.ui.components.AppErrorDialog
 import com.cafesmart.app.ui.components.CancelarSheet
 import com.cafesmart.app.ui.components.ContinueButton
 import com.cafesmart.app.ui.screens.purchase.PurchaseBottomBar
@@ -45,12 +48,17 @@ fun SaleStep3Screen(
     onFechaChange: (Long) -> Unit,
     onEditarCafe: () -> Unit,
     onConfirmar: () -> Unit,
+    // "Regresar" en el aviso de error: lo cierra sin registrar nada.
+    onDescartarError: () -> Unit,
     onCancelarVenta: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var mostrarCalendario by remember { mutableStateOf(false) }
-    var mostrarCancelar by remember { mutableStateOf(false) }
+    var mostrarCalendario by rememberSaveable { mutableStateOf(false) }
+    var mostrarCancelar by rememberSaveable { mutableStateOf(false) }
+
+    // Mientras se guarda la venta, el "atras" del sistema no sale de la pantalla.
+    BackHandler(enabled = estado.guardando) {}
 
     Column(
         modifier = modifier
@@ -62,7 +70,13 @@ fun SaleStep3Screen(
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
         ) {
-            PurchaseHeader(paso = 3, pregunta = "Confirma tu venta", onBack = onBack, titulo = "Registro de venta")
+            // La flecha no responde mientras se guarda la venta.
+            PurchaseHeader(
+                paso = 3,
+                pregunta = "Confirma tu venta",
+                onBack = { if (!estado.guardando) onBack() },
+                titulo = "Registro de venta"
+            )
 
             Column(
                 modifier = Modifier.padding(horizontal = Spacing.s20, vertical = Spacing.s16),
@@ -101,10 +115,18 @@ fun SaleStep3Screen(
 
         PurchaseBottomBar {
             // Solo se activa cuando el ViewModel dice que la venta esta completa y la fecha sirve.
-            ContinueButton(text = "Confirmar venta", enabled = estado.puedeConfirmar, onClick = onConfirmar)
+            // Mientras se guarda queda bloqueado (con la ruedita) para no guardar dos veces.
+            ContinueButton(
+                text = "Confirmar venta",
+                enabled = estado.puedeConfirmar && !estado.guardando,
+                cargando = estado.guardando,
+                onClick = onConfirmar
+            )
             TextButton(
                 // "Cancelar" no borra nada todavia: primero pregunta con la hoja.
                 onClick = { mostrarCancelar = true },
+                // No se puede cancelar mientras se guarda la venta.
+                enabled = !estado.guardando,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
                 Text(text = "Cancelar", style = AppTypography.labelSection)
@@ -117,6 +139,16 @@ fun SaleStep3Screen(
             fechaMilis = estado.fechaMilis,
             onFechaChange = onFechaChange,
             onCerrar = { mostrarCalendario = false }
+        )
+    }
+
+    // Si no se pudo guardar: "Reintentar" vuelve a confirmar y "Regresar" (o la x) cierra el aviso.
+    estado.errorAlGuardar?.let {
+        AppErrorDialog(
+            title = "No se pudo registrar",
+            message = it,
+            onRetry = onConfirmar,
+            onBack = onDescartarError
         )
     }
 
@@ -148,6 +180,7 @@ private fun SaleStep3Preview() {
             onFechaChange = {},
             onEditarCafe = {},
             onConfirmar = {},
+            onDescartarError = {},
             onCancelarVenta = {},
             onBack = {}
         )

@@ -18,6 +18,7 @@ import com.cafesmart.app.data.finanzas.fechaDeHoy
 import com.cafesmart.app.ui.finance.AccesoFinancieroScreen
 import com.cafesmart.app.data.inventario.InventoryRepository
 import com.cafesmart.app.data.inventario.OrigenOcupacionRoom
+import com.cafesmart.app.data.sale.VentaRepository
 import com.cafesmart.app.data.local.AppDatabase
 import com.cafesmart.app.data.purchase.PurchaseRepository
 import com.cafesmart.app.ui.finance.HistorialFinancieroScreen
@@ -38,6 +39,7 @@ import androidx.lifecycle.createSavedStateHandle
 import com.cafesmart.app.data.session.DestinoInicial
 import com.cafesmart.app.data.session.PreferenciaNotificacionesLocal
 import com.cafesmart.app.data.session.PreferenciaSesionLocal
+import com.cafesmart.app.data.secado.SecadoRepository
 import com.cafesmart.app.data.session.decidirInicio
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
@@ -81,11 +83,18 @@ import com.cafesmart.app.ui.screens.PlaceholderAction
 import com.cafesmart.app.ui.screens.PlaceholderScreen
 import com.cafesmart.app.ui.screens.SplashScreen
 import com.cafesmart.app.ui.screens.purchase.PurchaseFlow
+import com.cafesmart.app.ui.screens.drying.SecadoStep1Flow
+import com.cafesmart.app.ui.screens.drying.SecadoStep2Flow
+import com.cafesmart.app.ui.screens.drying.SecadoStep3Flow
+import com.cafesmart.app.ui.screens.drying.SecadoStep4Flow
+import com.cafesmart.app.ui.screens.drying.SecadoStep5Flow
+import com.cafesmart.app.ui.screens.drying.SecadoStep6Flow
 import com.cafesmart.app.ui.screens.sale.SaleStep1Flow
 import com.cafesmart.app.ui.screens.sale.SaleStep2Flow
 import com.cafesmart.app.ui.screens.sale.SaleStep3Flow
 import com.cafesmart.app.ui.screens.sale.SaleSuccessFlow
 import com.cafesmart.app.data.model.TipoCafe
+import com.cafesmart.app.ui.inventory.DetalleSubloteRoute
 import com.cafesmart.app.ui.inventory.InventoryScreen
 import com.cafesmart.app.ui.settings.NegocioInfoScreen
 import com.cafesmart.app.ui.settings.SettingsScreen
@@ -94,6 +103,9 @@ import com.cafesmart.app.viewmodel.home.HomeViewModel
 import com.cafesmart.app.ui.inventory.SublotesGrupoScreen
 import com.cafesmart.app.viewmodel.inventory.tipoCafeDesdeRuta
 import com.cafesmart.app.viewmodel.purchase.PurchaseViewModel
+import com.cafesmart.app.viewmodel.drying.FinalizarSecadoViewModel
+import com.cafesmart.app.viewmodel.drying.SecadoViewModel
+import com.cafesmart.app.viewmodel.drying.SecadosEnCursoViewModel
 import com.cafesmart.app.viewmodel.sale.SaleViewModel
 import com.cafesmart.app.viewmodel.settings.NegocioInfoViewModel
 import com.cafesmart.app.viewmodel.settings.SettingsViewModel
@@ -180,7 +192,11 @@ fun AppNavHost(
     // Compras y bodega en Room: el repositorio guarda productores y compras; la ocupación suma los sublotes con existencia.
     val compras = remember { PurchaseRepository.de(context) }
     val ocupacion = remember { OrigenOcupacionRoom(AppDatabase.obtener(context).subloteDao()) }
+    // Ventas en Room: el repositorio guarda clientes y ventas; el inventario es el mismo que lee la pantalla Inventario.
+    val ventas = remember { VentaRepository.de(context) }
     val inventario = remember { InventoryRepository.de(context) }
+    // Secado: por ahora el repositorio de ejemplo (en memoria); se cambia por Room cuando exista.
+    val secadoRepositorio = remember { SecadoRepository.de(context) }
     val scope = rememberCoroutineScope()
     val guardarNegocio: (RegistrationData) -> Unit = { data ->
         FirebaseSessionGateway.usuarioActual()?.uid?.let { uid ->
@@ -537,11 +553,14 @@ fun AppNavHost(
             arguments = listOf(navArgument(Routes.ARG_BATCH_ID) { type = NavType.StringType })
         ) { entry ->
             val batchId = entry.arguments?.getString(Routes.ARG_BATCH_ID).orEmpty()
-            NavPlaceholder(
-                navController,
-                "Detalle del sublote #$batchId", Routes.inventoryDetail(batchId), true,
-                "Gastos del sublote" to Routes.inventoryBatchExpenses(batchId),
-                "Vender sublote" to Routes.saleBatchStep1(batchId)
+            DetalleSubloteRoute(
+                inventario = inventario,
+                negocios = negocios,
+                uid = FirebaseSessionGateway.usuarioActual()?.uid,
+                batchId = batchId,
+                onBack = { navController.popBackStack() },
+                onVerGastos = { navController.navigateTo(Routes.inventoryBatchExpenses(batchId)) },
+                onVender = { navController.navigateTo(Routes.saleBatchStep1(batchId)) },
             )
         }
         composable(
@@ -630,7 +649,12 @@ fun AppNavHost(
         // ── Ventas ──────────────────────────────────────────
         composable(Routes.SALE_STEP1) {
             // viewModel() ligado a esta entrada: los pasos 2 y 3 y la pantalla final usan este mismo ViewModel.
-            val saleViewModel: SaleViewModel = viewModel()
+            val saleViewModel: SaleViewModel = viewModel { SaleViewModel(ventas, inventario) }
+            // Una sola vez al entrar al flujo: los clientes de Room y el inventario (que se mantiene al dia solo).
+            LaunchedEffect(saleViewModel) {
+                saleViewModel.cargarClientes()
+                saleViewModel.observarInventario()
+            }
             SaleStep1Flow(
                 viewModel = saleViewModel,
                 onContinuar = { navController.navigateTo(Routes.SALE_STEP2) },
@@ -675,43 +699,83 @@ fun AppNavHost(
 
         // ── Secado ──────────────────────────────────────────
         // Orden del Figma: 1 → 2 → 3 → 4 → 5 → 6 (sin gastos) o 5 → 7 (gastos) → 6.
-        composable(Routes.DRYING_STEP1) { NavPlaceholder(navController, "Secado · Paso 1 · Elegir café", Routes.DRYING_STEP1, true, "Siguiente" to Routes.DRYING_STEP2) }
-        composable(Routes.DRYING_STEP2) { NavPlaceholder(navController, "Secado · Paso 2 · Confirmar inicio", Routes.DRYING_STEP2, true, "Iniciar secado" to Routes.DRYING_STEP3) }
-        composable(Routes.DRYING_STEP3) {
-            NavPlaceholder(
-                navController,
-                "Secado · Paso 3 · Iniciado", Routes.DRYING_STEP3, true,
-                "Ver secados en curso" to Routes.DRYING_STEP4,
-                "Ir a inventario" to Routes.INVENTORY
+        composable(Routes.DRYING_STEP1) {
+            // viewModel() ligado a esta entrada: los pasos 2 y 3 usan este mismo ViewModel.
+            val vm: SecadoViewModel = viewModel { SecadoViewModel(secadoRepositorio) }
+            SecadoStep1Flow(
+                viewModel = vm,
+                onContinuar = { navController.navigateTo(Routes.DRYING_STEP2) },
+                onSalir = { navController.popBackStack() }
             )
         }
-        composable(Routes.DRYING_STEP4) { NavPlaceholder(navController, "Secado · Paso 4 · En curso", Routes.DRYING_STEP4, true, "Finalizar secado" to Routes.DRYING_STEP5) }
-        composable(Routes.DRYING_STEP5) {
-            NavPlaceholder(
-                navController,
-                "Secado · Paso 5 · Finalizar", Routes.DRYING_STEP5, true,
-                "Confirmar resultado (sin gastos)" to Routes.DRYING_STEP6,
-                "Registrar gastos del secado" to Routes.DRYING_STEP7
+        composable(Routes.DRYING_STEP2) { entrada ->
+            SecadoStep2Flow(
+                viewModel = rememberSecadoViewModel(navController, entrada, secadoRepositorio),
+                // El paso 2 se quita de la pila: "atras" desde el paso 3 no puede volver a iniciar el secado.
+                onIniciado = {
+                    navController.navigate(Routes.DRYING_STEP3) { popUpTo(Routes.DRYING_STEP2) { inclusive = true } }
+                },
+                // "Cancelar" sale de todo el registro de secado.
+                onCancelado = { navController.salirDelSecado() },
+                onVolver = { navController.popBackStack() }
             )
         }
-        composable(Routes.DRYING_STEP6) {
+        composable(Routes.DRYING_STEP3) { entrada ->
+            // "Atras" del sistema lleva al inicio, no al formulario.
+            BackHandler { navController.popBackStack(Routes.HOME, inclusive = false) }
+            SecadoStep3Flow(
+                viewModel = rememberSecadoViewModel(navController, entrada, secadoRepositorio),
+                onVerEnCurso = { navController.navigateTo(Routes.DRYING_STEP4) },
+                onIrAInventario = {
+                    navController.navigate(Routes.INVENTORY) {
+                        popUpTo(Routes.HOME)
+                    }
+                }
+            )
+        }
+        composable(Routes.DRYING_STEP4) {
+            // viewModel() ligado a esta entrada: el paso 5 lee de aqui cual secado se eligio.
+            val vm: SecadosEnCursoViewModel = viewModel { SecadosEnCursoViewModel(secadoRepositorio) }
+            SecadoStep4Flow(
+                viewModel = vm,
+                onFinalizar = { navController.navigateTo(Routes.DRYING_STEP5) },
+                onSinSecados = { navController.salirDelSecado() },
+                onVolver = { navController.popBackStack() }
+            )
+        }
+        composable(Routes.DRYING_STEP5) { entrada ->
+            val enCurso = rememberSecadosEnCursoViewModel(navController, entrada, secadoRepositorio)
+            // ViewModel ligado a la entrada del paso 5, con el id del secado elegido en el paso 4 en este momento.
+            // Cada vez que se entra al paso 5 desde el 4 es una entrada nueva, asi que no arrastra un secado anterior.
+            val vm: FinalizarSecadoViewModel = viewModel {
+                FinalizarSecadoViewModel(secadoRepositorio, enCurso.uiState.value.elegido?.secado?.id ?: SIN_SECADO)
+            }
+            SecadoStep5Flow(
+                viewModel = vm,
+                enCurso = enCurso,
+                // El paso 5 NO sale de la pila: el paso 6 usa su ViewModel. Con gastos va al paso 7 (placeholder).
+                onConfirmado = { huboGastos ->
+                    navController.navigateTo(if (huboGastos) Routes.DRYING_STEP7 else Routes.DRYING_STEP6)
+                },
+                onVolver = { navController.popBackStack() }
+            )
+        }
+        composable(Routes.DRYING_STEP6) { entrada ->
             // "Atrás" del sistema lleva al inicio, no a los pasos anteriores del secado.
             BackHandler { navController.popBackStack(Routes.HOME, inclusive = false) }
-            PlaceholderScreen(
-                title = "Secado · Paso 6 · Secado registrado",
-                route = Routes.DRYING_STEP6,
-                actions = listOf(
-                    PlaceholderAction("Registrar nuevo secado") {
-                        navController.navigate(Routes.DRYING_STEP1) {
-                            popUpTo(Routes.HOME)
-                        }
-                    },
-                    PlaceholderAction("Ir a inventario") {
-                        navController.navigate(Routes.INVENTORY) {
-                            popUpTo(Routes.HOME)
-                        }
+            SecadoStep6Flow(
+                viewModel = rememberFinalizarSecadoViewModel(navController, entrada, secadoRepositorio),
+                onRegistrarNuevo = {
+                    navController.navigate(Routes.DRYING_STEP1) {
+                        popUpTo(Routes.HOME)
                     }
-                )
+                },
+                onIrAInventario = {
+                    navController.navigate(Routes.INVENTORY) {
+                        popUpTo(Routes.HOME)
+                    }
+                },
+                onSinResultado = { navController.popBackStack(Routes.HOME, inclusive = false) }
             )
         }
         composable(Routes.DRYING_STEP7) { NavPlaceholder(navController, "Secado · Paso 7 · Gastos del secado", Routes.DRYING_STEP7, true, "Guardar gasto" to Routes.DRYING_STEP6) }
@@ -755,6 +819,7 @@ fun AppNavHost(
                 onLimitesEntrada = { navController.navigateTo(Routes.SETTINGS_LIMITS) },
                 onContactos = { navController.navigateTo(Routes.SETTINGS_CONTACTS) },
                 onCapacidadBodega = { navController.navigateTo(Routes.SETTINGS_WAREHOUSE) },
+                onProcesoSecado = { navController.navigateTo(Routes.DRYING_STEP1) },
                 aviso = settingsState.aviso,
                 onAvisoOculto = settingsViewModel::ocultarAviso,
                 pestana = settingsState.pestana,
@@ -923,12 +988,74 @@ private const val AVISO_CAPACIDAD_GUARDADA = "Capacidad de bodega guardada"
 @Composable
 private fun rememberSaleViewModel(navController: NavHostController, entrada: NavBackStackEntry): SaleViewModel {
     val entradaPaso1 = remember(entrada) { navController.getBackStackEntry(Routes.SALE_STEP1) }
-    return viewModel(entradaPaso1)
+    val contexto = LocalContext.current
+    // El ViewModel ya existe (lo creo el paso 1); la fabrica solo se usa si la entrada se restaura sin el.
+    val viewModel: SaleViewModel =
+        viewModel(entradaPaso1) { SaleViewModel(VentaRepository.de(contexto), InventoryRepository.de(contexto)) }
+    // Si el ViewModel se creo al restaurar el paso 2 o 3 (sin pasar por el paso 1) no tendria clientes ni inventario.
+    // Las dos llamadas son seguras si ya estaban hechas: observarInventario no lee dos veces y cargarClientes solo recarga.
+    LaunchedEffect(viewModel) {
+        viewModel.cargarClientes()
+        viewModel.observarInventario()
+    }
+    return viewModel
+}
+
+/**
+ * ViewModel del secado para los pasos 2 y 3: es el mismo que creo el paso 1 (ligado a su entrada de la pila),
+ * asi el cafe elegido no se pierde entre pasos.
+ */
+@Composable
+private fun rememberSecadoViewModel(
+    navController: NavHostController,
+    entrada: NavBackStackEntry,
+    repositorio: SecadoRepository
+): SecadoViewModel {
+    val entradaPaso1 = remember(entrada) { navController.getBackStackEntry(Routes.DRYING_STEP1) }
+    return viewModel(entradaPaso1) { SecadoViewModel(repositorio) }
+}
+
+/** Id para un FinalizarSecadoViewModel sin secado: ningun secado lo tiene, asi que la pantalla dice que ya no esta en curso. */
+private const val SIN_SECADO = -1L
+
+/** ViewModel de "Secados en curso": el mismo que creo el paso 4 (ligado a su entrada de la pila). */
+@Composable
+private fun rememberSecadosEnCursoViewModel(
+    navController: NavHostController,
+    entrada: NavBackStackEntry,
+    repositorio: SecadoRepository
+): SecadosEnCursoViewModel {
+    val entradaPaso4 = remember(entrada) { navController.getBackStackEntry(Routes.DRYING_STEP4) }
+    return viewModel(entradaPaso4) { SecadosEnCursoViewModel(repositorio) }
+}
+
+/**
+ * ViewModel de finalizar secado para el paso 6: el mismo que creo el paso 5 (ligado a su entrada, que sigue en la pila).
+ * Si no existe (la app se recreo), se crea uno sin secado y el paso 6 vuelve al inicio.
+ */
+@Composable
+private fun rememberFinalizarSecadoViewModel(
+    navController: NavHostController,
+    entrada: NavBackStackEntry,
+    repositorio: SecadoRepository
+): FinalizarSecadoViewModel {
+    val entradaPaso5 = remember(entrada) { navController.getBackStackEntry(Routes.DRYING_STEP5) }
+    return viewModel(entradaPaso5) { FinalizarSecadoViewModel(repositorio, SIN_SECADO) }
 }
 
 /** Navega a una ruta sin duplicarla en la cima de la pila. */
 private fun NavHostController.navigateTo(route: String) =
     navigate(route) { launchSingleTop = true }
+
+/**
+ * Sale de todo el flujo de secado y vuelve a la pantalla desde la que se empezó (Inventario, Ajustes...).
+ * Si el paso 1 ya no está en la pila, va a Inicio en vez de dejar la pantalla vacía.
+ */
+private fun NavHostController.salirDelSecado() {
+    if (!popBackStack(Routes.DRYING_STEP1, inclusive = true)) {
+        popBackStack(Routes.HOME, inclusive = false)
+    }
+}
 
 /** Cierra sesión: vuelve al login y borra la pila ("atrás" no regresa a pantallas de la cuenta). */
 private fun NavHostController.logout() =
